@@ -5,6 +5,9 @@ let master = null
 let enabled = true
 let lastTick = 0
 
+let unlocked = false
+let keepAlive = null
+
 function ac() {
   if (!enabled) return null
   if (!ctx) {
@@ -15,7 +18,8 @@ function ac() {
     master.gain.value = 0.55
     master.connect(ctx.destination)
   }
-  if (ctx.state === 'suspended') ctx.resume()
+  // iOS zet de context op 'suspended' of 'interrupted' (bijv. na wisselen van app).
+  if (ctx.state !== 'running') ctx.resume().catch(() => {})
   return ctx
 }
 
@@ -23,9 +27,73 @@ export function setSoundEnabled(on) {
   enabled = on
 }
 
+// Een seconde stilte als WAV, voor het HTML-audio-trucje hieronder.
+function silentWav() {
+  const rate = 8000
+  const n = rate
+  const buf = new ArrayBuffer(44 + n)
+  const v = new DataView(buf)
+  const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)))
+  str(0, 'RIFF')
+  v.setUint32(4, 36 + n, true)
+  str(8, 'WAVE')
+  str(12, 'fmt ')
+  v.setUint32(16, 16, true)
+  v.setUint16(20, 1, true)
+  v.setUint16(22, 1, true)
+  v.setUint32(24, rate, true)
+  v.setUint32(28, rate, true)
+  v.setUint16(32, 1, true)
+  v.setUint16(34, 8, true)
+  str(36, 'data')
+  v.setUint32(40, n, true)
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128)
+  let bin = ''
+  new Uint8Array(buf).forEach((b) => (bin += String.fromCharCode(b)))
+  return `data:audio/wav;base64,${btoa(bin)}`
+}
+
 // Moet vanuit een tik/klik aangeroepen worden (iOS ontgrendelt dan audio).
 export function unlockAudio() {
-  ac()
+  if (!enabled) return
+  // iOS 17+: speel af als "media", zodat de stille-modus-schakelaar het niet dempt.
+  try {
+    if (navigator.audioSession) navigator.audioSession.type = 'playback'
+  } catch {
+    /* niet ondersteund */
+  }
+  // Oudere iOS: een (stil) HTML-audio-element zet de sessie ook op media.
+  try {
+    if (!keepAlive) {
+      keepAlive = new Audio(silentWav())
+      keepAlive.loop = true
+      keepAlive.setAttribute('playsinline', '')
+    }
+    keepAlive.play().catch(() => {})
+  } catch {
+    /* niet ondersteund */
+  }
+  const c = ac()
+  if (!c || unlocked) return
+  // Eén lege sample afspelen binnen de tik ontgrendelt Web Audio op iOS.
+  const src = c.createBufferSource()
+  src.buffer = c.createBuffer(1, 1, 22050)
+  src.connect(c.destination)
+  src.start(0)
+  unlocked = true
+}
+
+// Ontgrendel bij de allereerste aanraking, waar dan ook op het scherm.
+if (typeof window !== 'undefined') {
+  const first = () => {
+    unlockAudio()
+    if (unlocked) {
+      window.removeEventListener('pointerdown', first, true)
+      window.removeEventListener('touchend', first, true)
+    }
+  }
+  window.addEventListener('pointerdown', first, true)
+  window.addEventListener('touchend', first, true)
 }
 
 function tone({ freq, type = 'sine', start = 0, dur = 0.2, gain = 0.2, to = null, attack = 0.005 }) {
