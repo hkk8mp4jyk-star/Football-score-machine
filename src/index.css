@@ -118,10 +118,10 @@ input:focus-visible {
 }
 .top-row-center {
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 1fr auto 1fr;
 }
-.top-row-center > .logo {
-  align-items: center;
+.top-row-center > .icon-btn {
+  justify-self: end;
 }
 
 .logo {
@@ -174,6 +174,7 @@ input:focus-visible {
   gap: 6px;
 }
 .round {
+  white-space: nowrap;
   font-family: var(--font-cond);
   font-weight: 700;
   font-size: 13px;
@@ -201,11 +202,12 @@ input:focus-visible {
   align-items: center;
   line-height: 1;
 }
-.player-label {
+.player-next {
+  margin-top: 6px;
   font-family: var(--font-cond);
   font-weight: 600;
-  font-size: 12px;
-  letter-spacing: 0.3em;
+  font-size: 13px;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--color-mist);
 }
@@ -689,54 +691,6 @@ input:focus-visible {
 
 /* ---------- Uitslagplaat en knoppen ---------- */
 
-.result-plate {
-  position: relative;
-  height: 58px;
-  display: grid;
-  place-items: center;
-  text-align: center;
-}
-.result-plate-hint {
-  font-family: var(--font-cond);
-  font-weight: 600;
-  font-size: 14px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--color-mist);
-}
-.result-plate-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1;
-  animation: plate-in 0.55s cubic-bezier(0.2, 1.3, 0.4, 1) both;
-}
-.result-plate-label {
-  font-family: var(--font-cond);
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--color-mist);
-}
-.result-plate-value {
-  font-family: var(--font-display);
-  font-size: 38px;
-  letter-spacing: 0.04em;
-  color: var(--color-gold-300);
-  text-shadow: 0 0 20px rgb(229 191 99 / 0.55);
-  text-transform: uppercase;
-}
-.result-plate-value.is-other {
-  font-size: 30px;
-}
-@keyframes plate-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.9);
-  }
-}
-
 .gold-btn {
   position: relative;
   width: min(84%, 320px);
@@ -758,7 +712,8 @@ input:focus-visible {
   transition:
     transform 0.08s,
     box-shadow 0.08s,
-    filter 0.2s;
+    filter 0.2s,
+    opacity 0.3s ease;
 }
 .gold-btn::after {
   /* glanslijn die over de knop loopt */
@@ -788,7 +743,21 @@ input:focus-visible {
     0 0 30px rgb(229 191 99 / 0.3),
     inset 0 2px 0 rgb(255 255 255 / 0.7);
 }
-.gold-btn:disabled {
+/* Ontwerpvariant B: SPIN-knop verdwijnt volledig tijdens het draaien.
+   De ruimte blijft gereserveerd, zodat er niets verspringt. */
+.gold-btn.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.94);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    visibility 0s linear 0.25s;
+}
+.gold-btn.is-hidden::after {
+  animation: none;
+}
+.gold-btn:disabled:not(.is-hidden) {
   filter: saturate(0.35) brightness(0.55);
   cursor: default;
 }
@@ -1452,12 +1421,6 @@ input:focus-visible {
     height: 56px;
     font-size: 32px;
   }
-  .result-plate {
-    height: 50px;
-  }
-  .result-plate-value {
-    font-size: 32px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1512,4 +1475,56 @@ input:focus-visible {
   .tabs button {
     font-size: 13px;
   }
+  .rounds {
+    gap: 4px;
+  }
+  .rounds .round {
+    padding: 3px 7px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--color-navy-950);
+  border: 1px solid rgb(229 191 99 / 0.22);
+}
+.segmented button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-mist);
+  font-family: var(--font-cond);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.segmented button.is-active {
+  background: var(--gold-grad);
+  color: var(--color-ink);
+}
+.menu-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px dashed rgb(229 191 99 / 0.35);
+  background: rgb(3 10 29 / 0.55);
+  font-family: var(--font-cond);
+  font-weight: 700;
+  font-size: 18px;
+}
+.menu-group small {
+  display: block;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--color-mist);
 }

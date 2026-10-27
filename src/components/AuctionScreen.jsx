@@ -33,6 +33,7 @@ export default function AuctionScreen({
   reveal,
   tileStage,
   showOther,
+  spinVariant,
   bidder,
   bid,
   onBidder,
@@ -149,7 +150,7 @@ export default function AuctionScreen({
         ) : (
           <button
             type="button"
-            className="gold-btn spin-btn spin-btn-compact"
+            className={`gold-btn spin-btn spin-btn-compact ${spinVariant === 'B' && busy ? 'is-hidden' : ''}`}
             onClick={() => onSpin(Number(bidder), bidValue)}
             disabled={!canSpin}
           >

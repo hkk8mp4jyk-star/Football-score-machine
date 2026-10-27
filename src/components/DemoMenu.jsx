@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function DemoMenu({ phase, sound, onSound, onSkip, onReset, onClose }) {
+export default function DemoMenu({ phase, sound, onSound, spinVariant, onSpinVariant, onSkip, onReset, onClose }) {
   const [confirmReset, setConfirmReset] = useState(false)
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -16,6 +16,29 @@ export default function DemoMenu({ phase, sound, onSound, onSkip, onReset, onClo
             <span>Geluid</span>
             <span className={`switch ${sound ? 'is-on' : ''}`} aria-hidden="true" />
           </button>
+          <div className="menu-group">
+            <span>
+              SPIN-knop tijdens draaien
+              <small>Tijdelijk, alleen voor de ontwerpfase</small>
+            </span>
+            <div className="segmented" role="radiogroup" aria-label="SPIN-knop tijdens draaien">
+              {[
+                ['A', 'A · Vervaagt'],
+                ['B', 'B · Verdwijnt'],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={spinVariant === value}
+                  className={spinVariant === value ? 'is-active' : ''}
+                  onClick={() => onSpinVariant(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           {phase === 'draw' && (
             <button type="button" className="menu-item" onClick={onSkip}>
               <span>

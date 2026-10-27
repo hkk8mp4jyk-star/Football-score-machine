@@ -1,27 +1,34 @@
 import SlotMachine from './SlotMachine.jsx'
 import OtherBanner from './OtherBanner.jsx'
-import { Logo, MenuButton, PlayerSpot, RoundBadges } from './Header.jsx'
-import { DRAW_TURNS, PARTICIPANTS, RESULT_BY_ID, TURN_ORDER } from '../game/config.js'
+import { MenuButton, PlayerSpot, RoundBadges } from './Header.jsx'
+import { DRAW_TURNS, PARTICIPANTS, TURN_ORDER } from '../game/config.js'
 
-export default function MainScreen({ state, reveal, showOther, onSpin, onSettled, onNext, onOverview, onMenu }) {
+export default function MainScreen({ state, reveal, showOther, spinVariant, onSpin, onSettled, onNext, onOverview, onMenu }) {
   const spinning = !!state.spin
-  // Tijdens de onthulling blijft de deelnemer van deze trekking in beeld.
-  const shownTurn = reveal ? { round: reveal.round, participant: reveal.participant } : TURN_ORDER[state.turn]
+  // Tijdens de onthulling is de trekking al vastgelegd (turn is opgehoogd),
+  // maar blijft de deelnemer van deze trekking in beeld.
+  const turnIndex = reveal ? state.turn - 1 : state.turn
+  const shownTurn = TURN_ORDER[turnIndex]
+  const upcoming = TURN_ORDER[turnIndex + 1]
   const drawNumber = reveal ? state.draws.length : state.turn + 1
   const lastId = state.draws.at(-1)?.resultId
-  const result = reveal ? RESULT_BY_ID[reveal.resultId] : null
   const nextTurn = TURN_ORDER[state.turn]
+
+  let nextLabel = 'Veiling'
+  if (upcoming) {
+    nextLabel = PARTICIPANTS[upcoming.participant]
+    if (upcoming.round !== shownTurn.round) nextLabel += ` · Ronde ${upcoming.round}`
+  }
 
   return (
     <div className="screen screen-main">
       <header className="top">
         <div className="top-row top-row-center">
           <span aria-hidden="true" />
-          <Logo />
+          <RoundBadges round={shownTurn.round} />
           <MenuButton onClick={onMenu} />
         </div>
-        <RoundBadges round={shownTurn.round} />
-        <PlayerSpot label={reveal ? 'Uitslag voor' : 'Aan de beurt'} participant={shownTurn.participant} />
+        <PlayerSpot participant={shownTurn.participant} next={nextLabel} />
       </header>
 
       <main className="stage">
@@ -29,19 +36,6 @@ export default function MainScreen({ state, reveal, showOther, onSpin, onSettled
         <div className="machine-holder">
           <SlotMachine spin={state.spin} restResultId={lastId} onSettled={onSettled} />
           <OtherBanner show={showOther} />
-        </div>
-
-        <div className="result-plate" aria-live="polite">
-          {result ? (
-            <div key={reveal.resultId} className="result-plate-inner is-in">
-              <span className="result-plate-label">{PARTICIPANTS[reveal.participant]} krijgt</span>
-              <span className={`result-plate-value ${result.other ? 'is-other' : ''}`}>
-                {result.other ? 'Overige uitslagen' : `${result.home} – ${result.away}`}
-              </span>
-            </div>
-          ) : (
-            <span className="result-plate-hint">{spinning ? 'De machine draait…' : 'Druk op SPIN'}</span>
-          )}
         </div>
 
         {reveal ? (
@@ -55,7 +49,12 @@ export default function MainScreen({ state, reveal, showOther, onSpin, onSettled
             )}
           </button>
         ) : (
-          <button type="button" className="gold-btn spin-btn" onClick={onSpin} disabled={spinning}>
+          <button
+            type="button"
+            className={`gold-btn spin-btn ${spinVariant === 'B' && spinning ? 'is-hidden' : ''}`}
+            onClick={onSpin}
+            disabled={spinning}
+          >
             <span>Spin</span>
           </button>
         )}

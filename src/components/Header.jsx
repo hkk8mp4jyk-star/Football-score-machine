@@ -33,13 +33,13 @@ export function RoundBadges({ round }) {
   )
 }
 
-export function PlayerSpot({ label, participant }) {
+export function PlayerSpot({ participant, next }) {
   return (
     <div className="player-spot">
-      <span className="player-label">{label}</span>
       <span key={participant} className="player-name">
         {participant != null ? PARTICIPANTS[participant] : '—'}
       </span>
+      {next && <span className="player-next">Hierna: {next}</span>}
     </div>
   )
 }
