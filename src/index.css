@@ -867,15 +867,6 @@ input:focus-visible {
   height: clamp(40px, 7.4dvh, 60px);
   border-radius: 9px;
 }
-.tile::before {
-  /* lege plek blijft zichtbaar als vaste positie */
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  border: 1px dashed rgb(229 191 99 / 0.16);
-  background: rgb(3 10 29 / 0.35);
-}
 .tile-face {
   position: absolute;
   inset: 0;
