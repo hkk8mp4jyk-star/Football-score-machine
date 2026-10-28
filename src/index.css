@@ -461,8 +461,11 @@ input:focus-visible {
   text-align: center;
   font-family: var(--font-cond);
   font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.32em;
+  font-size: clamp(11px, 3.4vw, 14px);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-transform: uppercase;
   color: var(--color-gold-300);
 }

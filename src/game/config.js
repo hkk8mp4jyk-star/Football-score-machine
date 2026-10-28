@@ -13,6 +13,10 @@ export const PARTICIPANTS = [
   'Bas',
 ]
 
+// Teamnamen boven de cijferrollen (thuis links, uit rechts).
+export const HOME_TEAM = 'Werder Bremen II'
+export const AWAY_TEAM = 'Bremer'
+
 export const OTHER_ID = 'OVERIG'
 
 // 36 scores van 0-0 t/m 5-5 plus OVERIGE UITSLAGEN = 37 uitslagen.

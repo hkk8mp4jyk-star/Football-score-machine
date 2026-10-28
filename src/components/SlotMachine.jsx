@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Reel from './Reel.jsx'
-import { TIMING, reelTargets } from '../game/config.js'
+import { AWAY_TEAM, HOME_TEAM, TIMING, reelTargets } from '../game/config.js'
 import { buzz, sfx } from '../audio/sound.js'
 
 function Bulbs({ count, side }) {
@@ -59,7 +59,7 @@ export default function SlotMachine({ spin, restResultId, compact = false, onSet
             restSymbol={targets[0]}
             onStop={() => handleStop(1)}
             onTick={stopped < 1 ? sfx.tick : undefined}
-            label={compact ? null : 'Thuis'}
+            label={compact ? null : HOME_TEAM}
           />
           <div className="reel-dash" aria-hidden="true">
             <span />
@@ -71,7 +71,7 @@ export default function SlotMachine({ spin, restResultId, compact = false, onSet
             restSymbol={targets[1]}
             onStop={() => handleStop(2)}
             onTick={stopped >= 1 ? sfx.tick : undefined}
-            label={compact ? null : 'Uit'}
+            label={compact ? null : AWAY_TEAM}
           />
         </div>
         <Bulbs count={compact ? 7 : 11} side="bottom" />
