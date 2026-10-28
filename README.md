@@ -13,7 +13,7 @@ Nog geen database, accounts of multiplayer.
   beeld, lichtstralen, muntenregen en jackpotgeluid over het hele scherm
   (lijst in `MEGA_WIN_IDS` in `src/game/config.js`).
 - **Veilingscherm** (laatste 8 uitslagen): naam van de deelnemer met
-  "Draait voor €…", daaronder de machine met links en rechts vijf gouden vakken
+  "Draait voor €…", daaronder de machine met links en rechts gouden vakken
   op vaste posities (4 links, 4 rechts). Na het stoppen licht het vak na 0,8 s groen op en verdwijnt
   het. Andere vakken verschuiven niet.
 - **Rollen (demo):** iedereen is een van de negen deelnemers en krijgt de
