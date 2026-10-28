@@ -1,6 +1,6 @@
 import SlotMachine from './SlotMachine.jsx'
 import OtherBanner from './OtherBanner.jsx'
-import { Footer, NavRow, PlayerSpot } from './Header.jsx'
+import { NavMenuButton, NavRow, OrganizerButton, PlayerSpot } from './Header.jsx'
 import { AUCTION_LOTS, PARTICIPANTS, RESULT_BY_ID } from '../game/config.js'
 
 const euroFormat = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 })
@@ -75,12 +75,6 @@ export default function AuctionScreen({
         Bekijk de eindstand
       </button>
     )
-  } else if (!current && isOrganizer) {
-    action = (
-      <button type="button" className="org-btn" onClick={onPrepare}>
-        Volgende veiling
-      </button>
-    )
   } else {
     action = (
       <button
@@ -97,8 +91,10 @@ export default function AuctionScreen({
   return (
     <div className="screen screen-auction">
       <header className="top">
-        <NavRow onOverview={onOverview} disabled={busy}>
+        <NavRow onOverview={onOverview} disabled={busy} extra={<NavMenuButton onClick={onMenu} />}>
           <span className="auction-badge">Veiling</span>
+          {/* Organisatorbediening: alleen voor de organisator, bovenaan. */}
+          {isOrganizer && !finished && <OrganizerButton onClick={onPrepare} disabled={busy} attention={!current && !busy} />}
         </NavRow>
         {current ? (
           <PlayerSpot name={PARTICIPANTS[current.participant]} sub={`Draait voor ${euro(current.bid ?? 0)}`} />
@@ -127,13 +123,6 @@ export default function AuctionScreen({
 
         <div className="stage-action">{action}</div>
       </main>
-
-      <Footer
-        count={state.remaining.length}
-        label="uitslagen in de veiling"
-        sub={`Kavel ${lot} van ${AUCTION_LOTS}`}
-        onMenu={onMenu}
-      />
     </div>
   )
 }

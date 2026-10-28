@@ -18,14 +18,14 @@ Nog geen database, accounts of multiplayer.
   het. Andere vakken verschuiven niet.
 - **Rollen (demo):** iedereen is een van de negen deelnemers en krijgt de
   SPIN-knop alleen als hij zelf aan de beurt is. De *organisator* is ook
-  deelnemer en zet daarnaast met "Volgende veiling" deelnemer en winnend bod
-  klaar. Wisselen via ••• → Weergave; "Elke beurt zelf draaien" laat de
+  deelnemer en zet daarnaast via het hamer-icoon naast VEILING (bovenaan)
+  deelnemer en winnend bod klaar. Wisselen via ••• → Weergave; "Elke beurt zelf draaien" laat de
   organisator in de demo alle beurten draaien.
-- **Overzicht** met twee tabbladen: resterende uitslagen (5×5-raster + Overige,
+- **Overzicht** met twee tabbladen: Uitslagen (5×5-raster + Overige,
   met de eigenaar in getrokken vakken) en uitslagen per deelnemer met de waarde
   per uitslag en het totaal. Ronde 1–2: €10 per uitslag; veiling: het betaalde
   bod. Berekend uit de trekkingen zelf (`src/game/money.js`), in centen.
-- **Demo-menu** (••• rechtsonder): geluid aan/uit, weergave (organisator of
+- **Demo-menu** (••• rechtsonder; in de veiling rechtsboven): geluid aan/uit, weergave (organisator of
   deelnemer), direct naar de veiling, demo resetten. De demo onthoudt de stand in de browser (`localStorage`).
 
 ## Lokaal draaien

@@ -45,18 +45,58 @@ export function PlayerSpot({ name, sub }) {
   )
 }
 
-// Bovenste navigatieregel: links de fase, rechts het uitslagenoverzicht.
-export function NavRow({ children, onOverview, disabled }) {
+// Bovenste navigatieregel: links de fase, rechts het uitslagenoverzicht
+// (en optioneel extra knoppen, zoals het demo-menu in de veiling).
+export function NavRow({ children, onOverview, disabled, extra }) {
   return (
     <div className="nav-row">
       <div className="nav-left">{children}</div>
-      <button type="button" className="nav-link" onClick={onOverview} disabled={disabled}>
-        Uitslagen<span className="nav-link-long"> bekijken</span>
-        <span aria-hidden="true" className="nav-chevron">
-          ›
-        </span>
-      </button>
+      <div className="nav-right">
+        <button type="button" className="nav-link" onClick={onOverview} disabled={disabled}>
+          Uitslagen<span className="nav-link-long"> bekijken</span>
+          <span aria-hidden="true" className="nav-chevron">
+            ›
+          </span>
+        </button>
+        {extra}
+      </div>
     </div>
+  )
+}
+
+// Klein rond icoon voor de organisator: volgende veiling klaarzetten.
+export function OrganizerButton({ onClick, disabled, attention }) {
+  return (
+    <button
+      type="button"
+      className={`nav-icon nav-icon-org ${attention ? 'is-attention' : ''}`}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label="Volgende veiling klaarzetten"
+      title="Volgende veiling"
+    >
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        {/* veilinghamer */}
+        <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M13.5 4.5l6 6M11 7l6 6M12.2 5.8l4.9 4.9" />
+          <path d="M14 10L5.5 18.5" />
+          <path d="M3.5 21h8" />
+        </g>
+      </svg>
+    </button>
+  )
+}
+
+// Compact demo-menuknopje voor in de navigatieregel.
+export function NavMenuButton({ onClick }) {
+  return (
+    <button type="button" className="nav-icon" onClick={onClick} aria-label="Demo-instellingen">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <circle cx="5" cy="12" r="2" fill="currentColor" />
+        <circle cx="12" cy="12" r="2" fill="currentColor" />
+        <circle cx="19" cy="12" r="2" fill="currentColor" />
+      </svg>
+    </button>
   )
 }
 

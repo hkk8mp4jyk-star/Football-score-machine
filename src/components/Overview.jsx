@@ -74,21 +74,31 @@ export default function Overview({ state, onClose, inline = false, initialTab = 
   return (
     <div className={inline ? 'overview overview-inline' : 'sheet-backdrop'} onClick={inline ? undefined : onClose}>
       <div className={inline ? '' : 'sheet sheet-tall'} onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Uitslagen">
-        {!inline && (
-          <div className="sheet-head">
-            <h2>Uitslagen</h2>
+        {/* Tabbladen staan bovenaan, naast de sluitknop; geen aparte titel. */}
+        <div className="overview-head">
+          <div className="tabs" role="tablist">
+            <button
+              role="tab"
+              aria-selected={tab === 'remaining'}
+              className={tab === 'remaining' ? 'is-active' : ''}
+              onClick={() => setTab('remaining')}
+            >
+              Uitslagen
+            </button>
+            <button
+              role="tab"
+              aria-selected={tab === 'people'}
+              className={tab === 'people' ? 'is-active' : ''}
+              onClick={() => setTab('people')}
+            >
+              Per deelnemer
+            </button>
+          </div>
+          {!inline && (
             <button type="button" className="icon-btn" onClick={onClose} aria-label="Sluiten">
               ✕
             </button>
-          </div>
-        )}
-        <div className="tabs" role="tablist">
-          <button role="tab" aria-selected={tab === 'remaining'} className={tab === 'remaining' ? 'is-active' : ''} onClick={() => setTab('remaining')}>
-            Resterende uitslagen
-          </button>
-          <button role="tab" aria-selected={tab === 'people'} className={tab === 'people' ? 'is-active' : ''} onClick={() => setTab('people')}>
-            Per deelnemer
-          </button>
+          )}
         </div>
         {tab === 'remaining' ? <RemainingGrid state={state} /> : <PerParticipant state={state} />}
       </div>

@@ -1071,6 +1071,15 @@ input:focus-visible {
   color: var(--color-gold-300);
 }
 
+.overview-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.overview-head .tabs {
+  flex: 1;
+  min-width: 0;
+}
 .tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1409,6 +1418,7 @@ input:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .nav-icon-org.is-attention,
   .bulb,
   .stage-glow,
   .gold-btn::after,
@@ -1641,10 +1651,41 @@ input:focus-visible {
   justify-content: space-between;
   gap: 8px;
 }
-.nav-left {
+.nav-left,
+.nav-right {
   display: flex;
   align-items: center;
+  gap: 8px;
   min-width: 0;
+}
+.nav-right {
+  flex: none;
+  gap: 6px;
+}
+.nav-icon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgb(229 191 99 / 0.45);
+  background: rgb(6 20 51 / 0.7);
+  color: var(--color-gold-300);
+}
+.nav-icon:disabled {
+  opacity: 0.35;
+}
+/* Organisator: zachte gloed zolang er nog geen veiling is klaargezet. */
+.nav-icon-org.is-attention {
+  animation: org-glow 1.6s ease-in-out infinite;
+}
+@keyframes org-glow {
+  50% {
+    box-shadow: 0 0 14px 2px rgb(229 191 99 / 0.55);
+    border-color: var(--color-gold-300);
+  }
 }
 .nav-row .rounds {
   gap: 4px;
@@ -1696,6 +1737,12 @@ input:focus-visible {
 
 /* ---------- Veiling: organisator ---------- */
 
+/* Veiling: SPIN-knop direct onder de onderste rij (geen onderbalk). */
+.stage-auction .stage-action {
+  flex: none;
+  padding-top: clamp(12px, 2.2dvh, 20px);
+  padding-bottom: 0;
+}
 /* Veiling: vaste rij kavels boven en onder de machine. */
 .lot-row {
   width: min(100%, 380px);
@@ -1867,10 +1914,6 @@ input:focus-visible {
   .stage-auction .lot-row .tile-score {
     font-size: 20px;
   }
-  .stage-auction .stage-action {
-    padding-top: 6px;
-    padding-bottom: 4px;
-  }
 }
 @media (max-height: 600px) {
   .stage-auction {
@@ -1890,9 +1933,5 @@ input:focus-visible {
   }
   .stage-auction .lot-row .tile-other {
     font-size: 10px;
-  }
-  .stage-auction .stage-action {
-    padding-top: 2px;
-    padding-bottom: 0;
   }
 }
