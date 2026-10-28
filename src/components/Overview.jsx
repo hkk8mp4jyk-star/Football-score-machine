@@ -1,11 +1,9 @@
 import { useState } from 'react'
-import { OTHER_ID, PARTICIPANTS, RESULT_BY_ID, RESULTS } from '../game/config.js'
-
-const euro = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 })
+import { OTHER_ID, PARTICIPANTS, RESULT_BY_ID } from '../game/config.js'
+import { drawValueCents, formatCents, totalCents } from '../game/money.js'
 
 function RemainingGrid({ state }) {
   const owner = Object.fromEntries(state.draws.map((d) => [d.resultId, d]))
-  const free = state.remaining.length
   const cell = (id) => {
     const d = owner[id]
     return (
@@ -17,15 +15,6 @@ function RemainingGrid({ state }) {
   }
   return (
     <div className="tab-body">
-      <p className="grid-note">Rijen: thuisdoelpunten · kolommen: uitdoelpunten</p>
-      <div className="legend">
-        <span>
-          <i className="dot dot-free" /> Beschikbaar <b>{free}</b>
-        </span>
-        <span>
-          <i className="dot dot-taken" /> Getrokken <b>{RESULTS.length - free}</b>
-        </span>
-      </div>
       <div className="grid-axes">
         <span className="axis-corner" />
         {[0, 1, 2, 3, 4, 5].map((a) => (
@@ -53,23 +42,22 @@ function PerParticipant({ state }) {
       <ul className="people">
         {PARTICIPANTS.map((name, i) => {
           const mine = state.draws.filter((d) => d.participant === i)
-          const spent = mine.reduce((sum, d) => sum + (d.bid ?? 0), 0)
           return (
             <li key={name} className="person">
               <div className="person-head">
                 <span className="person-num">{i + 1}</span>
                 <span className="person-name">{name}</span>
                 <span className="person-meta">
-                  {mine.length} {mine.length === 1 ? 'uitslag' : 'uitslagen'}
-                  {spent > 0 && ` · ${euro.format(spent)}`}
+                  {mine.length} {mine.length === 1 ? 'uitslag' : 'uitslagen'} · <b>{formatCents(totalCents(mine))}</b>
                 </span>
               </div>
               <div className="chips">
                 {mine.length === 0 && <span className="chip chip-empty">Nog niets getrokken</span>}
                 {mine.map((d) => (
-                  <span key={d.resultId} className={`chip ${d.round === 'veiling' ? 'chip-auction' : ''}`}>
-                    {RESULT_BY_ID[d.resultId].other ? 'Overig' : d.resultId}
-                    <small>{d.round === 'veiling' ? euro.format(d.bid ?? 0) : `R${d.round}`}</small>
+                  <span key={d.resultId} className="chip">
+                    <span className="chip-score">{RESULT_BY_ID[d.resultId].other ? 'Overig' : d.resultId}</span>
+                    <i className="chip-sep" aria-hidden="true" />
+                    <small>{formatCents(drawValueCents(d))}</small>
                   </span>
                 ))}
               </div>

@@ -1132,35 +1132,7 @@ input:focus-visible {
   color: var(--color-ink);
 }
 .tab-body {
-  padding-top: 14px;
-}
-
-.legend {
-  display: flex;
-  gap: 18px;
-  font-family: var(--font-cond);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--color-mist);
-  margin-bottom: 10px;
-}
-.legend b {
-  color: var(--color-ivory);
-  margin-left: 2px;
-}
-.dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  margin-right: 4px;
-  vertical-align: -1px;
-}
-.dot-free {
-  background: var(--gold-grad);
-}
-.dot-taken {
-  background: var(--color-navy-700);
+  padding-top: 12px;
 }
 
 .grid-axes,
@@ -1220,12 +1192,17 @@ input:focus-visible {
   max-width: 100%;
   font-family: var(--font-cond);
   font-weight: 600;
-  font-size: 11px;
-  line-height: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: clamp(10px, 2.9vw, 12px);
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  text-align: center;
   padding: 0 2px;
+  /* lange namen lopen door naar een tweede regel in plaats van af te breken */
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 .is-free .grid-owner {
   opacity: 0.6;
@@ -1235,7 +1212,7 @@ input:focus-visible {
 }
 .is-taken .grid-owner {
   color: var(--color-ivory);
-  opacity: 0.8;
+  opacity: 0.9;
 }
 .grid-other {
   margin-left: 27px;
@@ -1259,7 +1236,7 @@ input:focus-visible {
   gap: 8px;
 }
 .person {
-  padding: 10px 12px;
+  padding: 8px 12px 10px;
   border-radius: 12px;
   background: rgb(3 10 29 / 0.55);
   border: 1px solid rgb(229 191 99 / 0.16);
@@ -1267,53 +1244,72 @@ input:focus-visible {
 .person-head {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 7px;
+  margin-bottom: 6px;
 }
 .person-num {
   font-family: var(--font-display);
-  font-size: 15px;
+  font-size: 13px;
   color: var(--color-gold-500);
-  width: 14px;
+  opacity: 0.75;
+  width: 12px;
 }
 .person-name {
+  min-width: 0;
   font-family: var(--font-display);
   font-size: 20px;
+  line-height: 1.1;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .person-meta {
+  flex: none;
   margin-left: auto;
   font-family: var(--font-cond);
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--color-mist);
+  font-variant-numeric: tabular-nums;
+}
+.person-meta b {
+  font-weight: 700;
+  color: var(--color-gold-300);
 }
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
 }
 .chip {
   display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-  padding: 4px 9px;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
   border-radius: 7px;
   background: var(--gold-grad);
   color: var(--color-ink);
   font-family: var(--font-display);
   font-size: 17px;
-  line-height: 1.1;
+  line-height: 1.15;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6);
+}
+.chip-score {
+  font-variant-numeric: tabular-nums;
+}
+.chip-sep {
+  width: 1px;
+  height: 0.8em;
+  background: rgb(10 23 54 / 0.35);
 }
 .chip small {
   font-family: var(--font-cond);
   font-weight: 700;
-  font-size: 11px;
-  opacity: 0.65;
-}
-.chip-auction {
-  background: linear-gradient(180deg, #d9e4ff, #9fb0d6);
+  font-size: 12px;
+  opacity: 0.72;
+  font-variant-numeric: tabular-nums;
 }
 .chip-empty {
   background: transparent;
@@ -1456,13 +1452,6 @@ input:focus-visible {
   }
 }
 
-.grid-note {
-  margin: 0 0 8px;
-  font-family: var(--font-cond);
-  font-weight: 500;
-  font-size: 13px;
-  color: var(--color-mist);
-}
 
 /* Kleine telefoons (iPhone SE 1e generatie e.d.) */
 @media (max-height: 620px) {

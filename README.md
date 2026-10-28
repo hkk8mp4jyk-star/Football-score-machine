@@ -21,8 +21,10 @@ Nog geen database, accounts of multiplayer.
   deelnemer en zet daarnaast met "Volgende veiling" deelnemer en winnend bod
   klaar. Wisselen via ••• → Weergave; "Elke beurt zelf draaien" laat de
   organisator in de demo alle beurten draaien.
-- **Overzicht** met twee tabbladen: resterende uitslagen (6×6-raster + Overige)
-  en uitslagen per deelnemer.
+- **Overzicht** met twee tabbladen: resterende uitslagen (6×6-raster + Overige,
+  met de eigenaar in getrokken vakken) en uitslagen per deelnemer met de waarde
+  per uitslag en het totaal. Ronde 1–3: €10 per uitslag; veiling: het betaalde
+  bod. Berekend uit de trekkingen zelf (`src/game/money.js`), in centen.
 - **Demo-menu** (••• rechtsonder): geluid aan/uit, weergave (organisator of
   deelnemer), direct naar de veiling, demo resetten. De demo onthoudt de stand in de browser (`localStorage`).
 
@@ -53,6 +55,7 @@ React 19 + Vite + Tailwind CSS 4.
 ```
 src/game/config.js    spelregels: deelnemers, 37 uitslagen, beurtvolgorde, timing
 src/game/engine.js    pure reducer met alle spelacties (serialiseerbare status)
+src/game/money.js     waarde per uitslag en totalen, afgeleid uit de trekkingen
 src/game/useGame.js   lokale opslag-adapter (later vervangen door Supabase)
 src/components/       SlotMachine, Reel, MainScreen, AuctionScreen, Overview, DemoMenu
 src/audio/sound.js    gesynthetiseerde geluiden via Web Audio
