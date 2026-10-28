@@ -16,10 +16,11 @@ Nog geen database, accounts of multiplayer.
   "Draait voor €…", daaronder de machine met links en rechts vijf gouden vakken
   op vaste posities. Na het stoppen licht het vak na 0,8 s groen op en verdwijnt
   het. Andere vakken verschuiven niet.
-- **Rollen (demo):** de *organisator* zet met "Volgende veiling" deelnemer en
-  winnend bod klaar en geeft zo de beurt vrij. Een *deelnemer* ziet alleen het
-  spelbeeld en krijgt de SPIN-knop alleen als hij aan de beurt is. Wisselen via
-  ••• → Weergave.
+- **Rollen (demo):** iedereen is een van de negen deelnemers en krijgt de
+  SPIN-knop alleen als hij zelf aan de beurt is. De *organisator* is ook
+  deelnemer en zet daarnaast met "Volgende veiling" deelnemer en winnend bod
+  klaar. Wisselen via ••• → Weergave; "Elke beurt zelf draaien" laat de
+  organisator in de demo alle beurten draaien.
 - **Overzicht** met twee tabbladen: resterende uitslagen (6×6-raster + Overige)
   en uitslagen per deelnemer.
 - **Demo-menu** (••• rechtsonder): geluid aan/uit, weergave (organisator of

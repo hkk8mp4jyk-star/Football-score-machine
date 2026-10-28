@@ -28,7 +28,7 @@ export default function DemoMenu({ phase, sound, onSound, role, onRole, onSkip, 
                 role="radio"
                 aria-checked={role.kind === 'organizer'}
                 className={role.kind === 'organizer' ? 'is-active' : ''}
-                onClick={() => onRole({ kind: 'organizer' })}
+                onClick={() => onRole({ ...role, kind: 'organizer' })}
               >
                 Organisator
               </button>
@@ -37,26 +37,34 @@ export default function DemoMenu({ phase, sound, onSound, role, onRole, onSkip, 
                 role="radio"
                 aria-checked={role.kind === 'participant'}
                 className={role.kind === 'participant' ? 'is-active' : ''}
-                onClick={() => onRole({ kind: 'participant', participant: role.participant ?? 0 })}
+                onClick={() => onRole({ ...role, kind: 'participant' })}
               >
                 Deelnemer
               </button>
             </div>
-            {role.kind === 'participant' && (
-              <div className="name-grid name-grid-small" role="radiogroup" aria-label="Bekijk als">
-                {PARTICIPANTS.map((name, i) => (
-                  <button
-                    key={name}
-                    type="button"
-                    role="radio"
-                    aria-checked={role.participant === i}
-                    className={`name-chip ${role.participant === i ? 'is-active' : ''}`}
-                    onClick={() => onRole({ kind: 'participant', participant: i })}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
+            <small className="menu-sub">{role.kind === 'organizer' ? 'De organisator is' : 'Ik ben'}</small>
+            <div className="name-grid name-grid-small" role="radiogroup" aria-label="Deelnemer">
+              {PARTICIPANTS.map((name, i) => (
+                <button
+                  key={name}
+                  type="button"
+                  role="radio"
+                  aria-checked={role.participant === i}
+                  className={`name-chip ${role.participant === i ? 'is-active' : ''}`}
+                  onClick={() => onRole({ ...role, participant: i })}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+            {role.kind === 'organizer' && (
+              <button type="button" className="menu-item menu-item-inline" onClick={() => onRole({ ...role, testAll: !role.testAll })}>
+                <span>
+                  Elke beurt zelf draaien
+                  <small>Test: SPIN bij alle deelnemers op dit toestel</small>
+                </span>
+                <span className={`switch ${role.testAll ? 'is-on' : ''}`} aria-hidden="true" />
+              </button>
             )}
           </div>
           {phase === 'draw' && (

@@ -21,15 +21,20 @@ export default function App() {
   const [megaWin, setMegaWin] = useState(null) // id van de draai met MEGA WIN
   const [sheet, setSheet] = useState(null) // 'overview' | 'menu'
   const [sound, setSound] = useState(true)
-  // Demo-weergave: organisator, of een deelnemer (index) die alleen het spelbeeld ziet.
+  // Demo-weergave. Iedereen is een van de negen deelnemers (participant);
+  // de organisator heeft daarnaast de veilingbediening. 'testAll' laat de
+  // organisator in de demo elke beurt draaien, zodat één toestel genoeg is.
   const [role, setRole] = useState(() => {
+    const fallback = { kind: 'organizer', participant: 0, testAll: true }
     try {
       const saved = JSON.parse(localStorage.getItem('fsm-demo-role'))
-      if (saved?.kind === 'participant' && saved.participant >= 0) return saved
+      if (saved?.kind === 'organizer' || saved?.kind === 'participant') {
+        return { ...fallback, ...saved, participant: saved.participant >= 0 ? saved.participant : 0 }
+      }
     } catch {
       /* geen opgeslagen weergave */
     }
-    return { kind: 'organizer' }
+    return fallback
   })
   const timers = useRef([])
 
@@ -49,8 +54,8 @@ export default function App() {
   }, [role])
 
   const isOrganizer = role.kind === 'organizer'
-  // Organisator (in de demo ook het apparaat van de speler) of de deelnemer zelf.
-  const canSpinFor = (participant) => isOrganizer || role.participant === participant
+  // SPIN voor wie zelf aan de beurt is; de organisator is ook deelnemer.
+  const canSpinFor = (participant) => role.participant === participant || (isOrganizer && role.testAll)
 
   const isMega = (spin) => MEGA_WIN_IDS.includes(spin.resultId)
 

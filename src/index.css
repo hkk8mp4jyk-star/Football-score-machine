@@ -1858,3 +1858,15 @@ input:focus-visible {
   font-size: 13px;
   color: var(--color-mist);
 }
+.menu-sub {
+  margin-top: 2px;
+  margin-bottom: -4px;
+}
+.menu-item-inline {
+  min-height: 48px;
+  padding: 4px 0 0;
+  border: 0;
+  border-top: 1px solid rgb(229 191 99 / 0.15);
+  border-radius: 0;
+  background: none;
+}

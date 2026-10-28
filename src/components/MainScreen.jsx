@@ -13,7 +13,7 @@ export default function MainScreen({ state, reveal, locked, canSpinFor, showOthe
   const drawNumber = reveal ? state.draws.length : state.turn + 1
   const lastId = state.draws.at(-1)?.resultId
 
-  // Alleen wie aan de beurt is (of de organisator) krijgt de SPIN-knop.
+  // Alleen wie zelf aan de beurt is krijgt de SPIN-knop (zie canSpinFor).
   const spinHidden = spinning || locked || !canSpinFor(shownTurn.participant)
 
   let nextLabel = 'Veiling'
