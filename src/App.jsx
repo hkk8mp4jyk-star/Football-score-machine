@@ -7,7 +7,7 @@ import MegaWin from './components/MegaWin.jsx'
 import AuctionSetup from './components/AuctionSetup.jsx'
 import { Logo, MenuButton } from './components/Header.jsx'
 import { useGame } from './game/useGame.js'
-import { DRAW_TURNS, MEGA_WIN_IDS, RESULT_BY_ID, TIMING } from './game/config.js'
+import { DRAW_TURNS, MEGA_WIN_IDS, RESULTS, RESULT_BY_ID, TIMING } from './game/config.js'
 import { buzz, setSoundEnabled, sfx, unlockAudio } from './audio/sound.js'
 
 export default function App() {
@@ -167,7 +167,7 @@ export default function App() {
             <Logo compact />
             <MenuButton onClick={() => setSheet('menu')} />
           </div>
-          <h1 className="finished-title">Alle 37 uitslagen zijn verdeeld</h1>
+          <h1 className="finished-title">Alle {RESULTS.length} uitslagen zijn verdeeld</h1>
         </header>
         <Overview state={state} inline initialTab="people" />
       </div>

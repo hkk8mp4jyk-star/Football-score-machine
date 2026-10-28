@@ -59,8 +59,10 @@ export default function AuctionScreen({
     return state.remaining.includes(id) ? 'live' : 'gone'
   }
 
-  const left = board.slice(0, 5)
-  const right = board.slice(5, 10)
+  // Helft links, helft rechts (bij 8 kavels: 4 en 4).
+  const half = Math.ceil(board.length / 2)
+  const left = board.slice(0, half)
+  const right = board.slice(half)
 
   // SPIN alleen voor de vrijgegeven deelnemer, en pas als er niets meer loopt.
   const spinVisible = !busy && state.auctionTurn && canSpinFor(state.auctionTurn.participant)

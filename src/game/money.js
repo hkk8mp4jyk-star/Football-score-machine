@@ -2,11 +2,11 @@
 // (state.draws). Er is geen aparte administratie: elke trekking bevat al de
 // ronde en, voor de veiling, het winnende bod. Rekenen gebeurt in centen.
 
-export const REGULAR_VALUE_CENTS = 1000 // €10 per uitslag in ronde 1, 2 en 3
+export const REGULAR_VALUE_CENTS = 1000 // €10 per uitslag in de vaste rondes
 
 const toCents = (euros) => Math.round((euros ?? 0) * 100)
 
-// Ronde 1-3: vaste €10. Veiling: het daadwerkelijk betaalde bod.
+// Vaste rondes: €10. Veiling: het daadwerkelijk betaalde bod.
 export function drawValueCents(draw) {
   return draw.round === 'veiling' ? toCents(draw.bid) : REGULAR_VALUE_CENTS
 }

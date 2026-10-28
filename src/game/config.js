@@ -19,33 +19,33 @@ export const AWAY_TEAM = 'Bremer'
 
 export const OTHER_ID = 'OVERIG'
 
-// 36 scores van 0-0 t/m 5-5 plus OVERIGE UITSLAGEN = 37 uitslagen.
+// Doelpunten per team: 0 t/m 4. Uitslagen met 5 goals doen niet mee.
+export const MAX_GOALS = 4
+export const GOALS = Array.from({ length: MAX_GOALS + 1 }, (_, i) => i) // [0..4]
+
+// 25 scores van 0-0 t/m 4-4 plus OVERIGE UITSLAGEN = 26 uitslagen.
 export const RESULTS = [
-  ...Array.from({ length: 36 }, (_, i) => {
-    const home = Math.floor(i / 6)
-    const away = i % 6
-    return { id: `${home}-${away}`, home, away, other: false }
-  }),
+  ...GOALS.flatMap((home) => GOALS.map((away) => ({ id: `${home}-${away}`, home, away, other: false }))),
   { id: OTHER_ID, home: null, away: null, other: true },
 ]
 
 export const RESULT_BY_ID = Object.fromEntries(RESULTS.map((r) => [r.id, r]))
 
-export const ROUNDS = 3
-export const DRAW_TURNS = PARTICIPANTS.length * ROUNDS // 27
-export const AUCTION_LOTS = RESULTS.length - DRAW_TURNS // 10
+export const ROUNDS = 2
+export const DRAW_TURNS = PARTICIPANTS.length * ROUNDS // 18
+export const AUCTION_LOTS = RESULTS.length - DRAW_TURNS // 8
 
-// Ronde 1: 1 t/m 9, ronde 2: 9 t/m 1, ronde 3: 1 t/m 9.
+// Ronde 1: 1 t/m 9, ronde 2: 9 t/m 1 (oneven rondes heen, even rondes terug).
 export const TURN_ORDER = Array.from({ length: DRAW_TURNS }, (_, turn) => {
   const round = Math.floor(turn / PARTICIPANTS.length) + 1
   const pos = turn % PARTICIPANTS.length
-  const participant = round === 2 ? PARTICIPANTS.length - 1 - pos : pos
+  const participant = round % 2 === 0 ? PARTICIPANTS.length - 1 - pos : pos
   return { round, participant }
 })
 
-// Symbolen op de rol: 0..5 en een ster (index 6).
-export const STAR = 6
-export const REEL_SYMBOLS = 7
+// Symbolen op de rol: 0..4 en een ster (index 5).
+export const STAR = GOALS.length
+export const REEL_SYMBOLS = GOALS.length + 1
 
 export const TIMING = {
   reel1Stop: 3000, // ms na start

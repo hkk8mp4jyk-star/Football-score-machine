@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { OTHER_ID, PARTICIPANTS, RESULT_BY_ID } from '../game/config.js'
+import { GOALS, OTHER_ID, PARTICIPANTS, RESULT_BY_ID } from '../game/config.js'
 import { drawValueCents, formatCents, totalCents } from '../game/money.js'
 
 function RemainingGrid({ state }) {
@@ -17,17 +17,17 @@ function RemainingGrid({ state }) {
     <div className="tab-body">
       <div className="grid-axes">
         <span className="axis-corner" />
-        {[0, 1, 2, 3, 4, 5].map((a) => (
+        {GOALS.map((a) => (
           <span key={a} className="axis-label">
             {a}
           </span>
         ))}
       </div>
       <div className="score-grid">
-        {[0, 1, 2, 3, 4, 5].map((h) => (
+        {GOALS.map((h) => (
           <div key={h} className="score-row">
             <span className="axis-label">{h}</span>
-            {[0, 1, 2, 3, 4, 5].map((a) => cell(`${h}-${a}`))}
+            {GOALS.map((a) => cell(`${h}-${a}`))}
           </div>
         ))}
         {cell(OTHER_ID)}

@@ -1,4 +1,4 @@
-import { PARTICIPANTS } from '../game/config.js'
+import { PARTICIPANTS, ROUNDS } from '../game/config.js'
 
 export function Logo({ compact }) {
   return (
@@ -23,8 +23,8 @@ export function MenuButton({ onClick }) {
 
 export function RoundBadges({ round }) {
   return (
-    <div className="rounds" aria-label={`Ronde ${round} van 3`}>
-      {[1, 2, 3].map((r) => (
+    <div className="rounds" aria-label={`Ronde ${round} van ${ROUNDS}`}>
+      {Array.from({ length: ROUNDS }, (_, i) => i + 1).map((r) => (
         <span key={r} className={`round ${r === round ? 'is-active' : ''} ${r < round ? 'is-done' : ''}`}>
           Ronde {r}
         </span>

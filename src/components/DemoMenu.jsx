@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PARTICIPANTS } from '../game/config.js'
+import { DRAW_TURNS, PARTICIPANTS } from '../game/config.js'
 
 export default function DemoMenu({ phase, sound, onSound, role, onRole, onSkip, onReset, onClose }) {
   const [confirmReset, setConfirmReset] = useState(false)
@@ -71,7 +71,7 @@ export default function DemoMenu({ phase, sound, onSound, role, onRole, onSkip, 
             <button type="button" className="menu-item" onClick={onSkip}>
               <span>
                 Direct naar de veiling
-                <small>Trekt de 27 uitslagen automatisch</small>
+                <small>Trekt de {DRAW_TURNS} uitslagen automatisch</small>
               </span>
               <span aria-hidden="true">›</span>
             </button>

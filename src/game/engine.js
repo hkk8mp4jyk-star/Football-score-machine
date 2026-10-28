@@ -5,7 +5,7 @@
 
 import { AUCTION_LOTS, DRAW_TURNS, RESULTS, TURN_ORDER } from './config.js'
 
-export const STATE_VERSION = 1
+export const STATE_VERSION = 2 // 2: 26 uitslagen, 2 rondes, 8 kavels
 
 export function createInitialState() {
   return {
@@ -14,7 +14,7 @@ export function createInitialState() {
     turn: 0, // index in TURN_ORDER tijdens de trekkingen
     remaining: RESULTS.map((r) => r.id),
     draws: [], // { resultId, participant, round, bid, at }
-    auctionBoard: null, // vaste volgorde van de 10 veilingvakken
+    auctionBoard: null, // vaste volgorde van de veilingvakken
     auctionTurn: null, // door de organisator vrijgegeven beurt: { participant, bid }
     spin: null, // lopende draai: { id, resultId, participant, round, bid, startedAt }
   }
@@ -88,7 +88,7 @@ export function reducer(state, action) {
       return commit(state, state.spin)
     }
 
-    // Demo: vul alle 27 trekkingen direct, zodat de veiling te testen is.
+    // Demo: vul alle vaste trekkingen direct, zodat de veiling te testen is.
     case 'DEMO_SKIP_TO_AUCTION': {
       let s = { ...state, spin: null }
       while (s.phase === 'draw') {

@@ -6,24 +6,24 @@ Nog geen database, accounts of multiplayer.
 
 ## Wat zit erin
 
-- **Hoofdscherm** (27 trekkingen): ronde 1 (1→9), ronde 2 (9→1), ronde 3 (1→9).
-  Twee draaiende cijferrollen (0–5 en ★). Rol 1 stopt na 3 s, rol 2 na 4,5 s.
+- **Hoofdscherm** (18 trekkingen): ronde 1 (1→9), ronde 2 (9→1).
+  Twee draaiende cijferrollen (0–4 en ★). Rol 1 stopt na 3 s, rol 2 na 4,5 s.
   Twee sterren = **OVERIGE UITSLAGEN** met grote aankondiging.
 - **MEGA WIN** bij 0-0, 1-0, 2-0, 2-1, 1-2, 0-1, 0-2 en 1-1: flits, trillend
   beeld, lichtstralen, muntenregen en jackpotgeluid over het hele scherm
   (lijst in `MEGA_WIN_IDS` in `src/game/config.js`).
-- **Veilingscherm** (laatste 10 uitslagen): naam van de deelnemer met
+- **Veilingscherm** (laatste 8 uitslagen): naam van de deelnemer met
   "Draait voor €…", daaronder de machine met links en rechts vijf gouden vakken
-  op vaste posities. Na het stoppen licht het vak na 0,8 s groen op en verdwijnt
+  op vaste posities (4 links, 4 rechts). Na het stoppen licht het vak na 0,8 s groen op en verdwijnt
   het. Andere vakken verschuiven niet.
 - **Rollen (demo):** iedereen is een van de negen deelnemers en krijgt de
   SPIN-knop alleen als hij zelf aan de beurt is. De *organisator* is ook
   deelnemer en zet daarnaast met "Volgende veiling" deelnemer en winnend bod
   klaar. Wisselen via ••• → Weergave; "Elke beurt zelf draaien" laat de
   organisator in de demo alle beurten draaien.
-- **Overzicht** met twee tabbladen: resterende uitslagen (6×6-raster + Overige,
+- **Overzicht** met twee tabbladen: resterende uitslagen (5×5-raster + Overige,
   met de eigenaar in getrokken vakken) en uitslagen per deelnemer met de waarde
-  per uitslag en het totaal. Ronde 1–3: €10 per uitslag; veiling: het betaalde
+  per uitslag en het totaal. Ronde 1–2: €10 per uitslag; veiling: het betaalde
   bod. Berekend uit de trekkingen zelf (`src/game/money.js`), in centen.
 - **Demo-menu** (••• rechtsonder): geluid aan/uit, weergave (organisator of
   deelnemer), direct naar de veiling, demo resetten. De demo onthoudt de stand in de browser (`localStorage`).
@@ -53,7 +53,8 @@ beginscherm) voor een schermvullende weergave.
 React 19 + Vite + Tailwind CSS 4.
 
 ```
-src/game/config.js    spelregels: deelnemers, 37 uitslagen, beurtvolgorde, timing
+src/game/config.js    spelregels: deelnemers, 26 uitslagen (0-0 t/m 4-4 + Overige),
+                      2 rondes, beurtvolgorde, timing
 src/game/engine.js    pure reducer met alle spelacties (serialiseerbare status)
 src/game/money.js     waarde per uitslag en totalen, afgeleid uit de trekkingen
 src/game/useGame.js   lokale opslag-adapter (later vervangen door Supabase)
