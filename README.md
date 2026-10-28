@@ -9,6 +9,9 @@ Nog geen database, accounts of multiplayer.
 - **Hoofdscherm** (27 trekkingen): ronde 1 (1→9), ronde 2 (9→1), ronde 3 (1→9).
   Twee draaiende cijferrollen (0–5 en ★). Rol 1 stopt na 3 s, rol 2 na 4,5 s.
   Twee sterren = **OVERIGE UITSLAGEN** met grote aankondiging.
+- **MEGA WIN** bij 0-0, 1-0, 2-0, 2-1, 1-2, 0-1 en 0-2: flits, trillend
+  beeld, lichtstralen, muntenregen en jackpotgeluid over het hele scherm
+  (lijst in `MEGA_WIN_IDS` in `src/game/config.js`).
 - **Veilingscherm** (laatste 10 uitslagen): compacte machine met links en rechts
   vijf gouden vakken op vaste posities. Na de draai blijft de uitslag 2 s staan,
   daarna licht het vak groen op en verdwijnt het. Andere vakken verschuiven niet.

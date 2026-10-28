@@ -163,6 +163,25 @@ export const sfx = {
     chord([523.25, 659.25, 783.99], 0.4, 1.1)
     noise({ start: 0.4, dur: 1.0, gain: 0.05, freq: 6000, q: 0.5, type: 'highpass' })
   },
+  megaWin() {
+    // Aanzwellen, grote akkoordklap, belletjes en rinkelende munten.
+    tone({ freq: 110, to: 880, type: 'sawtooth', dur: 0.55, gain: 0.06, attack: 0.3 })
+    noise({ dur: 0.6, gain: 0.08, freq: 2500, q: 0.6 })
+    const chord = (fs, start, dur, gain = 0.05) =>
+      fs.forEach((f) => tone({ freq: f, type: 'sawtooth', start, dur, gain, attack: 0.02 }))
+    chord([261.63, 329.63, 392, 523.25], 0.55, 0.18)
+    chord([261.63, 329.63, 392, 523.25], 0.78, 0.18)
+    chord([349.23, 440, 523.25, 698.46], 1.0, 0.3)
+    chord([392, 493.88, 587.33, 783.99], 1.35, 1.6, 0.06)
+    tone({ freq: 65.4, type: 'sine', start: 0.55, dur: 1.2, gain: 0.35 })
+    ;[1046.5, 1318.5, 1568, 2093, 1568, 2093, 2637, 3136].forEach((f, i) =>
+      tone({ freq: f, type: 'triangle', start: 1.35 + i * 0.08, dur: 0.5, gain: 0.07 }),
+    )
+    for (let i = 0; i < 26; i++) {
+      tone({ freq: 2600 + Math.random() * 2200, type: 'sine', start: 0.6 + Math.random() * 2.6, dur: 0.12, gain: 0.04 })
+    }
+    noise({ start: 1.35, dur: 2.2, gain: 0.04, freq: 7000, q: 0.5, type: 'highpass' })
+  },
   highlight() {
     tone({ freq: 880, type: 'sine', dur: 0.5, gain: 0.12 })
     tone({ freq: 1318.5, type: 'sine', start: 0.08, dur: 0.6, gain: 0.08 })

@@ -3,10 +3,11 @@ import MainScreen from './components/MainScreen.jsx'
 import AuctionScreen from './components/AuctionScreen.jsx'
 import Overview from './components/Overview.jsx'
 import DemoMenu from './components/DemoMenu.jsx'
+import MegaWin from './components/MegaWin.jsx'
 import { Logo, MenuButton } from './components/Header.jsx'
 import { useGame } from './game/useGame.js'
-import { DRAW_TURNS, RESULT_BY_ID, TIMING } from './game/config.js'
-import { setSoundEnabled, sfx, unlockAudio } from './audio/sound.js'
+import { DRAW_TURNS, MEGA_WIN_IDS, RESULT_BY_ID, TIMING } from './game/config.js'
+import { buzz, setSoundEnabled, sfx, unlockAudio } from './audio/sound.js'
 
 export default function App() {
   const [state, dispatch] = useGame()
@@ -16,6 +17,7 @@ export default function App() {
   const [locked, setLocked] = useState(false)
   const [tileStage, setTileStage] = useState(null) // { resultId, stage: 'green' | 'fade' }
   const [showOther, setShowOther] = useState(false)
+  const [megaWin, setMegaWin] = useState(null) // id van de draai met MEGA WIN
   const [sheet, setSheet] = useState(null) // 'overview' | 'menu'
   const [sound, setSound] = useState(true)
   const [bidder, setBidder] = useState('')
@@ -30,8 +32,15 @@ export default function App() {
   useEffect(() => clearTimers, [])
   useEffect(() => setSoundEnabled(sound), [sound])
 
+  const isMega = (spin) => MEGA_WIN_IDS.includes(spin.resultId)
+
   const announce = (spin) => {
-    if (RESULT_BY_ID[spin.resultId].other) {
+    if (isMega(spin)) {
+      sfx.megaWin()
+      buzz([60, 40, 60, 40, 200])
+      setMegaWin(spin.id)
+      later(TIMING.megaWin, () => setMegaWin(null))
+    } else if (RESULT_BY_ID[spin.resultId].other) {
       sfx.fanfare()
       setShowOther(true)
       later(2600, () => setShowOther(false))
@@ -54,7 +63,9 @@ export default function App() {
     dispatch({ type: 'SPIN_COMMIT', spinId: spin.id })
     // Volgende beurt vrijgeven: naam wisselt en SPIN verschijnt.
     // Na de laatste trekking blijft de uitslag staan voor 'Start de veiling'.
-    later(TIMING.nextTurnDelay, () => {
+    // Bij een MEGA WIN wacht de volgende beurt tot de animatie klaar is.
+    const delay = isMega(spin) ? Math.max(TIMING.nextTurnDelay, TIMING.megaWin) : TIMING.nextTurnDelay
+    later(delay, () => {
       setLocked(false)
       if (!lastDraw) setReveal(null)
     })
@@ -69,15 +80,17 @@ export default function App() {
   // Veiling: 2 s uitslag tonen -> vak groen -> vak verdwijnt -> vastleggen.
   const settledAuction = (spin) => {
     announce(spin)
-    later(TIMING.auctionHold, () => {
+    // Bij een MEGA WIN licht het vak pas op als de animatie voorbij is.
+    const hold = isMega(spin) ? TIMING.megaWin : TIMING.auctionHold
+    later(hold, () => {
       sfx.highlight()
       setTileStage({ resultId: spin.resultId, stage: 'green' })
     })
-    later(TIMING.auctionHold + TIMING.auctionHighlight, () => {
+    later(hold + TIMING.auctionHighlight, () => {
       sfx.remove()
       setTileStage({ resultId: spin.resultId, stage: 'fade' })
     })
-    later(TIMING.auctionHold + TIMING.auctionHighlight + TIMING.auctionFade, () => {
+    later(hold + TIMING.auctionHighlight + TIMING.auctionFade, () => {
       dispatch({ type: 'SPIN_COMMIT', spinId: spin.id })
       setTileStage(null)
       setReveal(spin)
@@ -96,6 +109,7 @@ export default function App() {
     clearTimers()
     setReveal(null)
     setLocked(false)
+    setMegaWin(null)
     setTileStage(null)
     setShowOther(false)
     setBidder('')
@@ -157,8 +171,9 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app ${megaWin ? 'is-mega' : ''}`}>
       {screen}
+      <MegaWin key={megaWin ?? 'none'} show={!!megaWin} />
       {sheet === 'overview' && <Overview state={state} onClose={() => setSheet(null)} />}
       {sheet === 'menu' && (
         <DemoMenu
@@ -169,6 +184,7 @@ export default function App() {
             clearTimers()
             setReveal(null)
             setLocked(false)
+            setMegaWin(null)
             setShowOther(false)
             setSheet(null)
             dispatch({ type: 'DEMO_SKIP_TO_AUCTION' })

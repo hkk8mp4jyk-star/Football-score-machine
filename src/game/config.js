@@ -54,7 +54,11 @@ export const TIMING = {
   auctionHighlight: 900, // vak licht groen op
   auctionFade: 700, // vak verdwijnt
   nextTurnDelay: 3000, // uitslag blijft staan voordat de volgende beurt wordt vrijgegeven
+  megaWin: 4200, // duur van de MEGA WIN-animatie
 }
+
+// Uitslagen die een MEGA WIN-animatie over het hele scherm geven.
+export const MEGA_WIN_IDS = ['0-0', '1-0', '2-0', '2-1', '1-2', '0-1', '0-2']
 
 export function formatResult(id) {
   const r = RESULT_BY_ID[id]
