@@ -15,14 +15,6 @@ export default function App() {
   const [showOther, setShowOther] = useState(false)
   const [sheet, setSheet] = useState(null) // 'overview' | 'menu'
   const [sound, setSound] = useState(true)
-  // Tijdelijke ontwerpinstelling: A = SPIN-knop vervaagt, B = verdwijnt.
-  const [spinVariant, setSpinVariant] = useState(() => {
-    try {
-      return localStorage.getItem('fsm-spin-variant') === 'B' ? 'B' : 'A'
-    } catch {
-      return 'A'
-    }
-  })
   const [bidder, setBidder] = useState('')
   const [bid, setBid] = useState('')
   const timers = useRef([])
@@ -34,13 +26,6 @@ export default function App() {
   }
   useEffect(() => clearTimers, [])
   useEffect(() => setSoundEnabled(sound), [sound])
-  useEffect(() => {
-    try {
-      localStorage.setItem('fsm-spin-variant', spinVariant)
-    } catch {
-      /* geen opslag: keuze geldt alleen deze sessie */
-    }
-  }, [spinVariant])
 
   const announce = (spin) => {
     if (RESULT_BY_ID[spin.resultId].other) {
@@ -118,7 +103,6 @@ export default function App() {
         state={state}
         reveal={reveal}
         showOther={showOther}
-        spinVariant={spinVariant}
         onSpin={spinDraw}
         onSettled={settledDraw}
         onNext={() => setReveal(null)}
@@ -146,7 +130,6 @@ export default function App() {
         reveal={reveal}
         tileStage={tileStage}
         showOther={showOther}
-        spinVariant={spinVariant}
         bidder={bidder}
         bid={bid}
         onBidder={setBidder}
@@ -169,8 +152,6 @@ export default function App() {
           phase={state.phase}
           sound={sound}
           onSound={() => setSound((s) => !s)}
-          spinVariant={spinVariant}
-          onSpinVariant={setSpinVariant}
           onSkip={() => {
             clearTimers()
             setReveal(null)

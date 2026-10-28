@@ -3,7 +3,7 @@ import OtherBanner from './OtherBanner.jsx'
 import { MenuButton, PlayerSpot, RoundBadges } from './Header.jsx'
 import { DRAW_TURNS, PARTICIPANTS, TURN_ORDER } from '../game/config.js'
 
-export default function MainScreen({ state, reveal, showOther, spinVariant, onSpin, onSettled, onNext, onOverview, onMenu }) {
+export default function MainScreen({ state, reveal, showOther, onSpin, onSettled, onNext, onOverview, onMenu }) {
   const spinning = !!state.spin
   // Tijdens de onthulling is de trekking al vastgelegd (turn is opgehoogd),
   // maar blijft de deelnemer van deze trekking in beeld.
@@ -46,7 +46,7 @@ export default function MainScreen({ state, reveal, showOther, spinVariant, onSp
         ) : (
           <button
             type="button"
-            className={`gold-btn spin-btn ${spinVariant === 'B' && spinning ? 'is-hidden' : ''}`}
+            className={`gold-btn spin-btn ${spinning ? 'is-hidden' : ''}`}
             onClick={onSpin}
             disabled={spinning}
           >
