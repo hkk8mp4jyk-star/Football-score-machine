@@ -58,7 +58,7 @@ export const TIMING = {
 }
 
 // Uitslagen die een MEGA WIN-animatie over het hele scherm geven.
-export const MEGA_WIN_IDS = ['0-0', '1-0', '2-0', '2-1', '1-2', '0-1', '0-2']
+export const MEGA_WIN_IDS = ['0-0', '1-0', '2-0', '2-1', '1-2', '0-1', '0-2', '1-1']
 
 export function formatResult(id) {
   const r = RESULT_BY_ID[id]
