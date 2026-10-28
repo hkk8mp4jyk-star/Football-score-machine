@@ -1708,28 +1708,33 @@ input:focus-visible {
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 40px;
-  padding: 0 0 0 6px;
-  border: 0;
-  background: none;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px 0 13px;
+  border: 1px solid rgb(229 191 99 / 0.55);
+  border-radius: 999px;
+  background: rgb(6 20 51 / 0.7);
   color: var(--color-gold-300);
   font-family: var(--font-cond);
   font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.06em;
+  font-size: 13px;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   white-space: nowrap;
+  box-shadow: 0 0 14px rgb(229 191 99 / 0.12);
+}
+.nav-link:active:not(:disabled) {
+  background: rgb(229 191 99 / 0.15);
 }
 .nav-chevron {
-  font-size: 22px;
+  font-size: 18px;
   line-height: 1;
   margin-top: -2px;
 }
 .nav-link:disabled {
   opacity: 0.35;
 }
-@media (max-width: 360px) {
+@media (max-width: 385px) {
   .nav-link-long {
     display: none;
   }
