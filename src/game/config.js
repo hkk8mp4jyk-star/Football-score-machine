@@ -49,6 +49,7 @@ export const TIMING = {
   auctionHold: 2000, // uitslag blijft 2 s staan voordat het vak oplicht
   auctionHighlight: 900, // vak licht groen op
   auctionFade: 700, // vak verdwijnt
+  nextTurnDelay: 3000, // uitslag blijft staan voordat de volgende beurt wordt vrijgegeven
 }
 
 export function formatResult(id) {

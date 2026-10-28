@@ -235,8 +235,22 @@ input:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* machine sluit aan op de naam; de knop krijgt de resterende ruimte */
+  justify-content: flex-start;
+  padding-top: clamp(10px, 2.6dvh, 26px);
+}
+.stage-action {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  gap: clamp(10px, 2.2dvh, 20px);
+  padding-top: clamp(10px, 2dvh, 20px);
+  padding-bottom: clamp(10px, 4dvh, 40px);
+}
+.screen-main .stage-glow {
+  top: 34%;
 }
 .stage-glow {
   position: absolute;
@@ -314,6 +328,13 @@ input:focus-visible {
 
 /* ---------- De fruitautomaat ---------- */
 
+.machine {
+  /* hoogte van de cijferrollen; de machine groeit mee met de schermhoogte */
+  --reel-h: clamp(130px, 30dvh, 262px);
+}
+.machine-compact {
+  --reel-h: clamp(110px, 23dvh, 190px);
+}
 .machine-holder {
   position: relative;
   width: min(100%, 380px);
@@ -412,7 +433,7 @@ input:focus-visible {
 
 .payline-arrow {
   position: absolute;
-  bottom: calc(12px + clamp(130px, 25dvh, 220px) / 2 - 9px);
+  bottom: calc(12px + var(--reel-h) / 2 - 9px);
   width: 0;
   height: 0;
   border-top: 9px solid transparent;
@@ -449,7 +470,7 @@ input:focus-visible {
 .reel-window {
   --sym-h: 120px;
   position: relative;
-  height: clamp(130px, 25dvh, 220px);
+  height: var(--reel-h);
   border-radius: 12px;
   overflow: hidden;
   background: linear-gradient(
@@ -554,7 +575,7 @@ input:focus-visible {
   align-self: stretch;
   display: flex;
   align-items: flex-end;
-  padding-bottom: calc(clamp(130px, 25dvh, 220px) / 2 - 4px);
+  padding-bottom: calc(var(--reel-h) / 2 - 4px);
 }
 .reel-dash span {
   display: block;
@@ -590,18 +611,18 @@ input:focus-visible {
   border-radius: 12px;
 }
 .machine-compact .reel-window {
-  height: clamp(110px, 23dvh, 190px);
+  height: var(--reel-h);
   border-radius: 8px;
 }
 .machine-compact .reel-dash {
-  padding-bottom: calc(clamp(110px, 23dvh, 190px) / 2 - 3px);
+  padding-bottom: calc(var(--reel-h) / 2 - 3px);
 }
 .machine-compact .reel-dash span {
   width: 9px;
   height: 6px;
 }
 .machine-compact .payline-arrow {
-  bottom: calc(8px + clamp(110px, 23dvh, 190px) / 2 - 6px);
+  bottom: calc(8px + var(--reel-h) / 2 - 6px);
   border-top-width: 6px;
   border-bottom-width: 6px;
 }
@@ -1454,14 +1475,8 @@ input:focus-visible {
   .stage {
     gap: 8px;
   }
-  .reel-window {
-    height: clamp(120px, 24dvh, 200px);
-  }
-  .reel-dash {
-    padding-bottom: calc(clamp(120px, 24dvh, 200px) / 2 - 4px);
-  }
-  .payline-arrow {
-    bottom: calc(12px + clamp(120px, 24dvh, 200px) / 2 - 9px);
+  .machine:not(.machine-compact) {
+    --reel-h: clamp(120px, 24dvh, 200px);
   }
 }
 @media (max-width: 360px) {

@@ -3,7 +3,7 @@ import OtherBanner from './OtherBanner.jsx'
 import { MenuButton, PlayerSpot, RoundBadges } from './Header.jsx'
 import { DRAW_TURNS, PARTICIPANTS, TURN_ORDER } from '../game/config.js'
 
-export default function MainScreen({ state, reveal, showOther, onSpin, onSettled, onNext, onOverview, onMenu }) {
+export default function MainScreen({ state, reveal, locked, showOther, onSpin, onSettled, onNext, onOverview, onMenu }) {
   const spinning = !!state.spin
   // Tijdens de onthulling is de trekking al vastgelegd (turn is opgehoogd),
   // maar blijft de deelnemer van deze trekking in beeld.
@@ -37,22 +37,29 @@ export default function MainScreen({ state, reveal, showOther, onSpin, onSettled
           <OtherBanner show={showOther} />
         </div>
 
-        {/* Na een trekking staat SPIN direct klaar voor de volgende deelnemer.
-            Alleen na de laatste trekking volgt de overstap naar de veiling. */}
-        {reveal && state.phase !== 'draw' ? (
-          <button type="button" className="gold-btn gold-btn-next" onClick={onNext}>
-            Start de veiling
-          </button>
-        ) : (
-          <button
-            type="button"
-            className={`gold-btn spin-btn ${spinning ? 'is-hidden' : ''}`}
-            onClick={onSpin}
-            disabled={spinning}
-          >
-            <span>Spin</span>
-          </button>
-        )}
+        {/* De knop verschijnt pas weer als de volgende beurt is vrijgegeven.
+            Na de laatste trekking volgt de overstap naar de veiling. */}
+        <div className="stage-action">
+          {reveal && state.phase !== 'draw' ? (
+            <button
+              type="button"
+              className={`gold-btn gold-btn-next ${locked ? 'is-hidden' : ''}`}
+              onClick={onNext}
+              disabled={locked}
+            >
+              Start de veiling
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`gold-btn spin-btn ${spinning || locked ? 'is-hidden' : ''}`}
+              onClick={onSpin}
+              disabled={spinning || locked}
+            >
+              <span>Spin</span>
+            </button>
+          )}
+        </div>
       </main>
 
       <footer className="bottom">

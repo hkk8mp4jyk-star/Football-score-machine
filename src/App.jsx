@@ -5,12 +5,15 @@ import Overview from './components/Overview.jsx'
 import DemoMenu from './components/DemoMenu.jsx'
 import { Logo, MenuButton } from './components/Header.jsx'
 import { useGame } from './game/useGame.js'
-import { RESULT_BY_ID, TIMING } from './game/config.js'
+import { DRAW_TURNS, RESULT_BY_ID, TIMING } from './game/config.js'
 import { setSoundEnabled, sfx, unlockAudio } from './audio/sound.js'
 
 export default function App() {
   const [state, dispatch] = useGame()
   const [reveal, setReveal] = useState(null) // trekking die nu onthuld wordt
+  // Na een trekking is de beurt even 'op slot': de uitslag blijft staan en
+  // de SPIN-knop verschijnt pas als de volgende beurt is vrijgegeven.
+  const [locked, setLocked] = useState(false)
   const [tileStage, setTileStage] = useState(null) // { resultId, stage: 'green' | 'fade' }
   const [showOther, setShowOther] = useState(false)
   const [sheet, setSheet] = useState(null) // 'overview' | 'menu'
@@ -44,9 +47,17 @@ export default function App() {
   }
 
   const settledDraw = (spin) => {
+    const lastDraw = state.turn === DRAW_TURNS - 1
     announce(spin)
     setReveal(spin)
+    setLocked(true)
     dispatch({ type: 'SPIN_COMMIT', spinId: spin.id })
+    // Volgende beurt vrijgeven: naam wisselt en SPIN verschijnt.
+    // Na de laatste trekking blijft de uitslag staan voor 'Start de veiling'.
+    later(TIMING.nextTurnDelay, () => {
+      setLocked(false)
+      if (!lastDraw) setReveal(null)
+    })
   }
 
   const spinAuction = (participant, amount) => {
@@ -84,6 +95,7 @@ export default function App() {
   const reset = () => {
     clearTimers()
     setReveal(null)
+    setLocked(false)
     setTileStage(null)
     setShowOther(false)
     setBidder('')
@@ -102,6 +114,7 @@ export default function App() {
       <MainScreen
         state={state}
         reveal={reveal}
+        locked={locked}
         showOther={showOther}
         onSpin={spinDraw}
         onSettled={settledDraw}
@@ -155,6 +168,7 @@ export default function App() {
           onSkip={() => {
             clearTimers()
             setReveal(null)
+            setLocked(false)
             setShowOther(false)
             setSheet(null)
             dispatch({ type: 'DEMO_SKIP_TO_AUCTION' })
