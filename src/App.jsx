@@ -4,6 +4,7 @@ import AuctionScreen from './components/AuctionScreen.jsx'
 import Overview from './components/Overview.jsx'
 import DemoMenu from './components/DemoMenu.jsx'
 import MegaWin from './components/MegaWin.jsx'
+import AuctionSetup from './components/AuctionSetup.jsx'
 import { Logo, MenuButton } from './components/Header.jsx'
 import { useGame } from './game/useGame.js'
 import { DRAW_TURNS, MEGA_WIN_IDS, RESULT_BY_ID, TIMING } from './game/config.js'
@@ -20,8 +21,16 @@ export default function App() {
   const [megaWin, setMegaWin] = useState(null) // id van de draai met MEGA WIN
   const [sheet, setSheet] = useState(null) // 'overview' | 'menu'
   const [sound, setSound] = useState(true)
-  const [bidder, setBidder] = useState('')
-  const [bid, setBid] = useState('')
+  // Demo-weergave: organisator, of een deelnemer (index) die alleen het spelbeeld ziet.
+  const [role, setRole] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('fsm-demo-role'))
+      if (saved?.kind === 'participant' && saved.participant >= 0) return saved
+    } catch {
+      /* geen opgeslagen weergave */
+    }
+    return { kind: 'organizer' }
+  })
   const timers = useRef([])
 
   const later = (ms, fn) => timers.current.push(setTimeout(fn, ms))
@@ -31,6 +40,17 @@ export default function App() {
   }
   useEffect(() => clearTimers, [])
   useEffect(() => setSoundEnabled(sound), [sound])
+  useEffect(() => {
+    try {
+      localStorage.setItem('fsm-demo-role', JSON.stringify(role))
+    } catch {
+      /* geen opslag */
+    }
+  }, [role])
+
+  const isOrganizer = role.kind === 'organizer'
+  // Organisator (in de demo ook het apparaat van de speler) of de deelnemer zelf.
+  const canSpinFor = (participant) => isOrganizer || role.participant === participant
 
   const isMega = (spin) => MEGA_WIN_IDS.includes(spin.resultId)
 
@@ -71,13 +91,19 @@ export default function App() {
     })
   }
 
-  const spinAuction = (participant, amount) => {
+  const spinAuction = () => {
     unlockAudio()
     setReveal(null)
-    dispatch({ type: 'SPIN_START', participant, bid: amount })
+    dispatch({ type: 'SPIN_START' })
   }
 
-  // Veiling: 2 s uitslag tonen -> vak groen -> vak verdwijnt -> vastleggen.
+  const prepareAuction = (participant, bid) => {
+    dispatch({ type: 'AUCTION_PREPARE', participant, bid })
+    setReveal(null)
+    setSheet(null)
+  }
+
+  // Veiling: rollen stoppen -> 0,8 s uitslag -> vak groen -> vak verdwijnt -> vastleggen.
   const settledAuction = (spin) => {
     announce(spin)
     // Bij een MEGA WIN licht het vak pas op als de animatie voorbij is.
@@ -94,15 +120,7 @@ export default function App() {
       dispatch({ type: 'SPIN_COMMIT', spinId: spin.id })
       setTileStage(null)
       setReveal(spin)
-      setBidder('')
-      setBid('')
     })
-  }
-
-  const nextAuction = () => {
-    setReveal(null)
-    setBidder('')
-    setBid('')
   }
 
   const reset = () => {
@@ -112,8 +130,6 @@ export default function App() {
     setMegaWin(null)
     setTileStage(null)
     setShowOther(false)
-    setBidder('')
-    setBid('')
     setSheet(null)
     dispatch({ type: 'RESET' })
   }
@@ -129,6 +145,7 @@ export default function App() {
         state={state}
         reveal={reveal}
         locked={locked}
+        canSpinFor={canSpinFor}
         showOther={showOther}
         onSpin={spinDraw}
         onSettled={settledDraw}
@@ -157,13 +174,12 @@ export default function App() {
         reveal={reveal}
         tileStage={tileStage}
         showOther={showOther}
-        bidder={bidder}
-        bid={bid}
-        onBidder={setBidder}
-        onBid={setBid}
+        isOrganizer={isOrganizer}
+        canSpinFor={canSpinFor}
         onSpin={spinAuction}
         onSettled={settledAuction}
-        onNext={nextAuction}
+        onPrepare={() => setSheet('setup')}
+        onFinish={() => setReveal(null)}
         onOverview={() => setSheet('overview')}
         onMenu={() => setSheet('menu')}
       />
@@ -175,11 +191,16 @@ export default function App() {
       {screen}
       <MegaWin key={megaWin ?? 'none'} show={!!megaWin} />
       {sheet === 'overview' && <Overview state={state} onClose={() => setSheet(null)} />}
+      {sheet === 'setup' && (
+        <AuctionSetup initial={state.auctionTurn} onConfirm={prepareAuction} onClose={() => setSheet(null)} />
+      )}
       {sheet === 'menu' && (
         <DemoMenu
           phase={state.phase}
           sound={sound}
           onSound={() => setSound((s) => !s)}
+          role={role}
+          onRole={setRole}
           onSkip={() => {
             clearTimers()
             setReveal(null)

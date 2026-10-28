@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { PARTICIPANTS } from '../game/config.js'
 
-export default function DemoMenu({ phase, sound, onSound, onSkip, onReset, onClose }) {
+export default function DemoMenu({ phase, sound, onSound, role, onRole, onSkip, onReset, onClose }) {
   const [confirmReset, setConfirmReset] = useState(false)
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -16,6 +17,48 @@ export default function DemoMenu({ phase, sound, onSound, onSkip, onReset, onClo
             <span>Geluid</span>
             <span className={`switch ${sound ? 'is-on' : ''}`} aria-hidden="true" />
           </button>
+          <div className="menu-group">
+            <span>
+              Weergave
+              <small>Bekijk het scherm als organisator of als deelnemer</small>
+            </span>
+            <div className="segmented" role="radiogroup" aria-label="Weergave">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={role.kind === 'organizer'}
+                className={role.kind === 'organizer' ? 'is-active' : ''}
+                onClick={() => onRole({ kind: 'organizer' })}
+              >
+                Organisator
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={role.kind === 'participant'}
+                className={role.kind === 'participant' ? 'is-active' : ''}
+                onClick={() => onRole({ kind: 'participant', participant: role.participant ?? 0 })}
+              >
+                Deelnemer
+              </button>
+            </div>
+            {role.kind === 'participant' && (
+              <div className="name-grid name-grid-small" role="radiogroup" aria-label="Bekijk als">
+                {PARTICIPANTS.map((name, i) => (
+                  <button
+                    key={name}
+                    type="button"
+                    role="radio"
+                    aria-checked={role.participant === i}
+                    className={`name-chip ${role.participant === i ? 'is-active' : ''}`}
+                    onClick={() => onRole({ kind: 'participant', participant: i })}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {phase === 'draw' && (
             <button type="button" className="menu-item" onClick={onSkip}>
               <span>

@@ -33,13 +33,45 @@ export function RoundBadges({ round }) {
   )
 }
 
-export function PlayerSpot({ participant, next }) {
+// Grote naam met daaronder een subtiele regel ('Hierna: …' of 'Draait voor …').
+export function PlayerSpot({ name, sub }) {
   return (
     <div className="player-spot">
-      <span key={participant} className="player-name">
-        {participant != null ? PARTICIPANTS[participant] : '—'}
+      <span key={name} className="player-name">
+        {name}
       </span>
-      {next && <span className="player-next">Hierna: {next}</span>}
+      {sub && <span className="player-next">{sub}</span>}
     </div>
+  )
+}
+
+// Bovenste navigatieregel: links de fase, rechts het uitslagenoverzicht.
+export function NavRow({ children, onOverview, disabled }) {
+  return (
+    <div className="nav-row">
+      <div className="nav-left">{children}</div>
+      <button type="button" className="nav-link" onClick={onOverview} disabled={disabled}>
+        Uitslagen<span className="nav-link-long"> bekijken</span>
+        <span aria-hidden="true" className="nav-chevron">
+          ›
+        </span>
+      </button>
+    </div>
+  )
+}
+
+// Onderbalk: teller links, demo-menu rechts.
+export function Footer({ count, label, sub, onMenu }) {
+  return (
+    <footer className="bottom">
+      <div className="counter">
+        <span className="counter-num">{count}</span>
+        <span className="counter-text">
+          {label}
+          <small>{sub}</small>
+        </span>
+      </div>
+      <MenuButton onClick={onMenu} />
+    </footer>
   )
 }

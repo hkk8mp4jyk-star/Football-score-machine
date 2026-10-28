@@ -1,9 +1,9 @@
 import SlotMachine from './SlotMachine.jsx'
 import OtherBanner from './OtherBanner.jsx'
-import { MenuButton, PlayerSpot, RoundBadges } from './Header.jsx'
+import { Footer, NavRow, PlayerSpot, RoundBadges } from './Header.jsx'
 import { DRAW_TURNS, PARTICIPANTS, TURN_ORDER } from '../game/config.js'
 
-export default function MainScreen({ state, reveal, locked, showOther, onSpin, onSettled, onNext, onOverview, onMenu }) {
+export default function MainScreen({ state, reveal, locked, canSpinFor, showOther, onSpin, onSettled, onNext, onOverview, onMenu }) {
   const spinning = !!state.spin
   // Tijdens de onthulling is de trekking al vastgelegd (turn is opgehoogd),
   // maar blijft de deelnemer van deze trekking in beeld.
@@ -12,6 +12,9 @@ export default function MainScreen({ state, reveal, locked, showOther, onSpin, o
   const upcoming = TURN_ORDER[turnIndex + 1]
   const drawNumber = reveal ? state.draws.length : state.turn + 1
   const lastId = state.draws.at(-1)?.resultId
+
+  // Alleen wie aan de beurt is (of de organisator) krijgt de SPIN-knop.
+  const spinHidden = spinning || locked || !canSpinFor(shownTurn.participant)
 
   let nextLabel = 'Veiling'
   if (upcoming) {
@@ -22,12 +25,10 @@ export default function MainScreen({ state, reveal, locked, showOther, onSpin, o
   return (
     <div className="screen screen-main">
       <header className="top">
-        <div className="top-row top-row-center">
-          <span aria-hidden="true" />
+        <NavRow onOverview={onOverview} disabled={spinning}>
           <RoundBadges round={shownTurn.round} />
-          <MenuButton onClick={onMenu} />
-        </div>
-        <PlayerSpot participant={shownTurn.participant} next={nextLabel} />
+        </NavRow>
+        <PlayerSpot name={PARTICIPANTS[shownTurn.participant]} sub={`Hierna: ${nextLabel}`} />
       </header>
 
       <main className="stage">
@@ -52,9 +53,9 @@ export default function MainScreen({ state, reveal, locked, showOther, onSpin, o
           ) : (
             <button
               type="button"
-              className={`gold-btn spin-btn ${spinning || locked ? 'is-hidden' : ''}`}
+              className={`gold-btn spin-btn ${spinHidden ? 'is-hidden' : ''}`}
               onClick={onSpin}
-              disabled={spinning || locked}
+              disabled={spinHidden}
             >
               <span>Spin</span>
             </button>
@@ -62,20 +63,12 @@ export default function MainScreen({ state, reveal, locked, showOther, onSpin, o
         </div>
       </main>
 
-      <footer className="bottom">
-        <div className="counter">
-          <span className="counter-num">{state.remaining.length}</span>
-          <span className="counter-text">
-            uitslagen in de machine
-            <small>
-              Trekking {Math.min(drawNumber, DRAW_TURNS)} van {DRAW_TURNS}
-            </small>
-          </span>
-        </div>
-        <button type="button" className="ghost-btn" onClick={onOverview} disabled={spinning}>
-          Uitslagen bekijken
-        </button>
-      </footer>
+      <Footer
+        count={state.remaining.length}
+        label="uitslagen in de machine"
+        sub={`Trekking ${Math.min(drawNumber, DRAW_TURNS)} van ${DRAW_TURNS}`}
+        onMenu={onMenu}
+      />
     </div>
   )
 }

@@ -15,6 +15,7 @@ export function createInitialState() {
     remaining: RESULTS.map((r) => r.id),
     draws: [], // { resultId, participant, round, bid, at }
     auctionBoard: null, // vaste volgorde van de 10 veilingvakken
+    auctionTurn: null, // door de organisator vrijgegeven beurt: { participant, bid }
     spin: null, // lopende draai: { id, resultId, participant, round, bid, startedAt }
   }
 }
@@ -39,7 +40,7 @@ function commit(state, spin, at = Date.now()) {
     ...state.draws,
     { resultId: spin.resultId, participant: spin.participant, round: spin.round, bid: spin.bid ?? null, at },
   ]
-  const next = { ...state, remaining, draws, spin: null }
+  const next = { ...state, remaining, draws, spin: null, auctionTurn: null }
 
   if (state.phase === 'draw') {
     next.turn = state.turn + 1
@@ -62,16 +63,24 @@ export function reducer(state, action) {
       if (state.phase === 'draw') {
         ;({ participant, round } = TURN_ORDER[state.turn])
       } else {
-        if (action.participant == null) return state
-        participant = action.participant
+        // De organisator heeft de beurt vrijgegeven met deelnemer en bod.
+        const turn = action.participant != null ? action : state.auctionTurn
+        if (turn?.participant == null) return state
+        participant = turn.participant
         round = 'veiling'
-        bid = action.bid ?? null
+        bid = turn.bid ?? null
       }
       const resultId = action.resultId ?? pickRandomResult(state.remaining)
       return {
         ...state,
         spin: { id: uid(), resultId, participant, round, bid, startedAt: action.startedAt ?? Date.now() },
       }
+    }
+
+    // Organisator zet de volgende veiling klaar en geeft de beurt vrij.
+    case 'AUCTION_PREPARE': {
+      if (state.phase !== 'auction' || state.spin) return state
+      return { ...state, auctionTurn: { participant: action.participant, bid: action.bid } }
     }
 
     case 'SPIN_COMMIT': {

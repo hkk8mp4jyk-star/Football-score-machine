@@ -12,13 +12,18 @@ Nog geen database, accounts of multiplayer.
 - **MEGA WIN** bij 0-0, 1-0, 2-0, 2-1, 1-2, 0-1, 0-2 en 1-1: flits, trillend
   beeld, lichtstralen, muntenregen en jackpotgeluid over het hele scherm
   (lijst in `MEGA_WIN_IDS` in `src/game/config.js`).
-- **Veilingscherm** (laatste 10 uitslagen): compacte machine met links en rechts
-  vijf gouden vakken op vaste posities. Na de draai blijft de uitslag 2 s staan,
-  daarna licht het vak groen op en verdwijnt het. Andere vakken verschuiven niet.
+- **Veilingscherm** (laatste 10 uitslagen): naam van de deelnemer met
+  "Draait voor €…", daaronder de machine met links en rechts vijf gouden vakken
+  op vaste posities. Na het stoppen licht het vak na 0,8 s groen op en verdwijnt
+  het. Andere vakken verschuiven niet.
+- **Rollen (demo):** de *organisator* zet met "Volgende veiling" deelnemer en
+  winnend bod klaar en geeft zo de beurt vrij. Een *deelnemer* ziet alleen het
+  spelbeeld en krijgt de SPIN-knop alleen als hij aan de beurt is. Wisselen via
+  ••• → Weergave.
 - **Overzicht** met twee tabbladen: resterende uitslagen (6×6-raster + Overige)
   en uitslagen per deelnemer.
-- **Demo-menu** (••• rechtsboven): geluid aan/uit, direct naar de veiling,
-  demo resetten. De demo onthoudt de stand in de browser (`localStorage`).
+- **Demo-menu** (••• rechtsonder): geluid aan/uit, weergave (organisator of
+  deelnemer), direct naar de veiling, demo resetten. De demo onthoudt de stand in de browser (`localStorage`).
 
 ## Lokaal draaien
 

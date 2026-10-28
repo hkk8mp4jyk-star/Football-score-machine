@@ -50,7 +50,7 @@ export const REEL_SYMBOLS = 7
 export const TIMING = {
   reel1Stop: 3000, // ms na start
   reel2Stop: 4500,
-  auctionHold: 2000, // uitslag blijft 2 s staan voordat het vak oplicht
+  auctionHold: 800, // uitslag blijft 0,8 s staan voordat het vak oplicht
   auctionHighlight: 900, // vak licht groen op
   auctionFade: 700, // vak verdwijnt
   nextTurnDelay: 3000, // uitslag blijft staan voordat de volgende beurt wordt vrijgegeven
