@@ -50,7 +50,8 @@ export default function AuctionScreen({
   const busy = spinning || !!tileStage
   const bidValue = parseFloat(String(bid).replace(',', '.'))
   const canSpin = !busy && bidder !== '' && bidValue > 0
-  const active = state.spin ?? reveal
+  // Na een verkoop staat het formulier direct weer klaar voor de volgende kavel.
+  const active = state.spin
 
   // Een vak verandert pas ná de onthulling: tijdens het draaien blijft
   // het bord ongewijzigd, zodat de uitslag niet vooraf uitlekt.
@@ -143,9 +144,9 @@ export default function AuctionScreen({
           )}
         </section>
 
-        {reveal && !tileStage ? (
+        {state.phase === 'finished' && reveal && !tileStage ? (
           <button type="button" className="gold-btn gold-btn-next" onClick={onNext}>
-            {state.phase === 'finished' ? 'Bekijk de eindstand' : 'Volgende kavel'}
+            Bekijk de eindstand
           </button>
         ) : (
           <button
@@ -163,10 +164,10 @@ export default function AuctionScreen({
         <span className="hint">
           {busy
             ? 'De machine bepaalt de uitslag…'
-            : reveal
-              ? `${PARTICIPANTS[reveal.participant]} koopt ${RESULT_BY_ID[reveal.resultId].other ? 'Overige uitslagen' : reveal.resultId}`
-              : canSpin
-                ? 'Klaar om te draaien'
+            : canSpin
+              ? 'Klaar om te draaien'
+              : reveal
+                ? `${PARTICIPANTS[reveal.participant]} koopt ${RESULT_BY_ID[reveal.resultId].other ? 'Overige uitslagen' : reveal.resultId}`
                 : 'Kies deelnemer en vul het bod in'}
         </span>
         <button type="button" className="ghost-btn" onClick={onOverview} disabled={busy}>

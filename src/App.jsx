@@ -85,6 +85,8 @@ export default function App() {
       dispatch({ type: 'SPIN_COMMIT', spinId: spin.id })
       setTileStage(null)
       setReveal(spin)
+      setBidder('')
+      setBid('')
     })
   }
 

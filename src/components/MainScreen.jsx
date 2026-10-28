@@ -12,7 +12,6 @@ export default function MainScreen({ state, reveal, showOther, spinVariant, onSp
   const upcoming = TURN_ORDER[turnIndex + 1]
   const drawNumber = reveal ? state.draws.length : state.turn + 1
   const lastId = state.draws.at(-1)?.resultId
-  const nextTurn = TURN_ORDER[state.turn]
 
   let nextLabel = 'Veiling'
   if (upcoming) {
@@ -38,15 +37,11 @@ export default function MainScreen({ state, reveal, showOther, spinVariant, onSp
           <OtherBanner show={showOther} />
         </div>
 
-        {reveal ? (
+        {/* Na een trekking staat SPIN direct klaar voor de volgende deelnemer.
+            Alleen na de laatste trekking volgt de overstap naar de veiling. */}
+        {reveal && state.phase !== 'draw' ? (
           <button type="button" className="gold-btn gold-btn-next" onClick={onNext}>
-            {state.phase === 'draw' ? (
-              <>
-                Volgende: <strong>{PARTICIPANTS[nextTurn.participant]}</strong>
-              </>
-            ) : (
-              'Start de veiling'
-            )}
+            Start de veiling
           </button>
         ) : (
           <button
