@@ -59,10 +59,10 @@ export default function AuctionScreen({
     return state.remaining.includes(id) ? 'live' : 'gone'
   }
 
-  // Helft links, helft rechts (bij 8 kavels: 4 en 4).
+  // Helft boven, helft onder de machine (bij 8 kavels: 4 en 4), op vaste posities.
   const half = Math.ceil(board.length / 2)
-  const left = board.slice(0, half)
-  const right = board.slice(half)
+  const top = board.slice(0, half)
+  const bottom = board.slice(half)
 
   // SPIN alleen voor de vrijgegeven deelnemer, en pas als er niets meer loopt.
   const spinVisible = !busy && state.auctionTurn && canSpinFor(state.auctionTurn.participant)
@@ -109,23 +109,20 @@ export default function AuctionScreen({
 
       <main className="stage stage-auction">
         <div className="stage-glow" aria-hidden="true" />
-        <div className="board">
-          <div className="board-col">
-            {left.map((id) => (
-              <Tile key={id} id={id} state={tileState(id)} />
-            ))}
-          </div>
-          <div className="board-center">
-            <div className="machine-holder">
-              <SlotMachine compact spin={state.spin} restResultId={lastId} onSettled={onSettled} />
-              <OtherBanner show={showOther} />
-            </div>
-          </div>
-          <div className="board-col">
-            {right.map((id) => (
-              <Tile key={id} id={id} state={tileState(id)} />
-            ))}
-          </div>
+        <div className="lot-row lot-row-top" style={{ '--lots': half }}>
+          {top.map((id) => (
+            <Tile key={id} id={id} state={tileState(id)} />
+          ))}
+        </div>
+        {/* Zelfde machine als in ronde 1 en 2: zelfde breedte en verhoudingen. */}
+        <div className="machine-holder">
+          <SlotMachine spin={state.spin} restResultId={lastId} onSettled={onSettled} />
+          <OtherBanner show={showOther} />
+        </div>
+        <div className="lot-row lot-row-bottom" style={{ '--lots': half }}>
+          {bottom.map((id) => (
+            <Tile key={id} id={id} state={tileState(id)} />
+          ))}
         </div>
 
         <div className="stage-action">{action}</div>

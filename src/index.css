@@ -688,12 +688,6 @@ input:focus-visible {
   filter: drop-shadow(0 3px 0 rgb(0 0 0 / 0.6)) drop-shadow(0 0 16px rgb(229 191 99 / 0.5));
 }
 .machine-compact + .other-banner .other-line,
-.board-center .other-line {
-  font-size: clamp(22px, 7vw, 34px);
-}
-.board-center .other-star {
-  font-size: 20px;
-}
 @keyframes banner {
   0% {
     opacity: 0;
@@ -840,26 +834,6 @@ input:focus-visible {
 }
 .auction-stage .stage-glow {
   top: 32%;
-}
-
-.board {
-  position: relative;
-  width: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2.15fr) minmax(0, 1fr);
-  gap: 7px;
-  align-items: center;
-}
-.board-col {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(5px, 1dvh, 8px);
-}
-.board-center {
-  min-width: 0;
-}
-.board-center .machine-holder {
-  width: 100%;
 }
 
 .tile {
@@ -1722,8 +1696,27 @@ input:focus-visible {
 
 /* ---------- Veiling: organisator ---------- */
 
-.stage-auction .board {
-  margin-top: 2px;
+/* Veiling: vaste rij kavels boven en onder de machine. */
+.lot-row {
+  width: min(100%, 380px);
+  display: grid;
+  grid-template-columns: repeat(var(--lots, 4), minmax(0, 1fr));
+  gap: 8px;
+}
+.lot-row-top {
+  margin-bottom: clamp(10px, 1.8dvh, 16px);
+}
+.lot-row-bottom {
+  margin-top: clamp(10px, 1.8dvh, 16px);
+}
+.lot-row .tile {
+  height: clamp(38px, 6dvh, 50px);
+}
+.lot-row .tile-score {
+  font-size: clamp(20px, 6vw, 26px);
+}
+.lot-row .tile-other {
+  font-size: clamp(10px, 2.9vw, 12px);
 }
 .org-btn {
   width: min(84%, 320px);
@@ -1854,4 +1847,52 @@ input:focus-visible {
   border-top: 1px solid rgb(229 191 99 / 0.15);
   border-radius: 0;
   background: none;
+}
+
+/* Veiling op lage schermen (iPhone SE, Safari met balken): ruimte winnen met
+   tussenruimtes en vakhoogte, nooit door de machine kleiner te maken. */
+@media (max-height: 700px) {
+  .stage-auction {
+    padding-top: 6px;
+  }
+  .stage-auction .lot-row-top {
+    margin-bottom: 8px;
+  }
+  .stage-auction .lot-row-bottom {
+    margin-top: 8px;
+  }
+  .stage-auction .lot-row .tile {
+    height: 36px;
+  }
+  .stage-auction .lot-row .tile-score {
+    font-size: 20px;
+  }
+  .stage-auction .stage-action {
+    padding-top: 6px;
+    padding-bottom: 4px;
+  }
+}
+@media (max-height: 600px) {
+  .stage-auction {
+    padding-top: 4px;
+  }
+  .stage-auction .lot-row-top {
+    margin-bottom: 4px;
+  }
+  .stage-auction .lot-row-bottom {
+    margin-top: 4px;
+  }
+  .stage-auction .lot-row .tile {
+    height: 32px;
+  }
+  .stage-auction .lot-row .tile-score {
+    font-size: 18px;
+  }
+  .stage-auction .lot-row .tile-other {
+    font-size: 10px;
+  }
+  .stage-auction .stage-action {
+    padding-top: 2px;
+    padding-bottom: 0;
+  }
 }
