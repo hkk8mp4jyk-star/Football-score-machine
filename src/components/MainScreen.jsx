@@ -3,7 +3,7 @@ import OtherBanner from './OtherBanner.jsx'
 import { Footer, NavRow, PlayerSpot, RoundBadges } from './Header.jsx'
 import { DRAW_TURNS, PARTICIPANTS, TURN_ORDER } from '../game/config.js'
 
-export default function MainScreen({ state, reveal, locked, canSpinFor, showOther, onSpin, onSettled, onNext, onOverview, onMenu }) {
+export default function MainScreen({ state, reelSpin, reveal, locked, canSpinFor, showOther, onSpin, onSettled, onNext, onOverview, onMenu }) {
   const spinning = !!state.spin
   // Tijdens de onthulling is de trekking al vastgelegd (turn is opgehoogd),
   // maar blijft de deelnemer van deze trekking in beeld.
@@ -34,7 +34,7 @@ export default function MainScreen({ state, reveal, locked, canSpinFor, showOthe
       <main className="stage">
         <div className="stage-glow" aria-hidden="true" />
         <div className="machine-holder">
-          <SlotMachine spin={state.spin} restResultId={lastId} onSettled={onSettled} />
+          <SlotMachine spin={reelSpin} restResultId={lastId} onSettled={onSettled} />
           <OtherBanner show={showOther} />
         </div>
 

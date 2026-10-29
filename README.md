@@ -62,6 +62,28 @@ src/components/       SlotMachine, Reel, MainScreen, AuctionScreen, Overview, De
 src/audio/sound.js    gesynthetiseerde geluiden via Web Audio
 ```
 
+### Tests
+
+```bash
+npm test           # Vitest: spelregels, trekking, veiling, bedragen, timing, herstel
+```
+
+### Tijdgestuurd spelverloop
+
+Een geaccepteerde SPIN legt direct de uitslag en het starttijdstip vast
+(`state.spin`). Alles daarna volgt uitsluitend uit de tijd:
+
+```
+src/game/timeline.js  momenten van één draai: stoppen, vak groen/weg, vastleggen, beurt vrij
+src/game/view.js      wat het scherm op tijdstip t toont (geen losse timers)
+src/game/clock.js     gedeelde klok; in multiplayer gecorrigeerd naar de serverklok
+src/game/random.js    cryptografisch veilige, gelijkmatige willekeur
+src/game/reelMotion.js beweging van de cijferrollen als functie van de tijd
+```
+
+Daardoor tonen alle toestellen met dezelfde status hetzelfde, en loopt een
+draai na herladen of opnieuw verbinden gewoon op de juiste plek verder.
+
 ### Voorbereid op Supabase (realtime multiplayer)
 
 - Alle spelstatus is één serialiseerbaar object; elke wijziging is een actie

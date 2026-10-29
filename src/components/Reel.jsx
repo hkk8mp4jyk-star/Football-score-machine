@@ -1,56 +1,20 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { REEL_SYMBOLS, STAR } from '../game/config.js'
+import { buildProfile, mod } from '../game/reelMotion.js'
+import { clock } from '../game/clock.js'
 
-// Eén cijferrol. De rol is een eindeloze band 0,1,2,3,4,5,★ die per frame
-// via requestAnimationFrame wordt getekend (geen React-render per frame).
-// Het bewegingsprofiel: optrekken -> topsnelheid -> afremmen -> kleine
-// terugveer in de "inkeping", zoals bij een mechanische rol.
+// Eén cijferrol. De rol is een eindeloze band 0..4,★ die per frame via
+// requestAnimationFrame wordt getekend (geen React-render per frame).
+// Het bewegingsprofiel staat in game/reelMotion.js.
 
 const STAR_SVG =
   '<svg viewBox="0 0 100 100" class="reel-star" aria-hidden="true"><path d="M50 4 L62.4 36.6 L97.6 38.2 L70.1 60.4 L79.4 94.4 L50 75 L20.6 94.4 L29.9 60.4 L2.4 38.2 L37.6 36.6 Z"/></svg>'
 
-const ACCEL = 0.35 // s
-const DECEL = 1.15 // s
-const SETTLE = 0.22 // s terugveren
-const OVERSHOOT = 0.16 // in symbolen
-const TOP_SPEED = 21 // symbolen per seconde (richtwaarde)
 const CELLS = 5
-
-const mod = (n, m) => ((n % m) + m) % m
-const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
 
 function symbolHtml(i) {
   const s = mod(i, REEL_SYMBOLS)
   return s === STAR ? STAR_SVG : String(s)
-}
-
-function buildProfile(p0, target, totalMs) {
-  const T = totalMs / 1000
-  const Tm = T - SETTLE
-  const effective = Tm - ACCEL / 2 - DECEL / 2
-  const wanted = p0 + TOP_SPEED * effective - OVERSHOOT
-  let land = Math.ceil(wanted)
-  land += mod(target - land, REEL_SYMBOLS)
-  const pEnd = land + OVERSHOOT
-  const v = (pEnd - p0) / effective
-  const pA = p0 + (v * ACCEL) / 2
-  const pD = pA + v * (Tm - DECEL - ACCEL)
-  return {
-    T,
-    Tm,
-    land,
-    at(t) {
-      if (t <= 0) return { p: p0, v: 0 }
-      if (t < ACCEL) return { p: p0 + (v * t * t) / (2 * ACCEL), v: (v * t) / ACCEL }
-      if (t < Tm - DECEL) return { p: pA + v * (t - ACCEL), v }
-      if (t < Tm) {
-        const s = t - (Tm - DECEL)
-        return { p: pD + v * s - (v * s * s) / (2 * DECEL), v: v * (1 - s / DECEL) }
-      }
-      if (t < T) return { p: pEnd - OVERSHOOT * easeInOut((t - Tm) / SETTLE), v: 0 }
-      return { p: land, v: 0 }
-    },
-  }
 }
 
 export default function Reel({ spin, target, stopAfter, restSymbol, onStop, onTick, label }) {
@@ -116,7 +80,7 @@ export default function Reel({ spin, target, stopAfter, restSymbol, onStop, onTi
     windowRef.current?.classList.remove('is-landed')
 
     const frame = () => {
-      const t = (Date.now() - spin.startedAt) / 1000
+      const t = (clock.now() - spin.startedAt) / 1000
       const { p, v } = profile.at(t)
       posRef.current = p
       paint(p)

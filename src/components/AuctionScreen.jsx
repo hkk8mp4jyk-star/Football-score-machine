@@ -32,6 +32,7 @@ function Tile({ id, state }) {
 
 export default function AuctionScreen({
   state,
+  reelSpin,
   reveal,
   tileStage,
   showOther,
@@ -112,7 +113,7 @@ export default function AuctionScreen({
         </div>
         {/* Zelfde machine als in ronde 1 en 2: zelfde breedte en verhoudingen. */}
         <div className="machine-holder">
-          <SlotMachine spin={state.spin} restResultId={lastId} onSettled={onSettled} />
+          <SlotMachine spin={reelSpin} restResultId={lastId} onSettled={onSettled} />
           <OtherBanner show={showOther} />
         </div>
         <div className="lot-row lot-row-bottom" style={{ '--lots': half }}>

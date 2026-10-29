@@ -50,6 +50,7 @@ export const REEL_SYMBOLS = GOALS.length + 1
 export const TIMING = {
   reel1Stop: 3000, // ms na start
   reel2Stop: 4500,
+  reelSettle: 220, // laatste stukje: rol veert terug in de inkeping
   auctionHold: 800, // uitslag blijft 0,8 s staan voordat het vak oplicht
   auctionHighlight: 900, // vak licht groen op
   auctionFade: 700, // vak verdwijnt
