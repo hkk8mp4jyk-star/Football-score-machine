@@ -84,6 +84,34 @@ src/game/reelMotion.js beweging van de cijferrollen als functie van de tijd
 Daardoor tonen alle toestellen met dezelfde status hetzelfde, en loopt een
 draai na herladen of opnieuw verbinden gewoon op de juiste plek verder.
 
+### Database (Supabase) — multiplayer
+
+Supabase-project `nptulnnuejivwcgcltuy` (regio eu-west-1).
+
+```bash
+npm run db:status    # project, migraties en tabellen (alleen lezen)
+npm run db:migrate   # openstaande migraties uit supabase/migrations uitvoeren
+npm run db:test      # beveiligings- en databasetests (laten niets achter)
+```
+
+Toegang via de Management API: in Claude Code voegt de beveiligde proxy het
+access token toe (Network secret voor `api.supabase.com`); lokaal zet je
+`SUPABASE_ACCESS_TOKEN`.
+
+| Tabel | Inhoud | Deelnemers | Server |
+|---|---|---|---|
+| `rooms` | kamercode, organisator, spelstatus (engine-formaat), versie | lezen (eigen kamer) | alles |
+| `seats` | welke telefoon welke naam heeft | lezen (eigen kamer) | alles |
+| `draws` | definitieve trekkingen, uniek per kamer en uitslag | lezen (eigen kamer) | toevoegen, nooit wijzigen |
+
+- Deelnemers kunnen niets rechtstreeks wijzigen (Row Level Security zonder
+  schrijfregels, geen schrijfrechten).
+- `commit_room_state(room, verwachte_versie, status, trekking)` is de enige
+  schrijfroute voor het spel en alleen uitvoerbaar door de server
+  (`service_role`). Status en trekking worden samen vastgelegd; bij een
+  verouderde versie (dubbele of gelijktijdige SPIN) of een dubbele uitslag
+  verandert er niets.
+
 ### Voorbereid op Supabase (realtime multiplayer)
 
 - Alle spelstatus is één serialiseerbaar object; elke wijziging is een actie
