@@ -343,7 +343,23 @@ Commando's: `npm run dev` (vite --host), `npm test`, `npm run build`,
 - Het access token heeft volledige rechten: na de bouw intrekken/vernieuwen.
 - **Eerst oplossen vóór fase 4**: foutcode 40001 in `commit_room_state`
   laat PostgREST vastlopen bij gelijktijdige SPIN's (zie §9, fase 3).
-  PostgREST-verbindingen van het project staan op dit moment vast.
+- **Storing 30-10-2026 (bevestigd, read-only onderzocht)**: PostgREST herhaalde
+  de mislukte `commit_room_state` eindeloos (log `version_conflict` ~1×/s van
+  08:46 tot 09:12, ook zonder clients; 3,64 mln. request-setup-statements en
+  evenveel rollbacks) → pool vol (`PGRST003`). Na twee projectherstarts
+  (09:13 en 09:44 UTC) geven Auth, PostgREST én de interne admin-API van de
+  instance blijvend HTTP 521; vóór de herstart gaven ze nog 200. Postgres,
+  Storage, Realtime en pooler zijn gezond; PostgREST/Auth maken géén
+  databaseverbinding (geen mislukte logins). Geen resource pressure zichtbaar
+  (DB 11 MB, cache-hit 99,95 %, 0 temp-bestanden, geen locks/hangende
+  transacties, geen OOM/disk/FATAL-logs). Geen validatiefouten of eigen
+  objecten in interne schema's (upgrade-check). Geheugen/CPU/disk-metrics zijn
+  met dit token niet op te vragen. Conclusie: opstartprobleem van de
+  instance-diensten buiten Postgres; herstel vereist Supabase. Bij een nieuw
+  project: 40001 → PT409 direct in de migratie meenemen.
+- **Logs uitlezen**: `GET /v1/projects/{ref}/analytics/endpoints/logs?sql=…`
+  met tabel `logs` (ClickHouse-dialect, geen `*`, kolommen `timestamp`,
+  `event_message`; max ~1 verzoek per paar seconden).
 - Organisator die van telefoon wisselt verliest organisatorrechten
   (`organizer_id` = oude anonieme gebruiker); overdracht bestaat nog niet.
 - Geen "spel opnieuw beginnen" online (RESET bewust niet toegestaan);
