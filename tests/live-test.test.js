@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { createGameServer } from '../src/server/actions.js'
 import { createHttpHandler } from '../src/server/http.js'
-import { EXIT, EXPECTED_REF, LIMITS, UsageError, createLiveClient, fetchWithTimeout, parseArgs, runPhase } from '../scripts/live-test.mjs'
+import { EXIT, EXPECTED_REF, LIMITS, LOG_PATTERNS, UsageError, countLogLines, createLiveClient, fetchWithTimeout, logStatsSql, parseArgs, runPhase } from '../scripts/live-test.mjs'
 import { createMemoryStore } from './memoryStore.js'
 
 const OLD_REF = 'nptulnnuejivwcgcltuy'
@@ -161,7 +161,7 @@ function fakeEnv({ hangGame = false, hangCleanup = false, failCleanup = false, u
   const deletedUsers = new Set()
   const users = []
   const state = { helperDeployAttempted: false }
-  const stats = logStats ?? (() => ({ rpc200: 1, rpc409: 1, rpc5xx: 0, versionConflicts: 1 }))
+  const stats = logStats ?? (() => ({ rpcAll: 2, rpc200: 1, rpc409: 1, rpc5xx: 0, versionConflicts: 1 }))
 
   const client = {
     ref: EXPECTED_REF,
@@ -293,14 +293,14 @@ describe('live test: fase 5B en 5C (gelijktijdigheid)', () => {
   })
 
   it('5B: geen intern PT409 opgetreden → geslaagd, maar met waarschuwing "niet aangetoond"', async () => {
-    const env = fakeEnv({ logStats: () => ({ rpc200: 1, rpc409: 0, rpc5xx: 0, versionConflicts: 0 }) })
+    const env = fakeEnv({ logStats: () => ({ rpcAll: 1, rpc200: 1, rpc409: 0, rpc5xx: 0, versionConflicts: 0 }) })
     const out = await env.run('5b')
     expect(out.exitCode).toBe(EXIT.ok)
     expect(out.warnings[0]).toMatch(/niet aangetoond/)
   })
 
   it('5B: een 5xx van PostgREST op de RPC laat de fase mislukken', async () => {
-    const env = fakeEnv({ logStats: () => ({ rpc200: 1, rpc409: 0, rpc5xx: 1, versionConflicts: 0 }) })
+    const env = fakeEnv({ logStats: () => ({ rpcAll: 2, rpc200: 1, rpc409: 0, rpc5xx: 1, versionConflicts: 0 }) })
     const out = await env.run('5b')
     expect(out.exitCode).toBe(EXIT.failed)
     expect(out.cleanup.every((c) => c.ok)).toBe(true)
@@ -308,10 +308,31 @@ describe('live test: fase 5B en 5C (gelijktijdigheid)', () => {
 
   it('5B: oplopende conflicten na afloop (herhaallus) laten de fase mislukken', async () => {
     let k = 0
-    const env = fakeEnv({ logStats: () => ({ rpc200: 1, rpc409: ++k, rpc5xx: 0, versionConflicts: k }) })
+    const env = fakeEnv({ logStats: () => (++k, { rpcAll: 1 + k, rpc200: 1, rpc409: k, rpc5xx: 0, versionConflicts: k }) })
     const out = await env.run('5b')
     expect(out.exitCode).toBe(EXIT.failed)
     expect(out.results.find((r) => !r.ok).name).toMatch(/herhaallus/)
+  })
+
+  it('5B: RPC met een andere status dan 200/409 (bijv. 404) laat de fase mislukken', async () => {
+    const env = fakeEnv({ logStats: () => ({ rpcAll: 3, rpc200: 1, rpc409: 1, rpc5xx: 0, versionConflicts: 1 }) })
+    const out = await env.run('5b')
+    expect(out.exitCode).toBe(EXIT.failed)
+    expect(out.results.find((r) => !r.ok).error).toMatch(/andere status/)
+  })
+
+  it('5B: meer PT409 dan begrensde herhalingen toestaan laat de fase mislukken', async () => {
+    const env = fakeEnv({ logStats: () => ({ rpcAll: 5, rpc200: 1, rpc409: 4, rpc5xx: 0, versionConflicts: 4 }) })
+    const out = await env.run('5b') // n = 2: hoogstens 3 conflicten mogelijk
+    expect(out.exitCode).toBe(EXIT.failed)
+    expect(out.results.find((r) => !r.ok).error).toMatch(/begrensd/)
+  })
+
+  it('5B: version_conflict in de database wijkt af van RPC 409 → mislukt', async () => {
+    const env = fakeEnv({ logStats: () => ({ rpcAll: 2, rpc200: 1, rpc409: 1, rpc5xx: 0, versionConflicts: 3 }) })
+    const out = await env.run('5b')
+    expect(out.exitCode).toBe(EXIT.failed)
+    expect(out.results.find((r) => !r.ok).error).toMatch(/version_conflict \(3\) ≠ RPC 409 \(1\)/)
   })
 
   it('5C: tien gelijktijdige SPIN-verzoeken, één trekking', async () => {
@@ -320,5 +341,82 @@ describe('live test: fase 5B en 5C (gelijktijdigheid)', () => {
     expect(out.exitCode).toBe(EXIT.ok)
     expect(env.track.spinBatchMax).toBe(10)
     expect(env.store.draws).toHaveLength(1)
+  })
+})
+
+// Representatieve regels zoals Supabase ze logt (formaat uit de echte 5A-logs).
+const BASE = `https://${EXPECTED_REF}.supabase.co`
+const DENO = '| Deno/2.1.4 (variant; SupabaseEdgeRuntime/1.77.8; ref=twzjsmxydnfmowrmffsl)'
+const line = (method, status, path) => `${method} | ${status} | ${BASE}${path} ${DENO}`
+
+describe('live test: logtellingen voor 5B/5C', () => {
+  it('telt een geldige 200, een geldige 409 en een echte 500 en 504 op de RPC', () => {
+    const c = countLogLines([
+      line('POST', 200, '/rest/v1/rpc/commit_room_state'),
+      line('POST', 409, '/rest/v1/rpc/commit_room_state'),
+      line('POST', 500, '/rest/v1/rpc/commit_room_state'),
+      line('POST', 504, '/rest/v1/rpc/commit_room_state'),
+    ])
+    expect(c).toEqual({ rpcAll: 4, rpc200: 1, rpc409: 1, rpc5xx: 2, versionConflicts: 0 })
+  })
+
+  it('telt geen regels die geen RPC-verzoek zijn (ook niet met status 5xx)', () => {
+    const c = countLogLines([
+      `POST | 500 | ${BASE}/functions/v1/game`,
+      `POST | 409 | ${BASE}/functions/v1/game`,
+      `POST | 200 | ${BASE}/functions/v1/fsm-testlogin`,
+      line('POST', 201, '/rest/v1/seats'),
+      line('POST', 409, '/rest/v1/seats'),
+      line('GET', 200, '/rest/v1/rooms?select=id%2Ccode&id=eq.5009a3b2'),
+      line('POST', 200, '/auth/v1/signup'),
+      `GET | 521 | ${BASE}/rest-admin/v1/ready | @supabase-infra/mgmt-api/v1.639.2`,
+      '{"component":"api","duration":21963196,"error":"token is malformed","level":"warning","msg":"request completed","path":"/user","status":500}',
+      'Schema cache loaded in 12.7 milliseconds',
+    ])
+    expect(c).toEqual({ rpcAll: 0, rpc200: 0, rpc409: 0, rpc5xx: 0, versionConflicts: 0 })
+  })
+
+  it('laat zich niet misleiden door vergelijkbare cijfers of namen', () => {
+    const c = countLogLines([
+      line('POST', 200, '/rest/v1/rooms?select=id&code=eq.500409'), // 500/409 in de inhoud
+      line('POST', 201, '/rest/v1/rooms?commit_room_state=500'),
+      line('POST', 409, '/rest/v1/rpc/commit_room_state_old'), // andere functie
+      line('POST', 409, '/rest/v1/rpc/commit_room_states'),
+      `POST | 4091 | ${BASE}/rest/v1/rpc/commit_room_state ${DENO}`, // geen 3-cijferige status
+      `XPOST | 500 | ${BASE}/rest/v1/rpc/commit_room_state ${DENO}`,
+      ` POST | 500 | ${BASE}/rest/v1/rpc/commit_room_state ${DENO}`, // niet aan het begin
+      `POST | 500 | https://evil.example/rest/v1/rpc/commit_room_state ${DENO}`, // ander domein
+      '127.0.0.1 - service_role [30/Oct/2026:08:53:22 +0000] "POST /rpc/commit_room_state HTTP/1.1" 504 111 "" "Deno/2.1.4"', // PostgREST-eigen log, telt niet dubbel
+    ])
+    expect(c).toEqual({ rpcAll: 0, rpc200: 0, rpc409: 0, rpc5xx: 0, versionConflicts: 0 })
+  })
+
+  it('RPC met querystring of aan het einde van de regel telt wel', () => {
+    const c = countLogLines([
+      `POST | 200 | ${BASE}/rest/v1/rpc/commit_room_state?select=*`,
+      `POST | 409 | ${BASE}/rest/v1/rpc/commit_room_state`,
+    ])
+    expect(c).toMatchObject({ rpcAll: 2, rpc200: 1, rpc409: 1 })
+  })
+
+  it('version_conflict: alleen het exacte databasebericht telt', () => {
+    const c = countLogLines(['version_conflict', 'version_conflict', 'ERROR: version_conflict', 'version_conflicts', 'Version_conflict'])
+    expect(c.versionConflicts).toBe(2)
+  })
+
+  it('patronen zonder backslashes: Supabase-log-SQL kan ze niet verminken', () => {
+    for (const p of Object.values(LOG_PATTERNS)) {
+      expect(p).not.toMatch(/[\\']/)
+      expect(p.replace(/\\/g, '')).toBe(p)
+    }
+    expect(logStatsSql()).not.toContain('\\')
+    expect(logStatsSql()).toContain("countIf(event_message = 'version_conflict') as versionConflicts")
+  })
+
+  it('regressie: het oude 5xx-patroon zonder backslashes telde elke POST-regel', () => {
+    const oud = new RegExp('^POST | 5[0-9][0-9] | .*/rest/v1/rpc/commit_room_state') // zoals Supabase het uitvoerde
+    const regels = [`POST | 200 | ${BASE}/functions/v1/game`, line('POST', 201, '/rest/v1/seats'), line('POST', 200, '/rest/v1/rpc/commit_room_state')]
+    expect(regels.filter((r) => oud.test(r))).toHaveLength(3) // de fout
+    expect(countLogLines(regels).rpc5xx).toBe(0) // gecorrigeerd
   })
 })

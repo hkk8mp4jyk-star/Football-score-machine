@@ -7,9 +7,8 @@ Digitale fruitautomaat voor de jaarlijkse voetbalpool met negen vrienden.
 React-app (prototype goedgekeurd) die stap voor stap multiplayer wordt via
 Supabase. Fase 1 en 2 zijn klaar en goedgekeurd; fase 3 (Edge Function) is
 gebouwd. Nieuw Supabase-project (V2): database geïnstalleerd, `db:test`
-geslaagd, Edge Function `game` uitgerold en live test **5A geslaagd**
-(30-10-2026); 5B en 5C wachten op akkoord (eerst logtelling repareren, zie
-Openstaande punten). **Fase 4 alleen starten na
+geslaagd, Edge Function `game` uitgerold, live test **5A geslaagd** en de
+logtelling voor 5B/5C gerepareerd (30-10-2026); 5B en 5C wachten op akkoord. **Fase 4 alleen starten na
 expliciet akkoord van de gebruiker.**
 
 ---
@@ -295,9 +294,18 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   - 5B/5C controleren apart: (1) **client**: precies één 200, de rest 409
     (`turn_not_released`/`conflict`), nooit 5xx; (2) **database**: precies
     één trekking, versie 1; (3) **PostgREST-logs** (intern):
-    `commit_room_state` 1× 200, k× 409 (= PT409), 0× 5xx, k ≤ 3·(n−1);
-    (4) **geen lus**: na 10 s geen nieuwe conflicten, geen
-    `idle in transaction`, rollbacks begrensd. Intern PT409 ≠ client-409: de
+    `commit_room_state` 1× 200, k× 409 (= PT409), 0× 5xx, alle RPC's
+    200 of 409 (`rpcAll = rpc200 + rpc409`), k ≤ 3·(n−1);
+    (4) **geen lus**: na 10 s alle tellingen ongewijzigd,
+    `version_conflict` = RPC 409, geen `idle in transaction`, rollbacks
+    begrensd.
+  - **Logpatronen** (`LOG_PATTERNS`, `logStatsSql()`, `countLogLines()` in
+    het script): gateway-regels `POST | <status> | https://<ref>.supabase.co/rest/v1/rpc/commit_room_state …`
+    via `match()` met **alleen tekenklassen, geen backslashes** (`[|]`,
+    `[.]`), pad exact (`( |[?]|$)`), alleen echte HTTP-methoden;
+    `version_conflict` = exact databasebericht. **De log-SQL van Supabase
+    verwijdert backslashes**: `\|` wordt `|` (regex-"of"). Nooit backslashes
+    in logpatronen gebruiken. Intern PT409 ≠ client-409: de
     server herhaalt een PT409 (max 3) en de client ziet daarna meestal
     `turn_not_released`. Is k = 0 (geen overlap), dan slaagt de fase met
     waarschuwing "PT409 niet aangetoond".
@@ -412,6 +420,8 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   (52 + 6 servertests tegen de echte database als service_role, incl. volledig
   spel 18+8 en gelijktijdigheid; database daarna leeg). Rooktest in Deno 2.5
   (`deno check` + handler) geslaagd.
+- **Logtelling 5B/5C gerepareerd**: `npm test` → **120 tests** (zie
+  Openstaande punten → "Opgelost: foutieve 5xx-logtelling").
 - **Live-testscript in fasen (lokaal)**: `npm test` → **110 tests** (+22 in
   `tests/live-test.test.js`: fasekeuze en 5C-bevestiging, projectbewaking
   (oud project geweigerd, alle URL's naar V2), tijdslimiet bij hangend
@@ -491,13 +501,24 @@ Commando's: `npm run dev` (vite --host), `npm test`, `npm run build`,
 - **Logs uitlezen**: `GET /v1/projects/{ref}/analytics/endpoints/logs?sql=…`
   met tabel `logs` (ClickHouse-dialect, geen `*`, kolommen `timestamp`,
   `event_message`; max ~1 verzoek per paar seconden).
-- **Bug in live-testscript (gevonden bij 5A, nog niet gerepareerd)**: de
-  logtelling `rpc5xx` in `logStats` (`scripts/live-test.mjs`) gebruikt
-  `match()` met escaped `|`; live telde die 29 terwijl er aantoonbaar 0 5xx
-  waren (alle statussen nagelopen). 5A gebruikt `logStats` niet; **5B/5C
-  zouden er onterecht op mislukken**. Voorstel: regex vervangen door
-  `like 'POST | 5__ | %/rest/v1/rpc/commit_room_state%'` en de logquery
-  vóór 5B eerst read-only valideren.
+- **Opgelost (30-10-2026): foutieve 5xx-logtelling.** Oorzaak (read-only
+  bevestigd op de 5A-logs): de log-SQL van Supabase haalt backslashes weg,
+  waardoor `'^POST \\| 5[0-9][0-9] \\| …'` werd uitgevoerd als
+  `^POST | 5[0-9][0-9] | …` (alternatieven) en elke regel die met `POST`
+  begint telde: 29 = precies het aantal POST-regels in het 5A-venster (oude
+  query 29, dezelfde regex zonder backslashes 29, met `[|]` 0). Oplossing:
+  patronen zonder backslashes (zie §7b), extra telling `rpcAll`, strengere
+  controles in 5B/5C. Lokaal: `npm test` **120** (+10: representatieve
+  logregels 200/409/500/504, niet-RPC-regels, misleidende cijfers en namen,
+  querystring, exact `version_conflict`, geen backslashes, regressie oude
+  patroon; 5B mislukt bij andere RPC-status, te veel PT409, of
+  `version_conflict` ≠ RPC 409). Live read-only met `logStats` van het
+  script: 5A-venster 14:38:40–14:39:14 en "5A tot nu": rpcAll 1, rpc200 1,
+  rpc409 0, rpc5xx 0, version_conflict 0; ruim venster vanaf 14:00:
+  idem maar version_conflict 18 (= db:test 14:13–14:14 via directe SQL,
+  geen PostgREST) — daarom telt 5B alleen vanaf 5 s vóór de eigen
+  gelijktijdige verzoeken. Onafhankelijke controle: sinds 14:00 precies één
+  RPC-logregel (`POST | 200`).
 - Organisator die van telefoon wisselt verliest organisatorrechten
   (`organizer_id` = oude anonieme gebruiker); overdracht bestaat nog niet.
 - Geen "spel opnieuw beginnen" online (RESET bewust niet toegestaan);

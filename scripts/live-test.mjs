@@ -53,6 +53,47 @@ export const LIMITS = {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+// ---------------------------------------------------------------------------
+// Logtellingen (fase 5B/5C)
+// ---------------------------------------------------------------------------
+// De API-gateway logt elk verzoek van de Edge Function aan PostgREST als
+//   POST | 409 | https://<ref>.supabase.co/rest/v1/rpc/commit_room_state | Deno/…
+// en Postgres logt elk PT409-conflict als bericht 'version_conflict'.
+//
+// Let op: de log-SQL van Supabase verwijdert backslashes uit tekst. Een
+// patroon met '\|' wordt dan '|' (regex-alternatief) en telt elke POST-regel
+// mee (zo telde 5xx er eerder 29 in plaats van 0). Daarom bevatten deze
+// patronen geen backslashes: '[|]' en '[.]' zijn letterlijke tekens.
+const RPC_URL = 'https://[^ ]+[.]supabase[.]co/rest/v1/rpc/commit_room_state( |[?]|$)'
+export const LOG_PATTERNS = {
+  rpcAll: `^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) [|] [0-9][0-9][0-9] [|] ${RPC_URL}`, // elke RPC-aanroep, elke status
+  rpc200: `^POST [|] 200 [|] ${RPC_URL}`,
+  rpc409: `^POST [|] 409 [|] ${RPC_URL}`, // PT409 → HTTP 409
+  rpc5xx: `^POST [|] 5[0-9][0-9] [|] ${RPC_URL}`,
+}
+export const VERSION_CONFLICT_MESSAGE = 'version_conflict'
+
+export function logStatsSql() {
+  const counts = Object.entries(LOG_PATTERNS).map(([name, pattern]) => {
+    if (/['\\]/.test(pattern)) throw new Error(`logpatroon ${name} mag geen quote of backslash bevatten`)
+    return `countIf(match(event_message, '${pattern}')) as ${name}`
+  })
+  return `select ${counts.join(', ')}, countIf(event_message = '${VERSION_CONFLICT_MESSAGE}') as versionConflicts from logs`
+}
+
+// Dezelfde telling in JavaScript, voor de lokale tests. De patronen gebruiken
+// alleen tekenklassen, ankers, groepen en alternatieven: die werken in RE2
+// (ClickHouse) en JavaScript gelijk.
+export function countLogLines(messages) {
+  const res = Object.fromEntries(Object.entries(LOG_PATTERNS).map(([k, p]) => [k, new RegExp(p)]))
+  const out = { rpcAll: 0, rpc200: 0, rpc409: 0, rpc5xx: 0, versionConflicts: 0 }
+  for (const m of messages) {
+    for (const [k, re] of Object.entries(res)) if (re.test(m)) out[k]++
+    if (m === VERSION_CONFLICT_MESSAGE) out.versionConflicts++
+  }
+  return out
+}
+
 export class UsageError extends Error {}
 export class TimeoutError extends Error {}
 
@@ -184,19 +225,18 @@ Deno.serve(async (req) => {
       const list = await mgmt('GET', '/functions')
       return list.some((f) => f.slug === HELPER)
     },
-    // Tellingen uit de logs sinds `sinceIso`: wat PostgREST met de RPC deed.
-    async logStats(sinceIso) {
-      const sql = `select
-        countIf(event_message like 'POST | 200 | %/rest/v1/rpc/commit_room_state%') as rpc200,
-        countIf(event_message like 'POST | 409 | %/rest/v1/rpc/commit_room_state%') as rpc409,
-        countIf(match(event_message, '^POST \\\\| 5[0-9][0-9] \\\\| .*/rest/v1/rpc/commit_room_state')) as rpc5xx,
-        countIf(event_message = 'version_conflict') as versionConflicts
-        from logs`
-      const end = new Date(Date.now() + 60_000).toISOString()
-      const data = await mgmt('GET', `/analytics/endpoints/logs?sql=${encodeURIComponent(sql)}&iso_timestamp_start=${sinceIso}&iso_timestamp_end=${end}`)
+    // Tellingen uit de logs tussen `sinceIso` en `untilIso` (standaard nu):
+    // wat PostgREST met de RPC deed en hoeveel PT409-conflicten Postgres meldde.
+    async logStats(sinceIso, untilIso = new Date(Date.now() + 60_000).toISOString()) {
+      const data = await mgmt('GET', `/analytics/endpoints/logs?sql=${encodeURIComponent(logStatsSql())}&iso_timestamp_start=${sinceIso}&iso_timestamp_end=${untilIso}`)
       if (data?.error || !data?.result?.[0]) throw new Error(`logs niet beschikbaar: ${JSON.stringify(data?.error ?? data).slice(0, 200)}`)
       const r = data.result[0]
-      return { rpc200: Number(r.rpc200), rpc409: Number(r.rpc409), rpc5xx: Number(r.rpc5xx), versionConflicts: Number(r.versionConflicts) }
+      const out = {}
+      for (const k of ['rpcAll', 'rpc200', 'rpc409', 'rpc5xx', 'versionConflicts']) {
+        out[k] = Number(r[k])
+        if (!Number.isInteger(out[k])) throw new Error(`logtelling ${k} ontbreekt: ${JSON.stringify(r)}`)
+      }
+      return out
     },
     async signIn() {
       for (let attempt = 1; ; attempt++) {
@@ -327,13 +367,16 @@ async function concurrentSpins({ client, step, ctx, limits, sleep, log, n }) {
   })
   let stats
   await step('PostgREST: RPC één keer 200, conflicten als 409, nooit 5xx', async () => {
+    // Logs komen met vertraging binnen: wacht (begrensd) tot de winnende RPC
+    // en de bijbehorende conflictmeldingen zichtbaar zijn.
     for (let i = 0; i < limits.logPolls; i++) {
       stats = await client.logStats(since)
-      if (stats.rpc200 >= 1) break
+      if (stats.rpc200 >= 1 && stats.versionConflicts >= stats.rpc409) break
       await sleep(limits.logPollIntervalMs)
     }
     assert(stats.rpc200 === 1, `RPC 200: ${stats.rpc200} (verwacht 1) ${JSON.stringify(stats)}`)
     assert(stats.rpc5xx === 0, `RPC 5xx: ${stats.rpc5xx} ${JSON.stringify(stats)}`)
+    assert(stats.rpcAll === stats.rpc200 + stats.rpc409, `RPC met andere status dan 200/409: ${JSON.stringify(stats)}`)
     // Begrensd: elk verliezend verzoek doet hoogstens 3 pogingen.
     assert(stats.rpc409 <= (n - 1) * 3, `meer interne conflicten dan begrensd mogelijk: ${JSON.stringify(stats)}`)
     // Intern conflict ≠ antwoord aan de client: een PT409 wordt door de
@@ -347,7 +390,9 @@ async function concurrentSpins({ client, step, ctx, limits, sleep, log, n }) {
   await step('geen herhaallus: na wachten geen nieuwe conflicten, geen hangende transacties', async () => {
     await sleep(limits.loopCheckDelayMs)
     const later = await client.logStats(since)
-    assert(later.rpc409 === stats.rpc409 && later.versionConflicts === stats.versionConflicts && later.rpc5xx === 0, `logs liepen op: ${JSON.stringify(stats)} → ${JSON.stringify(later)}`)
+    assert(JSON.stringify(later) === JSON.stringify(stats), `logs liepen op: ${JSON.stringify(stats)} → ${JSON.stringify(later)}`)
+    // Elk PT409 is precies één 'version_conflict' in de databaselog.
+    assert(later.versionConflicts === later.rpc409, `version_conflict (${later.versionConflicts}) ≠ RPC 409 (${later.rpc409})`)
     const a = await ctx.db.activity()
     assert(a.idleTx === 0, `hangende transacties: ${a.idleTx}`)
     assert(a.rollbacks - base.rollbacks <= limits.maxExtraRollbacks, `rollbacks opgelopen met ${a.rollbacks - base.rollbacks}`)
