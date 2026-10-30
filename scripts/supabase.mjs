@@ -3,7 +3,9 @@
 //
 //   npm run db:status   project, migraties en tabellen tonen (alleen lezen)
 //   npm run db:migrate  nog niet uitgevoerde migraties uit supabase/migrations uitvoeren
-//   npm run db:test     beveiligings- en databasetests uit supabase/tests draaien
+//   npm run db:test     beveiligings- en databasetests uit supabase/tests draaien,
+//                       plus de serverlogica tegen de echte database
+//   npm run fn:deploy   Edge Function 'game' uitrollen (supabase/functions/game)
 //
 // Toegang: het access token wordt in de Claude Code-omgeving door de beveiligde
 // proxy toegevoegd (Network secret voor api.supabase.com). Lokaal kun je
@@ -12,15 +14,24 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { serverIntegrationTests } from './server-integration.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const REF = process.env.SUPABASE_PROJECT_REF || 'nptulnnuejivwcgcltuy'
 const API = `https://api.supabase.com/v1/projects/${REF}`
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
 async function call(method, route, body) {
   const headers = { 'Content-Type': 'application/json' }
   if (process.env.SUPABASE_ACCESS_TOKEN) headers.Authorization = `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`
-  const res = await fetch(API + route, { method, headers, body: body ? JSON.stringify(body) : undefined })
+  let res
+  // De Management API begrenst het aantal verzoeken (HTTP 429): even wachten.
+  for (let attempt = 0; ; attempt++) {
+    res = await fetch(API + route, { method, headers, body: body ? JSON.stringify(body) : undefined })
+    if (res.status !== 429 || attempt >= 8) break
+    await sleep(Number(res.headers.get('retry-after')) * 1000 || 2000 * (attempt + 1))
+  }
   const text = await res.text()
   let data
   try {
@@ -86,7 +97,7 @@ async function test() {
       console.log(`  ${r.ok ? '✓' : '✗'} ${r.test}${r.ok ? '' : `\n      ${r.detail}`}`)
     }
   }
-  for (const t of extraTests) {
+  for (const t of [...extraTests, ...serverIntegrationTests(sql)]) {
     total++
     try {
       await t.run()
@@ -139,10 +150,41 @@ const extraTests = [
   },
 ]
 
+// Edge Function uitrollen via de Management API. De functie importeert de
+// gedeelde spelregels uit src/; die bestanden gaan mee met hun eigen pad.
+// verify_jwt staat uit: de functie controleert het token zelf bij Supabase
+// Auth (werkt ook met de nieuwe JWT-sleutels) en weigert alles zonder token.
+const FUNCTION = {
+  slug: 'game',
+  entrypoint: 'supabase/functions/game/index.ts',
+  files: [
+    'supabase/functions/game/index.ts',
+    'src/server/actions.js',
+    'src/server/http.js',
+    'src/server/supabaseStore.js',
+    'src/game/config.js',
+    'src/game/engine.js',
+    'src/game/random.js',
+    'src/game/timeline.js',
+  ],
+}
+
+async function deploy() {
+  const form = new FormData()
+  form.append('metadata', JSON.stringify({ name: FUNCTION.slug, entrypoint_path: FUNCTION.entrypoint, verify_jwt: false }))
+  for (const f of FUNCTION.files) form.append('file', new Blob([readFileSync(path.join(ROOT, f))]), f)
+  const headers = {}
+  if (process.env.SUPABASE_ACCESS_TOKEN) headers.Authorization = `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`
+  const res = await fetch(`${API}/functions/deploy?slug=${FUNCTION.slug}`, { method: 'POST', headers, body: form })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(`deploy → HTTP ${res.status}: ${data.message || JSON.stringify(data)}`)
+  console.log(`Edge Function '${data.slug}' versie ${data.version}: ${data.status} (verify_jwt ${data.verify_jwt})`)
+}
+
 const command = process.argv[2]
-const commands = { status, migrate, test }
+const commands = { status, migrate, test, deploy }
 if (!commands[command]) {
-  console.error('Gebruik: node scripts/supabase.mjs status|migrate|test')
+  console.error('Gebruik: node scripts/supabase.mjs status|migrate|test|deploy')
   process.exit(2)
 }
 commands[command]().catch((e) => {

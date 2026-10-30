@@ -11,7 +11,9 @@
     "test": "vitest run",
     "db:status": "NODE_USE_ENV_PROXY=1 NODE_NO_WARNINGS=1 node scripts/supabase.mjs status",
     "db:migrate": "NODE_USE_ENV_PROXY=1 NODE_NO_WARNINGS=1 node scripts/supabase.mjs migrate",
-    "db:test": "NODE_USE_ENV_PROXY=1 NODE_NO_WARNINGS=1 node scripts/supabase.mjs test"
+    "db:test": "NODE_USE_ENV_PROXY=1 NODE_NO_WARNINGS=1 node scripts/supabase.mjs test",
+    "fn:deploy": "NODE_USE_ENV_PROXY=1 NODE_NO_WARNINGS=1 node scripts/supabase.mjs deploy",
+    "fn:test": "NODE_USE_ENV_PROXY=1 NODE_NO_WARNINGS=1 node scripts/live-test.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",

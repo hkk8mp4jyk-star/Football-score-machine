@@ -5,16 +5,19 @@ gebruiker: **Nederlands**. De gebruiker werkt op **mobiel**.
 
 Digitale fruitautomaat voor de jaarlijkse voetbalpool met negen vrienden.
 React-app (prototype goedgekeurd) die stap voor stap multiplayer wordt via
-Supabase. Fase 1 en 2 zijn klaar en goedgekeurd; **fase 3 alleen starten na
-expliciet akkoord van de gebruiker.**
+Supabase. Fase 1 en 2 zijn klaar en goedgekeurd; fase 3 (Edge Function) is
+gebouwd en wacht op akkoord. **Fase 4 alleen starten na expliciet akkoord van
+de gebruiker.**
 
 ---
 
 ## 0. Werkafspraken (altijd)
 
 - Werk in fases; na elke fase **stoppen en wachten op akkoord**.
-- Branch: `claude/multiplayer-fase-1` (bestaande multiplayer-branch).
-  Commit/push alleen als de gebruiker erom vraagt. **Geen PR** tenzij gevraagd.
+- Branch: `claude/multiplayer-fase-1` (bestaande multiplayer-branch). Een
+  sessie kan daarnaast een eigen sessiebranch krijgen; fase 3 staat op beide
+  (`claude/fsm-phase-3-edge-function-4ihmsf`). Commit/push alleen als de
+  gebruiker erom vraagt. **Geen PR** tenzij gevraagd.
 - Wijzig niets wat niet gevraagd is (geen ongevraagde scherm-, code- of
   databasewijzigingen). Verzin geen spelregels: bij twijfel vragen.
 - Goedgekeurd ontwerp is leidend: visuele wijzigingen alleen op verzoek, en
@@ -153,8 +156,7 @@ src/audio/sound.js     synthetische geluiden
   regio eu-west-1, Postgres 17. (Overal gecontroleerd: `README.md`,
   `scripts/supabase.mjs`.)
 - Deelnemers loggen in via **anonieme Supabase-login** (geen accounts of
-  wachtwoorden). Volgens de gebruiker staat dit aan; nog niet in de praktijk
-  getest.
+  wachtwoorden). Live te testen met `npm run fn:test` (zie §7b).
 - Hosting: **GitHub Pages** (`.github/workflows/pages.yml`: `npm ci`,
   `npm test`, `npm run build` bij push naar `main`).
 - **Server-autoritatief**: telefoons lezen alleen (RLS + Realtime). Alle
@@ -162,9 +164,14 @@ src/audio/sound.js     synthetische geluiden
   vrijgeven, draaien namens) gaan via **één Edge Function** (service_role) die
   `engine.js` gebruikt en atomair vastlegt via `commit_room_state`.
 - Beheer via Management API (`https://api.supabase.com/v1/projects/{ref}`):
-  `npm run db:status | db:migrate | db:test` (`scripts/supabase.mjs`; Node
-  heeft `NODE_USE_ENV_PROXY=1` nodig, zit in de npm-scripts). Andere ref via
-  `SUPABASE_PROJECT_REF`; lokaal eventueel `SUPABASE_ACCESS_TOKEN`.
+  `npm run db:status | db:migrate | db:test | fn:deploy`
+  (`scripts/supabase.mjs`; Node heeft `NODE_USE_ENV_PROXY=1` nodig, zit in de
+  npm-scripts). Andere ref via `SUPABASE_PROJECT_REF`; lokaal eventueel
+  `SUPABASE_ACCESS_TOKEN`. De Management API geeft bij veel verzoeken HTTP 429;
+  het script wacht dan en probeert opnieuw.
+- **Netwerk in Claude Code-omgeving**: `api.supabase.com` is bereikbaar,
+  `nptulnnuejivwcgcltuy.supabase.co` (functies/auth) alleen als de gebruiker
+  dat domein in de omgevingsinstellingen toestaat (nodig voor `fn:test`).
 
 ## 7. Database en beveiliging (fase 2, uitgevoerd)
 
@@ -194,6 +201,63 @@ het script vergelijkt op **naam**).
   + echte concurrency-test (10 gelijktijdige commits → precies 1 slaagt,
   testkamer `ZZTEST` wordt opgeruimd). Laatste run: **52/52 geslaagd**,
   database daarna leeg.
+
+## 7b. Edge Function `game` (fase 3, gebouwd)
+
+Eén functie, uitgerold als `game` (`npm run fn:deploy`), URL
+`https://nptulnnuejivwcgcltuy.supabase.co/functions/v1/game`. Geen
+schemawijzigingen in fase 3.
+
+```
+supabase/functions/game/index.ts  Deno-ingang: token controleren, service_role-client
+src/server/actions.js             alle acties + autorisatie (gedeeld met tests)
+src/server/http.js                CORS, POST/JSON, Bearer-token, foutcodes → HTTP
+src/server/supabaseStore.js       opslag via supabase-js; status alleen via commit_room_state
+scripts/server-integration.mjs    serverlogica tegen de echte database (in db:test)
+scripts/live-test.mjs             live test met echte anonieme logins (fn:test)
+tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-regels)
+```
+
+- **Aanroep**: `POST` met `Authorization: Bearer <access token van de
+  anonieme sessie>` en JSON `{ action, ... }`. Antwoord altijd JSON:
+  `{ ok: true, ..., serverNow }` of `{ ok: false, error, message }`.
+- **Inloggen**: `verify_jwt` staat uit bij uitrol; de functie controleert het
+  token zelf met `auth.getUser(token)` (geldig, niet verlopen, gebruiker
+  bestaat). Het `userId` komt **alleen** uit het token, nooit uit de invoer.
+- **Acties** (whitelist; `RESET`, `DEMO_SKIP_TO_AUCTION` e.d. bestaan
+  online niet):
+
+| Actie | Invoer | Wie |
+|---|---|---|
+| `time` | – | ingelogd (klok-sync via `serverNow`) |
+| `create_room` | `participant?` | ingelogd → wordt organisator (max 5 kamers per gebruiker) |
+| `lookup_room` | `code` | ingelogd: vrije/bezette namen, geen user-id's |
+| `claim_seat` | `code, participant` | ingelogd; 1 naam per telefoon, 1 telefoon per naam; zelfde verzoek opnieuw = ok |
+| `get_room` | `roomId` | leden: status, versie, plaatsen (herstel na herladen) |
+| `release_seat` | `roomId, participant` | alleen organisator |
+| `spin` | `roomId, onBehalf?` | alleen wie aan de beurt is; organisator namens een ander **alleen** met `onBehalf: true` → `draws.on_behalf = true`, `spun_by` = organisator |
+| `auction_prepare` | `roomId, participant, bidCents` | alleen organisator, alleen in de veiling, niet tijdens een draai; bod in centen (0 … 1.000.000), status bewaart euro's |
+
+- **SPIN op de server**: status laden → `settle(now)` → controleren (spel
+  klaar? beurt vrij? veilingbeurt klaargezet? wie is aan de beurt?) →
+  engine `SPIN_START` met `secureRandomInt` → `commit_room_state(versie,
+  status, trekking)`. Wat de telefoon verder meestuurt (uitslag, deelnemer,
+  tijd) wordt genegeerd.
+- **Dubbel/gelijktijdig**: bij `version_conflict` laadt de server opnieuw en
+  controleert alles opnieuw (max 3 pogingen); een tweede SPIN voor dezelfde
+  beurt wordt dan `turn_not_released`. Verzoek opnieuw versturen na
+  verbindingsverlies kan dus nooit een tweede trekking geven.
+- **Foutcodes**: `unauthorized` 401, `invalid_input`/`unknown_action`/
+  `invalid_json` 400, `not_your_turn`/`not_organizer` 403, `room_not_found`
+  404 (ook voor niet-leden), `seat_taken`/`already_seated`/
+  `turn_not_released`/`no_auction_turn`/`game_finished`/`not_auction`/
+  `spin_in_progress`/`conflict` 409, `too_large` 413 (>4 kB),
+  `too_many_rooms` 429, `server_error` 500 (zonder interne details).
+- **Live test** (`npm run fn:test`): rolt tijdelijk hulpfunctie
+  `fsm-testlogin` uit (doet `signInAnonymously()` met de sleutel uit de eigen
+  functie-omgeving, beveiligd met een eenmalige willekeurige code; dit script
+  ziet nooit een API-sleutel), speelt alle scenario's met echte tokens en
+  ruimt hulpfunctie, testkamers en testgebruikers altijd op.
 
 ## 8. Afspraken: trekking, sync, animaties, herstel
 

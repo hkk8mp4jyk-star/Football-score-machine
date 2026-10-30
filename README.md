@@ -113,6 +113,24 @@ access token toe (Network secret voor `api.supabase.com`); lokaal zet je
   verouderde versie (dubbele of gelijktijdige SPIN) of een dubbele uitslag
   verandert er niets.
 
+### Server: Edge Function `game` (fase 3)
+
+Alle spelacties lopen via één Supabase Edge Function
+(`supabase/functions/game`). De telefoon logt anoniem in en stuurt alleen
+"wat wil ik doen"; de server controleert wie het vraagt, past de spelregels
+toe met dezelfde engine en kiest zelf de uitslag.
+
+```bash
+npm run fn:deploy    # functie uitrollen
+npm run fn:test      # live test met echte anonieme logins (ruimt alles op)
+```
+
+Acties: `time`, `create_room`, `lookup_room`, `claim_seat`, `get_room`,
+`release_seat` (organisator), `spin` (wie aan de beurt is; organisator namens
+een ander alleen met `onBehalf: true`), `auction_prepare` (organisator).
+Logica in `src/server/` (getest met `npm test` en tegen de echte database met
+`npm run db:test`).
+
 ### Voorbereid op Supabase (realtime multiplayer)
 
 - Alle spelstatus is één serialiseerbaar object; elke wijziging is een actie
