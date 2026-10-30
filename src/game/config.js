@@ -86,7 +86,12 @@ export function formatResult(id) {
   return r.other ? 'Overige uitslagen' : `${r.home}-${r.away}`
 }
 
-export function reelTargets(id) {
+// Rol met 0–6 + ★ (8 symbolen) voor spellen met uitslagen boven 4 goals; de
+// ster is altijd het laatste symbool van de rol.
+export const REEL_SYMBOLS_EXTENDED = MAX_POOL_GOALS + 2
+
+export function reelTargets(id, symbols = REEL_SYMBOLS) {
   const r = RESULT_BY_ID[id]
-  return r.other ? [STAR, STAR] : [r.home, r.away]
+  const star = symbols - 1
+  return r.other ? [star, star] : [r.home, r.away]
 }

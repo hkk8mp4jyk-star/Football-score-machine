@@ -1,24 +1,28 @@
 import SlotMachine from './SlotMachine.jsx'
 import OtherBanner from './OtherBanner.jsx'
 import { Footer, NavRow, PlayerSpot, RoundBadges } from './Header.jsx'
-import { DRAW_TURNS, PARTICIPANTS, TURN_ORDER } from '../game/config.js'
+import { auctionLots, configOf, drawTurns, playerName, reelSymbolsFor, turnOrder } from '../game/gameConfig.js'
 
 export default function MainScreen({ state, reelSpin, reveal, locked, canSpinFor, showOther, onSpin, onSettled, onNext, onOverview, onMenu }) {
+  const config = configOf(state)
+  const order = turnOrder(config)
+  const totalTurns = drawTurns(config)
   const spinning = !!state.spin
   // Tijdens de onthulling is de trekking al vastgelegd (turn is opgehoogd),
   // maar blijft de deelnemer van deze trekking in beeld.
   const turnIndex = reveal ? state.turn - 1 : state.turn
-  const shownTurn = TURN_ORDER[turnIndex]
-  const upcoming = TURN_ORDER[turnIndex + 1]
+  const shownTurn = order[turnIndex]
+  const upcoming = order[turnIndex + 1]
   const drawNumber = reveal ? state.draws.length : state.turn + 1
   const lastId = state.draws.at(-1)?.resultId
 
   // Alleen wie zelf aan de beurt is krijgt de SPIN-knop (zie canSpinFor).
   const spinHidden = spinning || locked || !canSpinFor(shownTurn.participant)
 
-  let nextLabel = 'Veiling'
+  // Na de laatste vaste trekking: de veiling, of (zonder veiling) de eindstand.
+  let nextLabel = auctionLots(config) > 0 ? 'Veiling' : 'Eindstand'
   if (upcoming) {
-    nextLabel = PARTICIPANTS[upcoming.participant]
+    nextLabel = playerName(config, upcoming.participant)
     if (upcoming.round !== shownTurn.round) nextLabel += ` · Ronde ${upcoming.round}`
   }
 
@@ -26,20 +30,21 @@ export default function MainScreen({ state, reelSpin, reveal, locked, canSpinFor
     <div className="screen screen-main">
       <header className="top">
         <NavRow onOverview={onOverview} disabled={spinning}>
-          <RoundBadges round={shownTurn.round} />
+          <RoundBadges round={shownTurn.round} rounds={config.rounds} />
         </NavRow>
-        <PlayerSpot name={PARTICIPANTS[shownTurn.participant]} sub={`Hierna: ${nextLabel}`} />
+        <PlayerSpot name={playerName(config, shownTurn.participant)} sub={`Hierna: ${nextLabel}`} />
       </header>
 
       <main className="stage">
         <div className="stage-glow" aria-hidden="true" />
         <div className="machine-holder">
-          <SlotMachine spin={reelSpin} restResultId={lastId} onSettled={onSettled} />
+          <SlotMachine spin={reelSpin} restResultId={lastId} onSettled={onSettled} symbols={reelSymbolsFor(config)} />
           <OtherBanner show={showOther} />
         </div>
 
         {/* De knop verschijnt pas weer als de volgende beurt is vrijgegeven.
-            Na de laatste trekking volgt de overstap naar de veiling. */}
+            Na de laatste trekking volgt de overstap naar de veiling, of
+            zonder veiling naar de eindstand. */}
         <div className="stage-action">
           {reveal && state.phase !== 'draw' ? (
             <button
@@ -48,7 +53,7 @@ export default function MainScreen({ state, reelSpin, reveal, locked, canSpinFor
               onClick={onNext}
               disabled={locked}
             >
-              Start de veiling
+              {state.phase === 'finished' ? 'Bekijk de eindstand' : 'Start de veiling'}
             </button>
           ) : (
             <button
@@ -66,7 +71,7 @@ export default function MainScreen({ state, reelSpin, reveal, locked, canSpinFor
       <Footer
         count={state.remaining.length}
         label="uitslagen in de machine"
-        sub={`Trekking ${Math.min(drawNumber, DRAW_TURNS)} van ${DRAW_TURNS}`}
+        sub={`Trekking ${Math.min(drawNumber, totalTurns)} van ${totalTurns}`}
         onMenu={onMenu}
       />
     </div>

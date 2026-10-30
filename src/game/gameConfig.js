@@ -12,6 +12,10 @@
 
 import {
   ALL_RESULTS,
+  GOALS,
+  REEL_SYMBOLS,
+  REEL_SYMBOLS_EXTENDED,
+  RESULT_BY_ID,
   MAX_AUCTION_LOTS,
   MAX_NAME_LENGTH,
   MAX_PLAYERS,
@@ -66,6 +70,32 @@ export function turnOrder(config) {
 
 export function playerName(config, id) {
   return config.players.find((p) => p.id === id)?.name ?? ''
+}
+
+// Hoogste aantal goals in de pool (OVERIG telt niet mee).
+export function maxGoalsIn(config) {
+  return config.pool.reduce((m, id) => {
+    const r = RESULT_BY_ID[id]
+    return r?.other ? m : Math.max(m, r.home, r.away)
+  }, 0)
+}
+
+// Rollen: standaard 0–4 + ★; met uitslagen boven 4 goals 0–6 + ★.
+export const reelSymbolsFor = (config) => (maxGoalsIn(config) > GOALS.length - 1 ? REEL_SYMBOLS_EXTENDED : REEL_SYMBOLS)
+
+// Overzichtsraster: 0 t/m het hoogste aantal goals in de pool, minimaal 0–4.
+export function gridGoalsFor(config) {
+  const max = Math.max(GOALS.length - 1, maxGoalsIn(config))
+  return Array.from({ length: max + 1 }, (_, i) => i)
+}
+
+// Veilingtegels: 1–4 op één rij boven de machine; daarna boven + onder
+// (5 = 3+2, 6 = 3+3, 7 = 4+3, 8 = 4+4, 9 = 5+4, 10 = 5+5). `cols` = aantal
+// kolommen dat de tegelbreedte bepaalt: nooit minder dan 4 (dus nooit grotere
+// tegels dan bij 4 per rij), bij 5 per rij smaller.
+export function auctionRows(count) {
+  const top = count <= 4 ? count : Math.ceil(count / 2)
+  return { top, bottom: count - top, cols: Math.max(4, top) }
 }
 
 // ---------------------------------------------------------------------------

@@ -7,9 +7,10 @@ import MegaWin from './components/MegaWin.jsx'
 import AuctionSetup from './components/AuctionSetup.jsx'
 import { Logo, MenuButton } from './components/Header.jsx'
 import { useGame } from './game/useGame.js'
-import { RESULTS, RESULT_BY_ID, TIMING } from './game/config.js'
+import { RESULT_BY_ID, TIMING } from './game/config.js'
+import { configOf } from './game/gameConfig.js'
 import { deriveView } from './game/view.js'
-import { STOP_DELAY, isMegaWin } from './game/timeline.js'
+import { STOP_DELAY, spinIsMega } from './game/timeline.js'
 import { clock } from './game/clock.js'
 import { buzz, setSoundEnabled, sfx, unlockAudio } from './audio/sound.js'
 
@@ -53,6 +54,7 @@ export default function App() {
   const view = deriveView(state, clock.now(), ack)
   const { reveal, locked, tileStage, reelSpin } = view
   const game = view.state
+  const config = configOf(game)
 
   // Ververs het scherm precies op het volgende overgangsmoment.
   useEffect(() => {
@@ -97,7 +99,7 @@ export default function App() {
   // (herladen, opnieuw verbinden) krijgt geen verlate effecten meer.
   const announce = (spin) => {
     if (clock.now() - (spin.startedAt + STOP_DELAY) > 1500) return
-    if (isMegaWin(spin.resultId)) {
+    if (spinIsMega(spin)) {
       sfx.megaWin()
       buzz([60, 40, 60, 40, 200])
       setMegaWin(spin.id)
@@ -163,7 +165,7 @@ export default function App() {
             <Logo compact />
             <MenuButton onClick={() => setSheet('menu')} />
           </div>
-          <h1 className="finished-title">Alle {RESULTS.length} uitslagen zijn verdeeld</h1>
+          <h1 className="finished-title">Alle {config.pool.length} uitslagen zijn verdeeld</h1>
         </header>
         <Overview state={game} inline initialTab="people" />
       </div>
@@ -194,10 +196,11 @@ export default function App() {
       <MegaWin key={megaWin ?? 'none'} show={!!megaWin} />
       {sheet === 'overview' && <Overview state={game} onClose={() => setSheet(null)} />}
       {sheet === 'setup' && (
-        <AuctionSetup initial={game.auctionTurn} onConfirm={prepareAuction} onClose={() => setSheet(null)} />
+        <AuctionSetup initial={game.auctionTurn} players={config.players} onConfirm={prepareAuction} onClose={() => setSheet(null)} />
       )}
       {sheet === 'menu' && (
         <DemoMenu
+          config={config}
           phase={game.phase}
           sound={sound}
           onSound={() => setSound((s) => !s)}

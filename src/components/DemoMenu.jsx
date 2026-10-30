@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { DRAW_TURNS, PARTICIPANTS } from '../game/config.js'
+import { DEFAULT_CONFIG, drawTurns } from '../game/gameConfig.js'
 
-export default function DemoMenu({ phase, sound, onSound, role, onRole, onSkip, onReset, onClose }) {
+export default function DemoMenu({ phase, sound, onSound, role, onRole, onSkip, onReset, onClose, config = DEFAULT_CONFIG }) {
   const [confirmReset, setConfirmReset] = useState(false)
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -44,14 +44,14 @@ export default function DemoMenu({ phase, sound, onSound, role, onRole, onSkip, 
             </div>
             <small className="menu-sub">{role.kind === 'organizer' ? 'De organisator is' : 'Ik ben'}</small>
             <div className="name-grid name-grid-small" role="radiogroup" aria-label="Deelnemer">
-              {PARTICIPANTS.map((name, i) => (
+              {config.players.map(({ id, name }) => (
                 <button
-                  key={name}
+                  key={id}
                   type="button"
                   role="radio"
-                  aria-checked={role.participant === i}
-                  className={`name-chip ${role.participant === i ? 'is-active' : ''}`}
-                  onClick={() => onRole({ ...role, participant: i })}
+                  aria-checked={role.participant === id}
+                  className={`name-chip ${role.participant === id ? 'is-active' : ''}`}
+                  onClick={() => onRole({ ...role, participant: id })}
                 >
                   {name}
                 </button>
@@ -71,7 +71,7 @@ export default function DemoMenu({ phase, sound, onSound, role, onRole, onSkip, 
             <button type="button" className="menu-item" onClick={onSkip}>
               <span>
                 Direct naar de veiling
-                <small>Trekt de {DRAW_TURNS} uitslagen automatisch</small>
+                <small>Trekt de {drawTurns(config)} uitslagen automatisch</small>
               </span>
               <span aria-hidden="true">›</span>
             </button>

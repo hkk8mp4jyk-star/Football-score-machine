@@ -1111,7 +1111,7 @@ input:focus-visible {
 .grid-axes,
 .score-row {
   display: grid;
-  grid-template-columns: 22px repeat(5, minmax(0, 1fr));
+  grid-template-columns: 22px repeat(var(--grid-cols, 5), minmax(0, 1fr));
   gap: 5px;
 }
 .grid-axes {
@@ -1933,4 +1933,90 @@ input:focus-visible {
   .stage-auction .lot-row .tile-other {
     font-size: 10px;
   }
+}
+
+/* ---------- Instelbare spellen (F2) ----------
+   Alleen voor afwijkende instellingen; de DEMO (standaardspel) krijgt deze
+   klassen nooit en ziet er dus ongewijzigd uit. */
+
+/* Veilingtegels: één vaste tegelbreedte per spel, nooit breder dan bij 4 per
+   rij (--cols ≥ 4), gecentreerd; bij 5 per rij smaller. */
+.lot-row-fixed {
+  grid-template-columns: repeat(var(--lots), calc((100% - (var(--cols) - 1) * 8px) / var(--cols)));
+  justify-content: center;
+}
+
+/* Lange spelersnamen (13–20 tekens): kleinere letter, nooit buiten beeld. */
+.player-name.is-long,
+.player-name.is-xlong {
+  max-width: 100%;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.player-name.is-long {
+  font-size: clamp(24px, 7.4vw, 34px);
+}
+.player-name.is-xlong {
+  font-size: clamp(20px, 6.2vw, 28px);
+}
+
+/* Drie of vier rondes in de kopregel: compactere badges, en de knop toont
+   alleen "Uitslagen ›" (zoals al op smalle schermen). */
+.rounds-many .round,
+.nav-row .rounds-many .round {
+  padding: 4px 7px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.nav-row:has(.rounds-many) .nav-link-long {
+  display: none;
+}
+@media (max-width: 380px) {
+  .nav-row .rounds-many {
+    gap: 3px;
+  }
+  .nav-row .rounds-many .round {
+    padding: 3px 5px;
+    font-size: 10px;
+    letter-spacing: 0.02em;
+  }
+}
+
+/* Overzicht met een grotere pool (raster tot 5-5 of 6-6). */
+.grid-wide .score-grid,
+.grid-wide .score-row,
+.grid-wide .grid-axes {
+  gap: 4px;
+}
+.grid-wide .grid-cell {
+  min-height: 42px;
+  border-radius: 7px;
+}
+.grid-wide .grid-score {
+  font-size: 16px;
+}
+.grid-wide .grid-owner {
+  font-size: clamp(9px, 2.5vw, 11px);
+}
+.grid-7 .grid-cell {
+  min-height: 38px;
+}
+.grid-7 .grid-score {
+  font-size: 14px;
+}
+.grid-7 .grid-owner {
+  font-size: clamp(8px, 2.2vw, 10px);
+}
+.grid-7 .is-free .grid-owner {
+  font-size: 7px;
+  letter-spacing: 0.06em;
+}
+.grid-wide .grid-other {
+  margin-left: 26px;
+}
+/* Uitslagen die niet in de pool zitten: zichtbaar als vak, maar niet beschikbaar. */
+.grid-cell.is-excluded {
+  background: transparent;
+  border: 1px dashed rgb(159 176 214 / 0.14);
+  color: rgb(159 176 214 / 0.28);
 }

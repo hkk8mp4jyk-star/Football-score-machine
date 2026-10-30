@@ -15,14 +15,15 @@ export const mod = (n, m) => ((n % m) + m) % m
 const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
 
 // p0: startpositie (in symbolen), target: symboolindex waarop de rol stopt,
-// totalMs: tijd tot de rol helemaal stilstaat (inclusief terugveren).
-export function buildProfile(p0, target, totalMs) {
+// totalMs: tijd tot de rol helemaal stilstaat (inclusief terugveren),
+// symbols: aantal symbolen op de rol (standaard 0–4 + ★).
+export function buildProfile(p0, target, totalMs, symbols = REEL_SYMBOLS) {
   const T = totalMs / 1000
   const Tm = T - SETTLE
   const effective = Tm - ACCEL / 2 - DECEL / 2
   const wanted = p0 + TOP_SPEED * effective - OVERSHOOT
   let land = Math.ceil(wanted)
-  land += mod(target - land, REEL_SYMBOLS)
+  land += mod(target - land, symbols)
   const pEnd = land + OVERSHOOT
   const v = (pEnd - p0) / effective
   const pA = p0 + (v * ACCEL) / 2

@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
-import { PARTICIPANTS } from '../game/config.js'
+import { DEFAULT_CONFIG } from '../game/gameConfig.js'
 
 // Compact invoervenster voor de organisator: deelnemer en winnend bod.
-export default function AuctionSetup({ initial, onConfirm, onClose }) {
+// `players`: de spelers van dit spel in speelvolgorde (standaard de DEMO).
+export default function AuctionSetup({ initial, onConfirm, onClose, players = DEFAULT_CONFIG.players }) {
   const [participant, setParticipant] = useState(initial?.participant ?? null)
   const [bid, setBid] = useState(initial?.bid != null ? String(initial.bid).replace('.', ',') : '')
   const inputRef = useRef(null)
@@ -28,14 +29,14 @@ export default function AuctionSetup({ initial, onConfirm, onClose }) {
 
         <span className="info-label">Deelnemer</span>
         <div className="name-grid" role="radiogroup" aria-label="Deelnemer">
-          {PARTICIPANTS.map((name, i) => (
+          {players.map(({ id, name }) => (
             <button
-              key={name}
+              key={id}
               type="button"
               role="radio"
-              aria-checked={participant === i}
-              className={`name-chip ${participant === i ? 'is-active' : ''}`}
-              onClick={() => setParticipant(i)}
+              aria-checked={participant === id}
+              className={`name-chip ${participant === id ? 'is-active' : ''}`}
+              onClick={() => setParticipant(id)}
             >
               {name}
             </button>

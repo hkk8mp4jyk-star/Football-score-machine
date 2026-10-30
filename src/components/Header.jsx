@@ -1,4 +1,4 @@
-import { PARTICIPANTS, ROUNDS } from '../game/config.js'
+import { ROUNDS } from '../game/config.js'
 
 export function Logo({ compact }) {
   return (
@@ -21,10 +21,10 @@ export function MenuButton({ onClick }) {
   )
 }
 
-export function RoundBadges({ round }) {
+export function RoundBadges({ round, rounds = ROUNDS }) {
   return (
-    <div className="rounds" aria-label={`Ronde ${round} van ${ROUNDS}`}>
-      {Array.from({ length: ROUNDS }, (_, i) => i + 1).map((r) => (
+    <div className={`rounds ${rounds > 2 ? 'rounds-many' : ''}`.trim()} aria-label={`Ronde ${round} van ${rounds}`}>
+      {Array.from({ length: rounds }, (_, i) => i + 1).map((r) => (
         <span key={r} className={`round ${r === round ? 'is-active' : ''} ${r < round ? 'is-done' : ''}`}>
           Ronde {r}
         </span>
@@ -34,10 +34,14 @@ export function RoundBadges({ round }) {
 }
 
 // Grote naam met daaronder een subtiele regel ('Hierna: …' of 'Draait voor …').
+// Lange namen (instelbaar spel, max. 20 tekens) krijgen een kleinere letter;
+// namen tot 12 tekens blijven ongewijzigd.
+const nameSize = (name) => ([...name].length > 16 ? ' is-xlong' : [...name].length > 12 ? ' is-long' : '')
+
 export function PlayerSpot({ name, sub }) {
   return (
     <div className="player-spot">
-      <span key={name} className="player-name">
+      <span key={name} className={`player-name${nameSize(name)}`}>
         {name}
       </span>
       {sub && <span className="player-next">{sub}</span>}

@@ -7,9 +7,9 @@ Digitale fruitautomaat voor een voetbalpool. React-app (prototype
 goedgekeurd) die stap voor stap een instelbaar multiplayer-spel wordt via
 Supabase V2 (1–12 spelers, 1–4 vaste rondes, eigen pool, optionele veiling).
 Backend (database, Edge Function `game`, live tests 5A/5B) staat op V2 met de
-oude, vaste spelregels. **Huidige stand: plan F1–F12 (§10); F1 (engine
-instelbaar) lokaal klaar en getest, wacht op akkoord voor F2.** Elke fase
-pas na expliciet akkoord van de gebruiker.
+oude, vaste spelregels. **Huidige stand: plan F1–F12 (§10); F1 (engine)
+en F2 (machine-UI instelbaar) klaar en goedgekeurd; F3 wacht op opdracht.** Elke fase pas na expliciet akkoord van de
+gebruiker. **Commit/push alleen na expliciete toestemming per keer.**
 
 ---
 
@@ -78,10 +78,13 @@ pas na expliciet akkoord van de gebruiker.
   Organisator kiest koper + bod, geeft de beurt vrij; alleen die koper krijgt
   SPIN; organisator kan namens de koper draaien; bod telt op bij het
   persoonlijke totaal.
-- **Veilingtegels**: 1–4 op één rij **boven** de machine; 5 = 3+2, 6 = 3+3,
-  7 = 4+3, 8 = 4+4, 9 = 5+4, 10 = 5+5. Nooit groter dan de goedgekeurde tegels
-  bij 4 per rij; bij 9/10 kleiner mag. Getrokken tegels verdwijnen op hun
-  plek, niets schuift; vormgeving en animatie blijven.
+- **Veilingtegels**: 1–4 op één rij **boven** de machine; 5–10 eerste rij
+  boven en tweede rij onder de machine: 5 = 3+2, 6 = 3+3, 7 = 4+3, 8 = 4+4,
+  9 = 5+4, 10 = 5+5 (`auctionRows(n)`). Eén tegelbreedte per spel = breedte bij
+  `max(4, bovenste rij)` kolommen: nooit groter dan de goedgekeurde tegels bij
+  4 per rij, bij 9/10 smaller; rijen met minder tegels gecentreerd. Getrokken
+  tegels verdwijnen op hun plek, niets schuift; vormgeving en animatie
+  blijven. Bij 0 kavels geen veilingscherm (direct eindstand).
 - **Willekeur**: geen toewijzing vooraf aan spelers of posities, geen vooraf
   gegenereerde volgorde; bij elke SPIN kiest de server cryptografisch uniform
   één uitslag uit de rest, die definitief verdwijnt; ook de organisator heeft
@@ -218,7 +221,7 @@ src/game/timeline.js   alle vertragingen per draai (commit/release/tegels)
 src/game/view.js       deriveView(state, now, ack) → wat het scherm toont
 src/game/clock.js      gedeelde klok met offset (servertijd)
 src/game/random.js     secureRandomInt (crypto, rejection sampling), secureId
-src/game/reelMotion.js bewegingsprofiel van de rollen
+src/game/reelMotion.js bewegingsprofiel van de rollen (buildProfile(p0, doel, ms, symbolen))
 src/game/money.js      bedragen in centen en opmaak
 src/game/useGame.js    lokale demo-adapter (localStorage 'fsm-demo-state')
 src/App.jsx            schermen, rollen (organisator/deelnemer), geluid
@@ -226,6 +229,32 @@ src/components/*       MainScreen, AuctionScreen, Header, SlotMachine, Reel,
                        Overview, AuctionSetup, DemoMenu, MegaWin, OtherBanner
 src/audio/sound.js     synthetische geluiden
 ```
+
+**Instellingen in de schermen (F2)**: geen nieuwe props-ketens; elk scherm
+leest `configOf(state)` uit de spelstatus die het al kreeg.
+- `MainScreen`: `turnOrder`/`drawTurns`/`playerName`, `RoundBadges rounds`,
+  "Trekking x van N×R", "Hierna: … / Veiling / Eindstand", knop "Bekijk de
+  eindstand" i.p.v. "Start de veiling" als er geen veiling is.
+- `AuctionScreen`: namen, "Kavel x van A", `auctionRows`; rijen met 4 tegels
+  bij 4 kolommen houden de oorspronkelijke opmaak, andere krijgen
+  `lot-row-fixed` + `--cols`; onderste rij alleen als er tegels zijn.
+- `SlotMachine`/`Reel`/`reelMotion`/`reelTargets(id, symbolen)`: rol met
+  `reelSymbolsFor(config)` symbolen: 6 (0–4 + ★, DEMO) of 8 (0–6 + ★) als de
+  pool een score boven 4 bevat; **de ster is altijd het laatste symbool**
+  (standaard plek 5, groot plek 7; een 5 of 6 is dus nooit een ster).
+  Timing en beweging ongewijzigd.
+- `Overview`: raster `gridGoalsFor(config)` (0–4, of tot de hoogste score in de
+  pool; klassen `grid-wide grid-6/7`, `--grid-cols`); scores buiten de pool
+  `is-excluded` (gedimd, stippelrand, zonder "Vrij"); per deelnemer in
+  speelvolgorde met `priceCents`.
+- `AuctionSetup` (`players`), `DemoMenu` (`config`), `App` (MEGA via
+  `spinIsMega(spin)`, "Alle P uitslagen …").
+- `Header`: `PlayerSpot` lange namen (> 12 tekens `is-long`, > 16 `is-xlong`);
+  `RoundBadges` bij 3–4 rondes `rounds-many` (compacter; knop toont dan
+  "Uitslagen ›", via `:has()`).
+- CSS: één blok "Instelbare spellen (F2)" onderaan `index.css`, alleen nieuwe
+  klassen; enige wijziging in bestaande CSS: `repeat(var(--grid-cols, 5), …)`
+  (zonder variabele identiek).
 
 **Engine-principes** (moet ongewijzigd ook op de server werken):
 - State (versie 3): `{version: 3, config, phase:'draw'|'auction'|'finished',
@@ -553,6 +582,24 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   rondes nu volledig afgespeeld.
 - **Fase 2** (goedgekeurd): schema, RLS, `commit_room_state`, DB-tests
   (52/52).
+- **F2 machine-UI instelbaar (30-10-2026, lokaal)**: `npm test` → **196
+  tests** (160 + 36 in `tests/ui-config.test.jsx`, componenten gerenderd met
+  `react-dom/server`): DEMO-HTML van 16 schermen identiek aan de componenten
+  van vóór F2 (`tests/fixtures/demo-markup-v2.json`, generator
+  `tests/demoMarkup.jsx`); rollen 5/6 (doelen, ster, beweging en timing bij 6
+  en 8 symbolen); 1–12 × 1–4 naam/slang/badges/teller/"Hierna" bij elke beurt;
+  3–4 rondes compact; lange namen; zonder veiling "Bekijk de eindstand";
+  tegelindeling 1–10, rij boven/onder, vaste posities na verkoop; overzicht
+  standaard 5×5, alle 50 (7×7), deels geselecteerd (gedimd); per deelnemer
+  €0 en €7,50 + biedingen; veilingvenster met eigen spelers; MEGA eigen lijst.
+  **DEMO browser**: oude build (vóór F1) vs. F2-build, vaste klok,
+  `animations: 'disabled'`: **16/16 schermen pixel-identiek** (7 spelverloop +
+  overzicht beide tabs, DEMO-menu, veilingvenster, veiling-overzicht/-menu,
+  knop eindstand, eindstand beide tabs; opgeslagen v2-standen). **Visuele
+  controle** nieuwe instellingen: 22 opnames × 4 breedtes (320, 390, 430,
+  1280 px), geen horizontaal scrollen, geen consolefouten; bevinding 4 rondes
+  overlapten de knop "Uitslagen bekijken" → opgelost met `rounds-many`
+  (gemeten ruimte bij 320 px 14 px, bij 390 px 46 px).
 - **F1 engine instelbaar (30-10-2026, lokaal)**: `npm test` → **160 tests**
   (120 bestaande ongewijzigd groen + 40 nieuw in `tests/gameConfig.test.js`
   en `tests/engine-config.test.js`): 50 uitslagen; slangvolgorde voor alle
@@ -625,8 +672,8 @@ voorlopig overgeslagen.
 
 | Fase | Inhoud | Waar | Status |
 |---|---|---|---|
-| **F1** | Engine instelbaar (§5): 1–12 spelers, 1–4 rondes, slang, pool 0-0…6-6 + OVERIG, MEGA per uitslag, prijs (ook €0), veiling 0–10, namen/volgorde; DEMO = standaard | L | **klaar (30-10-2026)**, wacht op akkoord F2 |
-| F2 | Machine-UI instelbaar: namen/volgorde uit `config`, rondebadges R, "Trekking x van N×R", "Bekijk de eindstand" bij A = 0, tegelindeling 1–10 (max. tegelgrootte), rollen tot 6 alleen bij pool > 4, raster tot 6-6, prijs/pot; DEMO pixel-identiek, afwijkende instellingen eerst als schermafbeelding ter goedkeuring | L | |
+| **F1** | Engine instelbaar (§5): 1–12 spelers, 1–4 rondes, slang, pool 0-0…6-6 + OVERIG, MEGA per uitslag, prijs (ook €0), veiling 0–10, namen/volgorde; DEMO = standaard | L | **klaar en goedgekeurd** (commit a9e5b88) |
+| **F2** | Machine-UI instelbaar: namen/volgorde uit `config`, rondebadges R, "Trekking x van N×R", "Bekijk de eindstand" bij A = 0, tegelindeling 1–10 (max. tegelgrootte), rollen tot 6 alleen bij pool > 4, raster tot 6-6, prijs per trekking; DEMO pixel-identiek | L | **klaar en goedgekeurd** (30-10-2026) |
 | F3 | Server: wachtkamer, `join_room(code, naam)`, `update_settings`, `set_order`/`shuffle_order` (server-crypto), `remove_player`, `start_game` (volledige validatie, `validateConfig`), SPIN/veiling pas na start, terugkeer via `lookup_room`; migratie 3 + D8-triggers + `security.sql` in PGlite; unittests | L | |
 | F4 | Migratie 3 + `db:test` | V2 | |
 | F5 | Uitrol `game` + live tests 5A/5B aangepast aan wachtkamer/start | V2 | |

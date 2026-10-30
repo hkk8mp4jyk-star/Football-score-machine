@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Reel from './Reel.jsx'
-import { AWAY_TEAM, HOME_TEAM, TIMING, reelTargets } from '../game/config.js'
+import { AWAY_TEAM, HOME_TEAM, REEL_SYMBOLS, TIMING, reelTargets } from '../game/config.js'
 import { buzz, sfx } from '../audio/sound.js'
 
 function Bulbs({ count, side }) {
@@ -16,10 +16,11 @@ function Bulbs({ count, side }) {
 // De fruitautomaat. Ontvangt een `spin` uit de spelstatus en laat beide
 // rollen synchroon op `spin.startedAt` draaien. Na de laatste rol meldt hij
 // `onSettled`. In multiplayer starten alle telefoons zo tegelijk.
-export default function SlotMachine({ spin, restResultId, compact = false, onSettled }) {
+// `symbols`: aantal symbolen per rol (6 = 0–4 + ★, 8 = 0–6 + ★).
+export default function SlotMachine({ spin, restResultId, compact = false, onSettled, symbols = REEL_SYMBOLS }) {
   const [mode, setMode] = useState('idle') // idle | spinning | win
   const [stopped, setStopped] = useState(0)
-  const targets = spin ? reelTargets(spin.resultId) : restResultId ? reelTargets(restResultId) : [0, 0]
+  const targets = spin ? reelTargets(spin.resultId, symbols) : restResultId ? reelTargets(restResultId, symbols) : [0, 0]
   const settledRef = useRef(onSettled)
   settledRef.current = onSettled
 
@@ -60,6 +61,7 @@ export default function SlotMachine({ spin, restResultId, compact = false, onSet
             onStop={() => handleStop(1)}
             onTick={stopped < 1 ? sfx.tick : undefined}
             label={compact ? null : HOME_TEAM}
+            symbols={symbols}
           />
           <div className="reel-dash" aria-hidden="true">
             <span />
@@ -72,6 +74,7 @@ export default function SlotMachine({ spin, restResultId, compact = false, onSet
             onStop={() => handleStop(2)}
             onTick={stopped >= 1 ? sfx.tick : undefined}
             label={compact ? null : AWAY_TEAM}
+            symbols={symbols}
           />
         </div>
         <Bulbs count={compact ? 7 : 11} side="bottom" />

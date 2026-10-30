@@ -1,33 +1,46 @@
 import { useState } from 'react'
-import { GOALS, OTHER_ID, PARTICIPANTS, RESULT_BY_ID } from '../game/config.js'
+import { OTHER_ID, RESULT_BY_ID } from '../game/config.js'
+import { configOf, gridGoalsFor, playerName } from '../game/gameConfig.js'
 import { drawValueCents, formatCents, totalCents } from '../game/money.js'
 
 function RemainingGrid({ state }) {
+  const config = configOf(state)
+  const goals = gridGoalsFor(config) // standaard 0–4; groter alleen bij een grotere pool
+  const inPool = new Set(config.pool)
   const owner = Object.fromEntries(state.draws.map((d) => [d.resultId, d]))
   const cell = (id) => {
+    // Uitslagen die niet in de pool zitten, tonen we gedimd en zonder "Vrij".
+    if (!inPool.has(id)) {
+      return (
+        <div key={id} className="grid-cell is-excluded" aria-label={`${id} doet niet mee`}>
+          <span className="grid-score">{id}</span>
+        </div>
+      )
+    }
     const d = owner[id]
     return (
       <div key={id} className={`grid-cell ${d ? 'is-taken' : 'is-free'} ${id === OTHER_ID ? 'grid-other' : ''}`}>
         <span className="grid-score">{id === OTHER_ID ? 'Overige uitslagen' : id}</span>
-        <span className="grid-owner">{d ? PARTICIPANTS[d.participant] : 'Vrij'}</span>
+        <span className="grid-owner">{d ? playerName(config, d.participant) : 'Vrij'}</span>
       </div>
     )
   }
+  const wide = goals.length > 5
   return (
-    <div className="tab-body">
+    <div className={`tab-body ${wide ? `grid-wide grid-${goals.length}` : ''}`.trim()} style={wide ? { '--grid-cols': goals.length } : undefined}>
       <div className="grid-axes">
         <span className="axis-corner" />
-        {GOALS.map((a) => (
+        {goals.map((a) => (
           <span key={a} className="axis-label">
             {a}
           </span>
         ))}
       </div>
       <div className="score-grid">
-        {GOALS.map((h) => (
+        {goals.map((h) => (
           <div key={h} className="score-row">
             <span className="axis-label">{h}</span>
-            {GOALS.map((a) => cell(`${h}-${a}`))}
+            {goals.map((a) => cell(`${h}-${a}`))}
           </div>
         ))}
         {cell(OTHER_ID)}
@@ -37,18 +50,19 @@ function RemainingGrid({ state }) {
 }
 
 function PerParticipant({ state }) {
+  const config = configOf(state)
   return (
     <div className="tab-body">
       <ul className="people">
-        {PARTICIPANTS.map((name, i) => {
-          const mine = state.draws.filter((d) => d.participant === i)
+        {config.players.map(({ id, name }, i) => {
+          const mine = state.draws.filter((d) => d.participant === id)
           return (
-            <li key={name} className="person">
+            <li key={id} className="person">
               <div className="person-head">
                 <span className="person-num">{i + 1}</span>
                 <span className="person-name">{name}</span>
                 <span className="person-meta">
-                  {mine.length} {mine.length === 1 ? 'uitslag' : 'uitslagen'} · <b>{formatCents(totalCents(mine))}</b>
+                  {mine.length} {mine.length === 1 ? 'uitslag' : 'uitslagen'} · <b>{formatCents(totalCents(mine, config.priceCents))}</b>
                 </span>
               </div>
               <div className="chips">
@@ -57,7 +71,7 @@ function PerParticipant({ state }) {
                   <span key={d.resultId} className="chip">
                     <span className="chip-score">{RESULT_BY_ID[d.resultId].other ? 'Overig' : d.resultId}</span>
                     <i className="chip-sep" aria-hidden="true" />
-                    <small>{formatCents(drawValueCents(d))}</small>
+                    <small>{formatCents(drawValueCents(d, config.priceCents))}</small>
                   </span>
                 ))}
               </div>
