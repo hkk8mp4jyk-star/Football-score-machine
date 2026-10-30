@@ -6,8 +6,9 @@ gebruiker: **Nederlands**. De gebruiker werkt op **mobiel**.
 Digitale fruitautomaat voor de jaarlijkse voetbalpool met negen vrienden.
 React-app (prototype goedgekeurd) die stap voor stap multiplayer wordt via
 Supabase. Fase 1 en 2 zijn klaar en goedgekeurd; fase 3 (Edge Function) is
-gebouwd en wacht op akkoord. **Fase 4 alleen starten na expliciet akkoord van
-de gebruiker.**
+gebouwd. Overstap naar een nieuw Supabase-project (V2) is lokaal voorbereid;
+de database-installatie daar wacht op akkoord. **Fase 4 alleen starten na
+expliciet akkoord van de gebruiker.**
 
 ---
 
@@ -152,9 +153,25 @@ src/audio/sound.js     synthetische geluiden
 
 ## 6. Multiplayer-architectuur en Supabase-config
 
-- Supabase-project **`nptulnnuejivwcgcltuy`** ("Football Score Machine."),
-  regio eu-west-1, Postgres 17. (Overal gecontroleerd: `README.md`,
-  `scripts/supabase.mjs`.)
+- Supabase-project **V2: `twzjsmxydnfmowrmffsl`** ("football-score-machine-v2"),
+  organisatie "Lars Projects", regio **eu-west-3 (Paris)**, Postgres 17, Free,
+  URL `https://twzjsmxydnfmowrmffsl.supabase.co`. Standaard in
+  `scripts/supabase.mjs` en `scripts/live-test.mjs`.
+  - Handmatig ingesteld (door gebruiker): Anonymous sign-ins AAN, Allow new
+    users to sign up AAN, manual linking UIT, sessietime-outs 0 (never),
+    access token expiry 3600 s, refresh token protection AAN, Data API AAN,
+    exposed schemas `public` + `graphql_public`, **Automatically expose new
+    tables UIT**, pool size automatisch.
+  - Gevolg van "expose UIT" (gecontroleerd via `pg_default_acl`): nieuwe
+    tabellen in `public` geven anon/authenticated/service_role alleen
+    truncate/references/trigger/maintain, nieuwe functies en sequences alleen
+    `postgres`. Onze migraties verlenen alles expliciet; `security.sql` toetst
+    dat.
+  - Token (Network secret voor api.supabase.com) heeft toegang tot V2, niet
+    `projects_read`. Schrijfrechten (migratie/deploy) nog niet bewezen.
+- **Oud project `nptulnnuejivwcgcltuy`** (eu-west-1): **defect** (Auth/REST
+  HTTP 521 na herstarts, zie Openstaande punten). Niet meer gebruiken, niet
+  wijzigen; blijft voorlopig bestaan.
 - Deelnemers loggen in via **anonieme Supabase-login** (geen accounts of
   wachtwoorden). Live te testen met `npm run fn:test` (zie §7b).
 - Hosting: **GitHub Pages** (`.github/workflows/pages.yml`: `npm ci`,
@@ -169,9 +186,9 @@ src/audio/sound.js     synthetische geluiden
   npm-scripts). Andere ref via `SUPABASE_PROJECT_REF`; lokaal eventueel
   `SUPABASE_ACCESS_TOKEN`. De Management API geeft bij veel verzoeken HTTP 429;
   het script wacht dan en probeert opnieuw.
-- **Netwerk in Claude Code-omgeving**: `api.supabase.com` is bereikbaar,
-  `nptulnnuejivwcgcltuy.supabase.co` (functies/auth) alleen als de gebruiker
-  dat domein in de omgevingsinstellingen toestaat (nodig voor `fn:test`).
+- **Netwerk in Claude Code-omgeving**: `api.supabase.com` en
+  `twzjsmxydnfmowrmffsl.supabase.co` zijn toegestaan (door de gebruiker in de
+  omgevingsinstellingen; nodig voor `fn:test`).
 
 ## 7. Database en beveiliging (fase 2, uitgevoerd)
 
@@ -194,8 +211,15 @@ het script vergelijkt op **naam**).
   de eigen kamer hoort; `anon` niets; **geen** insert/update/delete-policies.
   `service_role` heeft expliciete rechten.
 - `public.commit_room_state(room, expected_version, state, draw?)`: zet status
-  alleen bij juiste versie (anders `version_conflict`, 40001) en legt de
+  alleen bij juiste versie (anders `version_conflict`, **PT409**) en legt de
   trekking in dezelfde transactie vast. Alleen `service_role` mag uitvoeren.
+- **Migratie 2** `supabase/migrations/20261030120000_version_conflict_pt409.sql`
+  (naam `version_conflict_pt409`): alleen de foutcode 40001 → `PT409`
+  (`create or replace`, rechten opnieuw gezet). De oorspronkelijke migratie
+  blijft ongewijzigd (geschiedenis). Reden: PostgREST herhaalt 40001
+  (serialization_failure) automatisch → eindeloze lus bij een verouderde
+  versie; PT409 wordt niet herhaald en geeft HTTP 409. **Nooit 40001/40P01
+  gebruiken voor eigen fouten.**
 - Realtime-publicatie: `rooms` en `seats`.
 - Tests: `supabase/tests/security.sql` (51 checks, in een rollback-transactie)
   + echte concurrency-test (10 gelijktijdige commits → precies 1 slaagt,
@@ -205,8 +229,8 @@ het script vergelijkt op **naam**).
 ## 7b. Edge Function `game` (fase 3, gebouwd)
 
 Eén functie, uitgerold als `game` (`npm run fn:deploy`), URL
-`https://nptulnnuejivwcgcltuy.supabase.co/functions/v1/game`. Geen
-schemawijzigingen in fase 3.
+`https://twzjsmxydnfmowrmffsl.supabase.co/functions/v1/game` (V2: nog niet
+uitgerold). Schemawijziging na fase 3: alleen migratie 2 (PT409).
 
 ```
 supabase/functions/game/index.ts  Deno-ingang: token controleren, service_role-client
@@ -243,10 +267,13 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   engine `SPIN_START` met `secureRandomInt` → `commit_room_state(versie,
   status, trekking)`. Wat de telefoon verder meestuurt (uitslag, deelnemer,
   tijd) wordt genegeerd.
-- **Dubbel/gelijktijdig**: bij `version_conflict` laadt de server opnieuw en
-  controleert alles opnieuw (max 3 pogingen); een tweede SPIN voor dezelfde
-  beurt wordt dan `turn_not_released`. Verzoek opnieuw versturen na
-  verbindingsverlies kan dus nooit een tweede trekking geven.
+- **Dubbel/gelijktijdig**: bij `version_conflict` (PT409 → `StoreConflict`)
+  laadt de server opnieuw en controleert alles opnieuw (**max 3 pogingen**,
+  daarna `conflict` 409); een tweede SPIN voor dezelfde beurt wordt dan
+  `turn_not_released`. supabase-js (postgrest-js 2.118) herhaalt zelf alleen
+  GET/HEAD/OPTIONS bij 503/520 (max 3), nooit de RPC-POST. Er is dus nergens
+  een onbeperkte herhaling. Verzoek opnieuw versturen na verbindingsverlies
+  kan nooit een tweede trekking geven.
 - **Foutcodes**: `unauthorized` 401, `invalid_input`/`unknown_action`/
   `invalid_json` 400, `not_your_turn`/`not_organizer` 403, `room_not_found`
   404 (ook voor niet-leden), `seat_taken`/`already_seated`/
@@ -258,6 +285,23 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   functie-omgeving, beveiligd met een eenmalige willekeurige code; dit script
   ziet nooit een API-sleutel), speelt alle scenario's met echte tokens en
   ruimt hulpfunctie, testkamers en testgebruikers altijd op.
+
+### Veilige installatie- en testprocedure V2 (elke stap apart akkoord)
+
+1. Lokaal (gedaan): code + `npm test` + `npm run build`; extra controle met
+   PGlite (scratchpad, niet in repo): beide migraties + `security.sql` met
+   nagebootste Supabase-rollen en "expose UIT" → 55/55; tegenproef zonder
+   migratie 2 faalt op de PT409-controles.
+2. `npm run db:migrate` (2 migraties) → read-only nacontrole: rechten, RLS,
+   `private`, publicatie, `pg_get_functiondef` bevat PT409.
+3. `npm run db:test` (maakt tijdelijk testkamers, ruimt op; concurrency via
+   Management API, niet via PostgREST).
+4. `npm run fn:deploy` → één verzoek zonder token: verwacht 401.
+5. Live test gefaseerd: eerst zonder gelijktijdigheid, dan 2 gelijktijdige
+   SPIN's, pas daarna 10. Tussendoor controleren: geen
+   `idle in transaction`, geen `version_conflict`-stroom in de logs, health
+   groen. **Stopcriterium**: één 500 of hangende verbinding = direct stoppen.
+   Opruimen moet altijd draaien (eerder liet een afgebroken run data achter).
 
 ## 8. Afspraken: trekking, sync, animaties, herstel
 
@@ -297,7 +341,13 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   (52 + 6 servertests tegen de echte database als service_role, incl. volledig
   spel 18+8 en gelijktijdigheid; database daarna leeg). Rooktest in Deno 2.5
   (`deno check` + handler) geslaagd.
-- **Live test `fn:test` (30-10-2026, domein toegestaan)**: anonieme login
+- **V2-voorbereiding (lokaal)**: `npm test` → **88 tests** (+3: PT409 →
+  versieconflict, 23505/overige fouten, HTTP 409 i.p.v. 500; conflicttest
+  telt precies 3 pogingen). `security.sql` +4 controles (PT409 i.p.v. 40001,
+  expliciete serverrechten incl. sequence, expliciet leesrecht +
+  `is_room_member`, geen bijrechten voor deelnemers). `deno check` en
+  Deno-rooktest geslaagd. Nog niets op V2 uitgevoerd.
+- **Live test `fn:test` (30-10-2026, oud project, domein toegestaan)**: anonieme login
   werkt (echte Supabase Auth, `is_anonymous = true`); geldig/ongeldig/vervalst/
   verwijderd token, servertijd, kamer + 9 namen, autorisatie (geen
   organisatoracties of andermans SPIN), namens draaien, verbinding weg tijdens
@@ -321,8 +371,8 @@ Commando's: `npm run dev` (vite --host), `npm test`, `npm run build`,
 
 ## 10. Nog te bouwen (niet zonder akkoord starten)
 
-3. ~~Edge Function~~ — gebouwd (§7b); alleen de live test `fn:test` staat
-   nog open.
+3. ~~Edge Function~~ — gebouwd (§7b); installatie op V2 + live test volgens
+   de veilige procedure (§7b) staan nog open.
 4. **Kamer-/aanmeldschermen** in de bestaande stijl (kamer maken,
    uitnodigingslink/code, naam kiezen). Publieke key in frontend-config:
    eerst met de gebruiker afstemmen hoe die wordt aangeleverd.
@@ -341,8 +391,8 @@ Commando's: `npm run dev` (vite --host), `npm test`, `npm run build`,
 - Token mist `advisors_read` (security advisors niet op te vragen).
 - Supabase free plan pauzeert na 7 dagen inactiviteit.
 - Het access token heeft volledige rechten: na de bouw intrekken/vernieuwen.
-- **Eerst oplossen vóór fase 4**: foutcode 40001 in `commit_room_state`
-  laat PostgREST vastlopen bij gelijktijdige SPIN's (zie §9, fase 3).
+- **Opgelost in code (migratie 2, nog niet geïnstalleerd)**: foutcode 40001
+  in `commit_room_state` liet PostgREST vastlopen bij gelijktijdige SPIN's.
 - **Storing 30-10-2026 (bevestigd, read-only onderzocht)**: PostgREST herhaalde
   de mislukte `commit_room_state` eindeloos (log `version_conflict` ~1×/s van
   08:46 tot 09:12, ook zonder clients; 3,64 mln. request-setup-statements en

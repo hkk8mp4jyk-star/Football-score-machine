@@ -134,7 +134,7 @@ select pg_temp.as_role('service_role');
 select pg_temp.check('server legt status vast en verhoogt de versie',
   public.commit_room_state('11111111-1111-1111-1111-111111111111', 0, '{"phase":"draw","turn":1}') = 1);
 select pg_temp.expect_error('tweede verzoek op dezelfde versie wordt geweigerd (dubbele SPIN)',
-  $q$select public.commit_room_state('11111111-1111-1111-1111-111111111111', 0, '{"phase":"draw","turn":99}')$q$, '40001');
+  $q$select public.commit_room_state('11111111-1111-1111-1111-111111111111', 0, '{"phase":"draw","turn":99}')$q$, 'PT409');
 select pg_temp.check('na de geweigerde poging is de status ongewijzigd',
   (select state ->> 'turn' from public.rooms where code = 'TEST22') = '1');
 
@@ -209,6 +209,24 @@ select pg_temp.check('alleen de server mag de serverfunctie uitvoeren',
   has_function_privilege('service_role', 'public.commit_room_state(uuid, integer, jsonb, jsonb)', 'EXECUTE')
   and not has_function_privilege('authenticated', 'public.commit_room_state(uuid, integer, jsonb, jsonb)', 'EXECUTE')
   and not has_function_privilege('anon', 'public.commit_room_state(uuid, integer, jsonb, jsonb)', 'EXECUTE'));
+select pg_temp.check('versieconflict gebruikt PT409, niet 40001 (anders herhaalt PostgREST eindeloos)',
+  pg_get_functiondef('public.commit_room_state(uuid, integer, jsonb, jsonb)'::regprocedure) like '%errcode = ''PT409''%'
+  and pg_get_functiondef('public.commit_room_state(uuid, integer, jsonb, jsonb)'::regprocedure) not like '%40001%');
+-- Met "Automatically expose new tables" UIT krijgen nieuwe tabellen geen
+-- standaardrechten: alles wat het spel nodig heeft moet expliciet verleend zijn.
+select pg_temp.check('server heeft expliciet alle benodigde tabelrechten',
+  (select bool_and(has_table_privilege('service_role', t, p))
+     from unnest(array['public.rooms', 'public.seats', 'public.draws']) t,
+          unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE']) p)
+  and has_sequence_privilege('service_role', pg_get_serial_sequence('public.draws', 'id'), 'USAGE'));
+select pg_temp.check('ingelogde deelnemers hebben expliciet leesrecht (voor RLS en Realtime)',
+  (select bool_and(has_table_privilege('authenticated', t, 'SELECT'))
+     from unnest(array['public.rooms', 'public.seats', 'public.draws']) t)
+  and has_function_privilege('authenticated', 'private.is_room_member(uuid)', 'EXECUTE'));
+select pg_temp.check('deelnemers hebben geen bijrechten (truncate, trigger, references)',
+  not exists (select 1 from information_schema.role_table_grants
+              where table_schema = 'public' and table_name in ('rooms', 'seats', 'draws')
+                and grantee in ('anon', 'authenticated') and privilege_type in ('TRUNCATE', 'TRIGGER', 'REFERENCES')));
 select pg_temp.check('het hulpschema is niet bereikbaar voor niet-ingelogden',
   not has_schema_privilege('anon', 'private', 'USAGE'));
 select pg_temp.check('kamers en plaatsen worden realtime doorgegeven',

@@ -20,7 +20,7 @@ export function createSqlStore(sql) {
       return await sql(`set role service_role; ${query}`)
     } catch (e) {
       if (/ERROR:\s+23505/.test(e.message)) throw new StoreConflict('unique', e.message)
-      if (/ERROR:\s+40001/.test(e.message)) throw new StoreConflict('version', e.message)
+      if (/ERROR:\s+PT409/.test(e.message)) throw new StoreConflict('version', e.message)
       throw e
     }
   }

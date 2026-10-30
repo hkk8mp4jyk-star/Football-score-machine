@@ -37,7 +37,7 @@ export class ActionError extends Error {
 }
 
 // Door de opslag te gooien bij een unieke-sleutelfout (23505) of een
-// verouderde versie (commit_room_state → version_conflict, 40001).
+// verouderde versie (commit_room_state → version_conflict, PT409).
 export class StoreConflict extends Error {
   constructor(kind, message = kind) {
     super(message)

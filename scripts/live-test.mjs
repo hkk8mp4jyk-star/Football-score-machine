@@ -22,7 +22,7 @@ import { TURN_ORDER } from '../src/game/config.js'
 import { releaseDelay } from '../src/game/timeline.js'
 import { deriveView } from '../src/game/view.js'
 
-const REF = process.env.SUPABASE_PROJECT_REF || 'nptulnnuejivwcgcltuy'
+const REF = process.env.SUPABASE_PROJECT_REF || 'twzjsmxydnfmowrmffsl'
 const API = `https://api.supabase.com/v1/projects/${REF}`
 const FUNCTIONS = `https://${REF}.supabase.co/functions/v1`
 const HELPER = 'fsm-testlogin'

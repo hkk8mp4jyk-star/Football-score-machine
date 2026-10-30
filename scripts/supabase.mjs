@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url'
 import { serverIntegrationTests } from './server-integration.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const REF = process.env.SUPABASE_PROJECT_REF || 'nptulnnuejivwcgcltuy'
+const REF = process.env.SUPABASE_PROJECT_REF || 'twzjsmxydnfmowrmffsl'
 const API = `https://api.supabase.com/v1/projects/${REF}`
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))

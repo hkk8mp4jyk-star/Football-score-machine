@@ -87,7 +87,19 @@ draai na herladen of opnieuw verbinden gewoon op de juiste plek verder.
 
 ### Database (Supabase) — multiplayer
 
-Supabase-project `nptulnnuejivwcgcltuy` (regio eu-west-1).
+Supabase-project `twzjsmxydnfmowrmffsl` ("football-score-machine-v2", regio
+eu-west-3 Paris). Het eerdere project `nptulnnuejivwcgcltuy` is defect en wordt
+niet meer gebruikt.
+
+Migraties (`supabase/migrations`, op volgorde):
+
+1. `multiplayer_schema` — tabellen, RLS, rechten, `commit_room_state`.
+2. `version_conflict_pt409` — versieconflict meldt foutcode `PT409` in plaats
+   van 40001. PostgREST herhaalt 40001 automatisch, wat bij een verouderde
+   versie een eindeloze lus gaf; PT409 wordt een gewone HTTP 409.
+
+"Automatically expose new tables" staat uit: alle rechten die het spel nodig
+heeft, staan expliciet in de migraties.
 
 ```bash
 npm run db:status    # project, migraties en tabellen (alleen lezen)
@@ -124,6 +136,9 @@ toe met dezelfde engine en kiest zelf de uitslag.
 npm run fn:deploy    # functie uitrollen
 npm run fn:test      # live test met echte anonieme logins (ruimt alles op)
 ```
+
+Installeren en testen gaat stap voor stap: migreren, `db:test`, uitrollen,
+dan pas de live test, eerst zonder en daarna met gelijktijdige verzoeken.
 
 Acties: `time`, `create_room`, `lookup_room`, `claim_seat`, `get_room`,
 `release_seat` (organisator), `spin` (wie aan de beurt is; organisator namens

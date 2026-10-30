@@ -7,6 +7,7 @@ import { releaseDelay } from '../src/game/timeline.js'
 import { deriveView } from '../src/game/view.js'
 import { ActionError, CODE_RE, MAX_ROOMS_PER_USER, StoreConflict, createGameServer, generateRoomCode } from '../src/server/actions.js'
 import { createHttpHandler } from '../src/server/http.js'
+import { createSupabaseStore } from '../src/server/supabaseStore.js'
 import { seededRandomInt } from './helpers.js'
 import { createMemoryStore } from './memoryStore.js'
 
@@ -399,13 +400,17 @@ describe('server: foutafhandeling en herstel', () => {
     expect(store.draws).toHaveLength(1)
   })
 
-  it('blijvend conflict: nette fout, niets gewijzigd', async () => {
+  it('blijvend conflict: nette fout, niets gewijzigd, begrensd aantal pogingen', async () => {
     const store = createMemoryStore()
     const r = await fullRoom({ store })
+    let attempts = 0
     store.commitState = async () => {
+      attempts++
       throw new StoreConflict('version')
     }
-    await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'conflict')
+    const e = await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'conflict')
+    expect(e.status).toBe(409)
+    expect(attempts).toBe(3) // nooit onbeperkt opnieuw
     expect(store.draws).toHaveLength(0)
     expect(r.room().version).toBe(0)
     expect(r.room().state.spin).toBeNull()
@@ -420,6 +425,44 @@ describe('server: foutafhandeling en herstel', () => {
     await expect(r.call(ORG, { action: 'spin', roomId: r.roomId })).rejects.toThrow('verbroken')
     expect(store.draws).toHaveLength(0)
     expect(r.room().state.spin).toBeNull()
+  })
+})
+
+describe('server: foutcodes uit Supabase (PT409)', () => {
+  // Nep-client die elke aanroep met dezelfde PostgREST-fout laat eindigen.
+  function failingDb(error) {
+    const result = Promise.resolve({ data: null, error })
+    const chain = new Proxy(() => {}, { get: (_, k) => (k === 'then' ? result.then.bind(result) : () => chain) })
+    return { from: () => chain, rpc: () => result }
+  }
+  const commit = (error) => createSupabaseStore(failingDb(error)).commitState('r', 0, {}, null)
+
+  it('PT409 uit commit_room_state is een normaal versieconflict', async () => {
+    const e = await commit({ code: 'PT409', message: 'version_conflict' }).catch((x) => x)
+    expect(e).toBeInstanceOf(StoreConflict)
+    expect(e.kind).toBe('version')
+  })
+
+  it('unieke-sleutelfout (23505) is een conflict, andere fouten niet', async () => {
+    const unique = await commit({ code: '23505', message: 'duplicate key' }).catch((x) => x)
+    expect(unique).toBeInstanceOf(StoreConflict)
+    expect(unique.kind).toBe('unique')
+    const other = await commit({ code: '42501', message: 'permission denied' }).catch((x) => x)
+    expect(other).not.toBeInstanceOf(StoreConflict)
+    expect(other.message).toContain('42501')
+  })
+
+  it('versieconflict via HTTP: 409 conflict, geen 500', async () => {
+    const store = createMemoryStore()
+    const server = createGameServer({ store })
+    const { room } = await server.handle(ORG, { action: 'create_room', participant: 0 })
+    store.commitState = () => createSupabaseStore(failingDb({ code: 'PT409', message: 'version_conflict' })).commitState()
+    const http = createHttpHandler({ server, authenticate: async () => ORG, log: () => {} })
+    const res = await http(
+      new Request('https://x', { method: 'POST', headers: { Authorization: 'Bearer t' }, body: JSON.stringify({ action: 'spin', roomId: room.id }) }),
+    )
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ ok: false, error: 'conflict' })
   })
 })
 

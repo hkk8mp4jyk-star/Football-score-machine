@@ -8,7 +8,8 @@ const ROOM_COLUMNS = 'id, code, organizer_id, state, version'
 function check({ data, error }) {
   if (!error) return data
   if (error.code === '23505') throw new StoreConflict('unique', error.message)
-  if (error.code === '40001' || /version_conflict/.test(error.message ?? '')) throw new StoreConflict('version', error.message)
+  // commit_room_state meldt een verouderde versie met PT409 (PostgREST → HTTP 409).
+  if (error.code === 'PT409' || /version_conflict/.test(error.message ?? '')) throw new StoreConflict('version', error.message)
   throw new Error(`database: ${error.code ?? ''} ${error.message ?? ''}`.trim())
 }
 
