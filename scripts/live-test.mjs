@@ -99,7 +99,7 @@ async function game(token, body, { signal, rawAuth } = {}) {
   if (rawAuth !== undefined) {
     if (rawAuth) headers.Authorization = rawAuth
   } else headers.Authorization = `Bearer ${token}`
-  const res = await fetch(`${FUNCTIONS}/game`, { method: 'POST', headers, body: JSON.stringify(body), signal })
+  const res = await fetch(`${FUNCTIONS}/game`, { method: 'POST', headers, body: JSON.stringify(body), signal: signal ?? AbortSignal.timeout(30_000) })
   return { status: res.status, body: await res.json().catch(() => null) }
 }
 
@@ -193,9 +193,10 @@ async function main() {
     await step('10 gelijktijdige SPIN-verzoeken via HTTP: precies één trekking', async () => {
       const r = await Promise.all(Array.from({ length: 10 }, () => game(org.token, { action: 'spin', roomId: ctx.roomId })))
       const ok = r.filter((x) => x.status === 200)
-      assert(ok.length === 1, r.map((x) => `${x.status}:${x.body?.error ?? ''}`).join(', '))
-      assert(r.every((x) => x.status === 200 || ['turn_not_released', 'conflict'].includes(x.body?.error)), 'onverwachte fout')
+      const summary = r.map((x) => `${x.status}:${x.body?.error ?? ''}${x.status === 500 ? ' ' + x.body?.message : ''}`).join(', ')
+      assert(ok.length === 1, summary)
       ctx.spin = ok[0].body.spin
+      assert(r.every((x) => x.status === 200 || ['turn_not_released', 'conflict'].includes(x.body?.error)), `onverwachte fout: ${summary}`)
       const [c] = await sql(`select count(*)::int as n, bool_and(spun_by = '${org.id}') as by from public.draws where room_id = '${ctx.roomId}'`)
       assert(c.n === 1 && c.by, JSON.stringify(c))
     })

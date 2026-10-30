@@ -296,8 +296,25 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   herstel, versieconflict, HTTP-laag). `npm run db:test` → **58/58**
   (52 + 6 servertests tegen de echte database als service_role, incl. volledig
   spel 18+8 en gelijktijdigheid; database daarna leeg). Rooktest in Deno 2.5
-  (`deno check` + handler) geslaagd. **`npm run fn:test` (live, anonieme
-  login) nog niet gedraaid**: netwerk naar `*.supabase.co` geblokkeerd.
+  (`deno check` + handler) geslaagd.
+- **Live test `fn:test` (30-10-2026, domein toegestaan)**: anonieme login
+  werkt (echte Supabase Auth, `is_anonymous = true`); geldig/ongeldig/vervalst/
+  verwijderd token, servertijd, kamer + 9 namen, autorisatie (geen
+  organisatoracties of andermans SPIN), namens draaien, verbinding weg tijdens
+  SPIN (geen tweede trekking), plek vrijgeven: geslaagd. Opruimen geslaagd.
+  **BLOKKERENDE BEVINDING**: bij gelijktijdige SPIN's geeft
+  `commit_room_state` `version_conflict` met SQLSTATE **40001**; via PostgREST
+  levert dat `500` op én blijven de PostgREST-verbindingen hangen in
+  `idle in transaction (aborted)` (geen `idle_in_transaction_session_timeout`).
+  Na enkele conflicten hangen daarna **alle** database-aanroepen van de functie
+  (eerst gezien als hangende `create_room`). Wel: altijd precies één trekking.
+  Voorgestelde oplossing (wacht op akkoord gebruiker, schemawijziging):
+  migratie die alleen de foutcode in `commit_room_state` wijzigt naar
+  `PT409` (PostgREST → HTTP 409, geen transactie-retry), plus aanpassing van
+  `supabaseStore.js`, `security.sql` en `server-integration.mjs`; daarna
+  vastgelopen PostgREST-verbindingen laten opruimen (herstart PostgREST of
+  `pg_terminate_backend`; dat laatste werd door de veiligheidscontrole van
+  Claude Code geweigerd) en `fn:test` opnieuw.
 
 Commando's: `npm run dev` (vite --host), `npm test`, `npm run build`,
 `npm run preview`, `npm run build:artifact`, `npm run db:*`, `npm run fn:*`.
@@ -324,9 +341,9 @@ Commando's: `npm run dev` (vite --host), `npm test`, `npm run build`,
 - Token mist `advisors_read` (security advisors niet op te vragen).
 - Supabase free plan pauzeert na 7 dagen inactiviteit.
 - Het access token heeft volledige rechten: na de bouw intrekken/vernieuwen.
-- Anonieme login + live functie verifiëren: domein
-  `nptulnnuejivwcgcltuy.supabase.co` toestaan in de omgevingsinstellingen,
-  dan `npm run fn:test`.
+- **Eerst oplossen vóór fase 4**: foutcode 40001 in `commit_room_state`
+  laat PostgREST vastlopen bij gelijktijdige SPIN's (zie §9, fase 3).
+  PostgREST-verbindingen van het project staan op dit moment vast.
 - Organisator die van telefoon wisselt verliest organisatorrechten
   (`organizer_id` = oude anonieme gebruiker); overdracht bestaat nog niet.
 - Geen "spel opnieuw beginnen" online (RESET bewust niet toegestaan);
