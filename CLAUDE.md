@@ -3,17 +3,28 @@
 Overdracht voor nieuwe Claude Code-sessies. Lees dit eerst. Taal met de
 gebruiker: **Nederlands**. De gebruiker werkt op **mobiel**.
 
-Digitale fruitautomaat voor de jaarlijkse voetbalpool met negen vrienden.
-React-app (prototype goedgekeurd) die stap voor stap multiplayer wordt via
-Supabase. Fase 1 en 2 zijn klaar en goedgekeurd; fase 3 (Edge Function) is
-gebouwd. Nieuw Supabase-project (V2): database geïnstalleerd, `db:test`
-geslaagd, Edge Function `game` uitgerold, live tests **5A en 5B geslaagd**
-(PT409 via PostgREST aangetoond, 30-10-2026); 5C wacht op akkoord. **Fase 4 alleen starten na
-expliciet akkoord van de gebruiker.**
+Digitale fruitautomaat voor een voetbalpool. React-app (prototype
+goedgekeurd) die stap voor stap een instelbaar multiplayer-spel wordt via
+Supabase V2 (1–12 spelers, 1–4 vaste rondes, eigen pool, optionele veiling).
+Backend (database, Edge Function `game`, live tests 5A/5B) staat op V2 met de
+oude, vaste spelregels. **Huidige stand: plan F1–F12 (§10); F1 (engine
+instelbaar) lokaal klaar en getest, wacht op akkoord voor F2.** Elke fase
+pas na expliciet akkoord van de gebruiker.
 
 ---
 
 ## 0. Werkafspraken (altijd)
+
+- **DEMO openen**: de DEMO blijft bestaan als interne testmodus en is straks
+  (na F7) alleen bereikbaar via **`?demo`** achter het webadres, bijv.
+  `https://<gebruiker>.github.io/<repo>/?demo` of lokaal
+  `http://localhost:5173/?demo`. Er komt geen zichtbare DEMO-knop. Tot F7
+  opent de app nog direct in de DEMO. De DEMO mag niet onbedoeld veranderen
+  (standaardinstellingen, zie §1; pixel-/timingregressie bij wijzigingen).
+- **Publiceren**: ontwikkelen op de ontwikkelbranch. Pas als multiplayer
+  volledig werkt en op meerdere telefoons is getest, een voorstel doen voor
+  `main`. Samenvoegen, publiceren en deployen alleen met expliciete
+  toestemming. De verborgen DEMO moet ook na publicatie werken.
 
 - Werk in fases; na elke fase **stoppen en wachten op akkoord**.
 - Branch: `claude/multiplayer-fase-1` (bestaande multiplayer-branch). Een
@@ -37,6 +48,54 @@ expliciet akkoord van de gebruiker.**
 ---
 
 ## 1. Spelregels (definitief)
+
+### 1a. Instelbaar spel (multiplayer, besluiten D1–D11, 30-10-2026)
+
+- **Deelnemers**: 1–12. Iedereen kan een spel organiseren en doet dan zelf
+  mee (eigen naam bij aanmaken). Anderen melden zich aan met een eigen,
+  unieke naam via uitnodigingslink of kamercode (**geen QR-code**). Alleen de
+  organisator beheert (instellingen, volgorde, verwijderen vóór de start).
+- **Namen**: 1–20 tekens, spaties aan begin/eind weg, **eerste letter
+  hoofdletter**, rest zoals ingevoerd (`lars` → `Lars`, `PATRICK` →
+  `PATRICK`, `van dijk` → `Van dijk`); uniek binnen een spel ongeacht
+  hoofdletters; stuurtekens geweigerd.
+- **Volgorde**: standaard aanmeldvolgorde; organisator kan slepen of
+  "Loot volgorde"; bij de start definitief.
+- **Vaste rondes**: 1–4, **slangvolgorde** (ronde 1 vooruit, 2 achteruit,
+  3 vooruit, 4 achteruit); iedereen precies één keer per ronde.
+- **Prijs per vaste trekking**: instelbaar, voor alle vaste trekkingen gelijk;
+  in een nieuw multiplayer-spel **standaard leeg** en verplicht in te vullen
+  vóór de start; **€0,00 toegestaan**; vrije bedragen (in centen, max
+  €10.000). De DEMO houdt €10.
+- **Pool**: keuze uit **0-0 t/m 6-6 (49)** + **OVERIG (verplicht)**, dus max.
+  50. OVERIG = elke werkelijke uitslag die niet afzonderlijk in de pool staat.
+  Elke uitslag valt maximaal één keer. MEGA WIN per geselecteerde uitslag aan
+  te zetten; **OVERIG nooit MEGA WIN**. OVERIG- en MEGA WIN-animatie blijven.
+- **Veiling (optioneel)**: `A = P − N × R` (P = pool incl. OVERIG, N =
+  spelers, R = rondes), **0 ≤ A ≤ 10**. A = 0: geen veiling, klaar na de
+  laatste vaste trekking. Alle 48 combinaties van N en R zijn mogelijk mits
+  de pool klopt (12 × 4 = 48 vast; met alle 50 uitslagen → A = 2).
+  Organisator kiest koper + bod, geeft de beurt vrij; alleen die koper krijgt
+  SPIN; organisator kan namens de koper draaien; bod telt op bij het
+  persoonlijke totaal.
+- **Veilingtegels**: 1–4 op één rij **boven** de machine; 5 = 3+2, 6 = 3+3,
+  7 = 4+3, 8 = 4+4, 9 = 5+4, 10 = 5+5. Nooit groter dan de goedgekeurde tegels
+  bij 4 per rij; bij 9/10 kleiner mag. Getrokken tegels verdwijnen op hun
+  plek, niets schuift; vormgeving en animatie blijven.
+- **Willekeur**: geen toewijzing vooraf aan spelers of posities, geen vooraf
+  gegenereerde volgorde; bij elke SPIN kiest de server cryptografisch uniform
+  één uitslag uit de rest, die definitief verdwijnt; ook de organisator heeft
+  geen voorkennis. Dat de uitslag ~4,3 s vóór stilstand in netwerkverkeer te
+  zien is, is **geaccepteerd (D9)**.
+- **Registratie**: sluit bij de start; daarna geen nieuwe spelers (vergeten =
+  nieuw spel). Bestaande spelers kunnen terugkeren (zelfde browser).
+  Aanmelden en starten mogen ook gelijktijdig nooit tot een inconsistente
+  status leiden (D8, oplossing in F3/F4).
+- **Einde**: automatisch eindoverzicht voor iedereen (uitslagentabel, overzicht
+  per deelnemer, bedragen, **totale pot**), **geen winnaar**; knop "Terug naar
+  beginscherm" (geen knop "Nieuw spel"); "Deel einduitslag" als afbeelding.
+
+### 1b. Standaardspel (DEMO, `DEFAULT_CONFIG`)
 
 - **9 deelnemers.** De organisator is ook deelnemer (heeft een eigen naam/plek
   en moet dus zelf ook spinnen).
@@ -119,11 +178,42 @@ Uit `src/game/config.js` → `TIMING` en `src/game/timeline.js`:
 - De zwarte browserbalk verdwijnt pas bij installatie op beginscherm (PWA) —
   uitgesteld naar later.
 
+**Nieuwe schermen (multiplayer, in de bestaande stijl; machine ongewijzigd):**
+- **Beginscherm**: "Nieuw spel", "Meedoen", "Geschiedenis"; bij een actief
+  spel automatisch "Verder met huidig spel". Geen DEMO-knop (DEMO via `?demo`).
+- **Nieuw spel**: eigen naam → kamer → instellingen → uitnodigen → wachten →
+  volgorde → start. **Meedoen**: kamercode + naam; via een uitnodigingslink
+  (`?kamer=CODE`) direct naar de aanmelding van die kamer.
+- **Uitnodigen**: link delen (deelmenu/WhatsApp), link kopiëren, code tonen.
+- **Wachtkamer**: iedereen ziet wie er is en "wachten op de organisator";
+  alleen de organisator: instellingen, verwijderen, volgorde slepen/loten,
+  starten.
+- **Instellingen**: rondes, prijs (leeg tot ingevuld), raster 0-0 t/m 6-6 met
+  modi "Meedoen"/"MEGA WIN", OVERIG altijd aan, teller P / N × R / A met
+  directe melding; start alleen bij 0 ≤ A ≤ 10 en ingevulde prijs.
+- **Spel**: bestaande hoofd- en veilingschermen; online menu (geluid,
+  organisator: "draai namens", "plek vrijgeven"); klein verbindingsbalkje.
+  Rollen tonen 0–6 + ★ alleen als de pool scores > 4 bevat (anders
+  ongewijzigd 0–4 + ★); overzicht toont het raster van de pool.
+- **Eindscherm**: overzicht (beide tabbladen) + totale pot, "Deel einduitslag",
+  "Terug naar beginscherm"; geen winnaar.
+- **Deelafbeelding**: eigen compacte mobiele opmaak (donker/goud), boven titel
+  "Football Score Machine", speeldatum, totale pot; dan de volledige
+  uitslagentabel (spelers, uitslagen, totalen); dan per speler alle
+  uitslagen, veilingtrekkingen en bedragen. Leesbaar tot 12 spelers.
+  Delen via het deelmenu; anders opslaan als terugval.
+- **Geschiedenis** (lage prioriteit, uitstelbaar): alleen afgeronde spellen,
+  laatste 10 per speler (datum, organisator, aantal spelers, eigen totaal),
+  openen → eindoverzicht, opnieuw delen. Herkenning via de browseridentiteit
+  (andere telefoon/gewiste gegevens = niet zichtbaar).
+
 ## 5. React-architectuur en spelengine
 
 ```
-src/game/config.js     spelregels, uitslagen, volgorde, timing, MEGA-lijst
-src/game/engine.js     pure reducer, tijdgestuurd (STATE_VERSION = 2)
+src/game/config.js     standaardregels (DEMO), ALL_RESULTS (0-0…6-6 + OVERIG), grenzen, timing
+src/game/gameConfig.js spelinstellingen: DEFAULT_CONFIG, validateConfig, turnOrder (slang),
+                       drawTurns/auctionLots, normalizePlayerName, sortResults
+src/game/engine.js     pure reducer, tijdgestuurd (STATE_VERSION = 3, instellingen in de status)
 src/game/timeline.js   alle vertragingen per draai (commit/release/tegels)
 src/game/view.js       deriveView(state, now, ack) → wat het scherm toont
 src/game/clock.js      gedeelde klok met offset (servertijd)
@@ -138,9 +228,25 @@ src/audio/sound.js     synthetische geluiden
 ```
 
 **Engine-principes** (moet ongewijzigd ook op de server werken):
-- State: `{version, phase:'draw'|'auction'|'finished', turn, remaining,
-  draws[{resultId, participant, round, bid, at}], auctionBoard,
-  auctionTurn{participant,bid}|null, spin{id,resultId,participant,round,bid,startedAt}|null, lastSpin}`.
+- State (versie 3): `{version: 3, config, phase:'draw'|'auction'|'finished',
+  turn, remaining, draws[{resultId, participant, round, bid, at}],
+  auctionBoard, auctionTurn{participant,bid}|null,
+  spin{id,resultId,participant,round,bid,startedAt,mega}|null, lastSpin}`.
+- `config = {players:[{id,name}] in speelvolgorde, rounds, priceCents, pool,
+  mega}`; pool en mega in overzichtsvolgorde (`sortResults`). `participant`
+  = vast speler-id (0–11), niet de positie. `createInitialState(config =
+  DEFAULT_CONFIG)` valideert (`ConfigError`). Zonder `config` (oud) gelden de
+  standaardinstellingen (`configOf`).
+- Na N × R vaste trekkingen: veiling als A > 0 (bord = rest in
+  overzichtsvolgorde), anders direct `finished`. `AUCTION_PREPARE` alleen voor
+  een bestaande speler en bod ≥ 0. SPIN alleen in `draw`/`auction`.
+- `spin.mega` ligt vast bij SPIN; `timeline.spinIsMega(spin)` valt voor oude
+  draaien terug op `MEGA_WIN_IDS`. Geld: `drawValueCents(draw, priceCents)`,
+  `totalCents(draws, priceCents)`, `potCents(state)`; standaard €10.
+- DEMO-opslag versie 2 krijgt bij `restoreState` de standaardinstellingen
+  (voortgang blijft); versie 3 met ongeldige instellingen → nieuw spel.
+- Willekeur alleen bij `SPIN_START` (één aanroep van `randomInt` uit de rest);
+  de beginstatus bevat geen volgorde of willekeur.
 - Acties (altijd met `now`): `SPIN_START`, `AUCTION_PREPARE`, `RESET`,
   `DEMO_SKIP_TO_AUCTION`; overige acties = alleen `settle`.
   `SPIN_COMMIT` bestaat **niet** meer.
@@ -175,6 +281,15 @@ src/audio/sound.js     synthetische geluiden
   wijzigen; blijft voorlopig bestaan.
 - Deelnemers loggen in via **anonieme Supabase-login** (geen accounts of
   wachtwoorden). Live te testen met `npm run fn:test:5a` (zie §7b).
+- **Terugkeren**: zelfde browser = zelfde anonieme identiteit → zelfde plek,
+  zonder opnieuw naam te vragen; de organisator houdt zo zijn rechten.
+  Nieuwe telefoon/andere browser/gewiste gegevens: geen herstel van
+  organisatorrechten (D6, geen herstellink); geen automatische overdracht.
+- **Publieke sleutel frontend (D10)**: alleen de publieke (publishable/anon)
+  sleutel, via een **GitHub-repositoryvariabele** in de build
+  (bijv. `VITE_SUPABASE_PUBLISHABLE_KEY`); lokaal `.env.local` (niet in Git).
+  Nooit een service_role-sleutel in de frontend. Claude begeleidt de
+  GitHub-instellingen stap voor stap wanneer F11 aan de orde is.
 - Hosting: **GitHub Pages** (`.github/workflows/pages.yml`: `npm ci`,
   `npm test`, `npm run build` bij push naar `main`).
 - **Server-autoritatief**: telefoons lezen alleen (RLS + Realtime). Alle
@@ -222,6 +337,18 @@ het script vergelijkt op **naam**).
   versie; PT409 wordt niet herhaald en geeft HTTP 409. **Nooit 40001/40P01
   gebruiken voor eigen fouten.**
 - Realtime-publicatie: `rooms` en `seats`.
+- **Gepland: migratie 3 (F4, nog niet gemaakt of uitgevoerd)** voor het
+  instelbare spel: `draws.result_id` check → 0-0 t/m 6-6 + OVERIG (50);
+  `draws.round` → `'1'`–`'4'` of `'veiling'`; `seats.participant` → 0–11
+  (vast speler-id; speelvolgorde staat in `state.config`); nieuwe kolom
+  `seats.name` (1–20) met unieke index `(room_id, lower(name))`; index
+  `seats(user_id)` (Geschiedenis). **D8 (aanmelden vs. starten)**: voorstel
+  twee triggers die dezelfde `rooms`-rij vergrendelen: een `seats`-insert
+  wordt geweigerd als de kamer niet meer in de wachtkamer staat, en de
+  overgang wachtkamer → gestart wordt geweigerd als de plaatsen niet precies
+  overeenkomen met `config.players`. Zo serialiseert Postgres beide acties;
+  `commit_room_state`, RLS en publicatie blijven ongewijzigd. Uitwerking en
+  akkoord in F3/F4.
 - Tests: `supabase/tests/security.sql` (51 checks, in een rollback-transactie)
   + echte concurrency-test (10 gelijktijdige commits → precies 1 slaagt,
   testkamer `ZZTEST` wordt opgeruimd). Laatste run: **52/52 geslaagd**,
@@ -426,7 +553,23 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   rondes nu volledig afgespeeld.
 - **Fase 2** (goedgekeurd): schema, RLS, `commit_room_state`, DB-tests
   (52/52).
-- **Fase 3** (gebouwd, wacht op akkoord): Edge Function `game` uitgerold
+- **F1 engine instelbaar (30-10-2026, lokaal)**: `npm test` → **160 tests**
+  (120 bestaande ongewijzigd groen + 40 nieuw in `tests/gameConfig.test.js`
+  en `tests/engine-config.test.js`): 50 uitslagen; slangvolgorde voor alle
+  1–12 × 1–4; validatie (alle 48 combinaties met A = 0 en max, A = 11 en
+  te kleine pool geweigerd, spelers/namen/prijs/pool/MEGA/OVERIG);
+  volledige spellen voor alle combinaties met veiling 0 / midden / max (144
+  spellen) incl. 12 × 4 met 50 uitslagen (A = 2) en 1 × 1 alleen OVERIG;
+  veiling 0 (direct klaar) en 10 (vaste posities); geld incl. €0, €7,50 en
+  pot; MEGA eigen lijst, oude draai zonder vlag, OVERIG nooit MEGA;
+  willekeur alleen bij SPIN, uniform (10.000 × uit 50 en 10.000 veilingtrekkingen
+  uit 10, chi-kwadraat). **DEMO ongewijzigd**: referentie van de engine vóór
+  F1 (`tests/fixtures/engine-v2-golden.json`, 20 volledige spellen, elke
+  tussenstand als vingerafdruk) identiek; opgeslagen v2-standen (lopende draai
+  en veiling) hersteld zonder verlies; browser-pixelvergelijking oude vs. nieuwe
+  build met vaste klok en `animations: 'disabled'`: 7/7 schermen identiek.
+  Geen visuele componenten gewijzigd; niets op Supabase.
+- **Fase 3** (gebouwd): Edge Function `game` uitgerold
   (ACTIVE, verify_jwt uit). `npm test` → **85 tests** (51 + 34 servertests:
   toegang/invoer, kamer/namen, SPIN-autorisatie, noodfunctie, veiling,
   10 gelijktijdige SPIN's/claims, 10.000 proeftrekkingen chi-kwadraat,
@@ -474,30 +617,47 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
 Commando's: `npm run dev` (vite --host), `npm test`, `npm run build`,
 `npm run preview`, `npm run build:artifact`, `npm run db:*`, `npm run fn:*`.
 
-## 10. Nog te bouwen (niet zonder akkoord starten)
+## 10. Implementatieplan instelbaar multiplayer-spel (F1–F12)
 
-3. ~~Edge Function~~ — gebouwd en op V2 uitgerold (§7b); live test 5A/5B/5C
-   staat nog open.
-4. **Kamer-/aanmeldschermen** in de bestaande stijl (kamer maken,
-   uitnodigingslink/code, naam kiezen). Publieke key in frontend-config:
-   eerst met de gebruiker afstemmen hoe die wordt aangeleverd.
-5. **Realtime rondes 1–2**: online adapter in plaats van `useGame`,
-   klok-sync, SPIN via de server.
-6. **Veiling online.**
-7. **Robuustheid**: reconnect, achtergrond, refresh, plek vrijgeven.
-8. **Live**: GitHub Pages; controleren dat uitnodigingslinks met kamercode
-   direct openen; generale repetitie met 9 telefoons.
+Elke fase apart akkoord; L = alleen lokaal, V2 = wijziging op Supabase V2.
+Backendtests 5A/5B (oude, vaste regels) zijn het uitgangspunt; 5C is
+voorlopig overgeslagen.
+
+| Fase | Inhoud | Waar | Status |
+|---|---|---|---|
+| **F1** | Engine instelbaar (§5): 1–12 spelers, 1–4 rondes, slang, pool 0-0…6-6 + OVERIG, MEGA per uitslag, prijs (ook €0), veiling 0–10, namen/volgorde; DEMO = standaard | L | **klaar (30-10-2026)**, wacht op akkoord F2 |
+| F2 | Machine-UI instelbaar: namen/volgorde uit `config`, rondebadges R, "Trekking x van N×R", "Bekijk de eindstand" bij A = 0, tegelindeling 1–10 (max. tegelgrootte), rollen tot 6 alleen bij pool > 4, raster tot 6-6, prijs/pot; DEMO pixel-identiek, afwijkende instellingen eerst als schermafbeelding ter goedkeuring | L | |
+| F3 | Server: wachtkamer, `join_room(code, naam)`, `update_settings`, `set_order`/`shuffle_order` (server-crypto), `remove_player`, `start_game` (volledige validatie, `validateConfig`), SPIN/veiling pas na start, terugkeer via `lookup_room`; migratie 3 + D8-triggers + `security.sql` in PGlite; unittests | L | |
+| F4 | Migratie 3 + `db:test` | V2 | |
+| F5 | Uitrol `game` + live tests 5A/5B aangepast aan wachtkamer/start | V2 | |
+| F6 | Online fundament frontend: supabase-js, publieke sleutel (env), `callGame` (tijdslimiet, nooit automatisch herhaald), kloksync, statusopslag (hoogste versie wint), sessie/terugkeer | L | |
+| F7 | Schermen Begin (+ "Verder met huidig spel"), Nieuw spel, Meedoen, Wachtkamer, Instellingen, Volgorde; router met `?demo` en `?kamer=`; Playwright tegen nagebootste server | L | |
+| F8 | Online spel: synchrone animaties (servertijd), herstel, online menu ("draai namens", "plek vrijgeven"), verbindingsbalkje; daarna korte live test | L → V2 | |
+| F9 | Veiling online (0–10, tegelindeling) | L → V2 | |
+| F10 | Eindscherm (pot, terug), deelafbeelding (canvas → PNG, deelmenu/opslaan) | L | |
+| F11 | Publieke sleutel als GitHub-variabele (begeleid), test op telefoons; daarna pas voorstel voor `main`/Pages (toestemming) | V2/Pages | |
+| F12 | Geschiedenis (afgeronde spellen, laatste 10, opnieuw delen) — uitstelbaar | L → V2 | |
+
+- **Risico's**: DEMO (statusversie, engine) → referentietest + pixelvergelijking;
+  goedgekeurde machine (rollen, tegels) → alleen anders bij afwijkende pool/A,
+  eerst schermafbeeldingen; servertests en live-testscripts bewegen mee in
+  F3/F5; de server (`src/server/actions.js`) gebruikt tot F3 nog de vaste
+  `TURN_ORDER`/`PARTICIPANTS` en werkt daarmee alleen met de
+  standaardinstellingen (ongewijzigd uitgerold op V2).
+- **Uitstelbaar/optioneel**: Geschiedenis + delen vanuit Geschiedenis,
+  slepen (eerst ▲▼), Presence ("nu online"), verharding van de ~4,3 s.
 - **Later**: PWA (beginscherm-icoon) + pushmelding "Jij bent aan de beurt!",
   eventueel zachte drempel naar standalone-modus.
 
 ### Openstaande punten
-- Optionele verharding: uitslag later naar telefoons sturen, zodat hij niet
-  ~4,5 s vóór stilstand in netwerkverkeer te zien is.
+- Uitslag ~4,3 s vóór stilstand in netwerkverkeer zichtbaar: **geaccepteerd
+  (D9)**, geen verharding.
 - Token mist `advisors_read` (security advisors niet op te vragen).
 - Supabase free plan pauzeert na 7 dagen inactiviteit.
 - Het access token heeft volledige rechten: na de bouw intrekken/vernieuwen.
-- **Opgelost in code (migratie 2, nog niet geïnstalleerd)**: foutcode 40001
-  in `commit_room_state` liet PostgREST vastlopen bij gelijktijdige SPIN's.
+- **Opgelost (migratie 2, op V2 geïnstalleerd en live bewezen in 5B)**:
+  foutcode 40001 in `commit_room_state` liet PostgREST vastlopen bij
+  gelijktijdige SPIN's.
 - **Storing 30-10-2026 (bevestigd, read-only onderzocht)**: PostgREST herhaalde
   de mislukte `commit_room_state` eindeloos (log `version_conflict` ~1×/s van
   08:46 tot 09:12, ook zonder clients; 3,64 mln. request-setup-statements en
@@ -533,8 +693,9 @@ Commando's: `npm run dev` (vite --host), `npm test`, `npm run build`,
   geen PostgREST) — daarom telt 5B alleen vanaf 5 s vóór de eigen
   gelijktijdige verzoeken. Onafhankelijke controle: sinds 14:00 precies één
   RPC-logregel (`POST | 200`).
-- Organisator die van telefoon wisselt verliest organisatorrechten
-  (`organizer_id` = oude anonieme gebruiker); overdracht bestaat nog niet.
+- Organisator die van telefoon/browser wisselt verliest organisatorrechten
+  (`organizer_id` = oude anonieme gebruiker); **geaccepteerd (D6)**, geen
+  herstellink en geen overdracht.
 - Geen "spel opnieuw beginnen" online (RESET bewust niet toegestaan);
   nieuw spel = nieuwe kamer.
 - Anonieme logins kunnen kamers maken (max 5 per gebruiker); eventueel later

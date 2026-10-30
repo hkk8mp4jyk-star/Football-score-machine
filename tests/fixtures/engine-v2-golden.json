@@ -1,0 +1,4507 @@
+{
+ "generatedFrom": "engine STATE_VERSION 2 (commit 0692bdf), tests/helpers.js makeGame, seeds 1-20",
+ "games": [
+  {
+   "seed": 1,
+   "draws": [
+    {
+     "resultId": "3-1",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "0-0",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "2-3",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1015760
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1023040
+    },
+    {
+     "resultId": "4-4",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1030320
+    },
+    {
+     "resultId": "1-1",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1037600
+    },
+    {
+     "resultId": "3-0",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1046080
+    },
+    {
+     "resultId": "3-3",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1053360
+    },
+    {
+     "resultId": "1-4",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1060640
+    },
+    {
+     "resultId": "4-3",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1067920
+    },
+    {
+     "resultId": "2-0",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1075200
+    },
+    {
+     "resultId": "2-1",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1083680
+    },
+    {
+     "resultId": "0-2",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1092160
+    },
+    {
+     "resultId": "1-3",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1100640
+    },
+    {
+     "resultId": "0-4",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1107920
+    },
+    {
+     "resultId": "0-3",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1115200
+    },
+    {
+     "resultId": "2-4",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1122480
+    },
+    {
+     "resultId": "0-1",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1129760
+    },
+    {
+     "resultId": "3-2",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1138240
+    },
+    {
+     "resultId": "4-1",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1144920
+    },
+    {
+     "resultId": "1-2",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1151600
+    },
+    {
+     "resultId": "1-0",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1161680
+    },
+    {
+     "resultId": "2-2",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1171760
+    },
+    {
+     "resultId": "4-0",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1178440
+    },
+    {
+     "resultId": "4-2",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1185120
+    },
+    {
+     "resultId": "3-4",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1191800
+    }
+   ],
+   "hashes": [
+    "e614175e516ce388",
+    "849137eb12f75468",
+    "677381d0383be543",
+    "0d0797a513ba143c",
+    "e2d0e38a3c96dc08",
+    "bd5dd5d52c2823fd",
+    "936998d03aa1a771",
+    "80a9317c7e349d81",
+    "1191a7cba8ff71d0",
+    "6e3e3cdae83f9382",
+    "3f5ca27300988fac",
+    "513c71c8034ef331",
+    "81ac06daaeca54d3",
+    "3260041ad5e079a7",
+    "c9242656af71f603",
+    "83d7e04148766b06",
+    "0162c287ff449767",
+    "15d6bc382829ab07",
+    "377fa79d05efa0ef",
+    "c4f4188c42b22e53",
+    "25dfc5170d549668",
+    "d7f94b12ffb1c845",
+    "c4d4b7acd9b32338",
+    "a5b27d637bf67b56",
+    "8fc771bea4d8d78f",
+    "9d595adfe4913fe0",
+    "be3e0bc3e5f6ca5d",
+    "fce3cba96c9c5d1f",
+    "1f975b020c53da79",
+    "ef12ca296731f7a7",
+    "a0fea3be381e3860",
+    "875156ce52477d83",
+    "63db6369183b77d7",
+    "f4f2ff05d8a0e265",
+    "48f19c4544b280cc",
+    "cc94992ae6e2407d"
+   ]
+  },
+  {
+   "seed": 2,
+   "draws": [
+    {
+     "resultId": "3-4",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "1-3",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "1-1",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1014560
+    },
+    {
+     "resultId": "2-4",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1023040
+    },
+    {
+     "resultId": "4-3",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1030320
+    },
+    {
+     "resultId": "3-1",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1037600
+    },
+    {
+     "resultId": "2-1",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1044880
+    },
+    {
+     "resultId": "1-2",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1053360
+    },
+    {
+     "resultId": "4-1",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1061840
+    },
+    {
+     "resultId": "0-1",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1069120
+    },
+    {
+     "resultId": "4-0",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1077600
+    },
+    {
+     "resultId": "0-4",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1084880
+    },
+    {
+     "resultId": "2-0",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1092160
+    },
+    {
+     "resultId": "4-2",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1100640
+    },
+    {
+     "resultId": "2-3",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1107920
+    },
+    {
+     "resultId": "0-2",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1115200
+    },
+    {
+     "resultId": "3-2",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1123680
+    },
+    {
+     "resultId": "1-4",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1130960
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1138240
+    },
+    {
+     "resultId": "0-0",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1144920
+    },
+    {
+     "resultId": "4-4",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1155000
+    },
+    {
+     "resultId": "0-3",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1161680
+    },
+    {
+     "resultId": "1-0",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1168360
+    },
+    {
+     "resultId": "2-2",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1178440
+    },
+    {
+     "resultId": "3-0",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1185120
+    },
+    {
+     "resultId": "3-3",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1191800
+    }
+   ],
+   "hashes": [
+    "7d19b45bfe8edc2b",
+    "3941b7bfbbcadb47",
+    "661c72f67efb2aa9",
+    "e1ff5079d598ecdc",
+    "d0c9dbec39cf5f33",
+    "5e2b03e2213b423e",
+    "d5124bb2e8a6f278",
+    "3d8966c05c0db025",
+    "f69de998864265f8",
+    "4bb0074283ef017b",
+    "c4190e56cae6e2e9",
+    "9fcb998046f2988f",
+    "327a789572d047aa",
+    "fdd8c1d299922608",
+    "8644a9bfdccdaa92",
+    "daa839924f7b72c8",
+    "d6b1b048cab138e9",
+    "48df50390c025d35",
+    "00afac146d878fd7",
+    "bccc1cd66b4e8bac",
+    "43de535b1451c602",
+    "8c5efec3a2f524a1",
+    "a7f9aff2dd082fc6",
+    "68761d80f96df1e2",
+    "8bf3744c99809889",
+    "cb6b836f25de3186",
+    "126edad944f9e6f5",
+    "82f478f1b99a3a28",
+    "5bc50e0edcf889e5",
+    "e69abb6dbf41e0e7",
+    "1cceec78e41df006",
+    "089804d73424b2e2",
+    "20276f4407fec7c7",
+    "850a38574c264921",
+    "0eba30801c24c980",
+    "f1a5392cf8b9d61e"
+   ]
+  },
+  {
+   "seed": 3,
+   "draws": [
+    {
+     "resultId": "3-3",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "0-0",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "2-1",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1015760
+    },
+    {
+     "resultId": "0-2",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1024240
+    },
+    {
+     "resultId": "4-0",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1032720
+    },
+    {
+     "resultId": "2-3",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1040000
+    },
+    {
+     "resultId": "2-2",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1047280
+    },
+    {
+     "resultId": "1-0",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1054560
+    },
+    {
+     "resultId": "1-2",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1063040
+    },
+    {
+     "resultId": "3-1",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1071520
+    },
+    {
+     "resultId": "1-1",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1078800
+    },
+    {
+     "resultId": "0-3",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1087280
+    },
+    {
+     "resultId": "4-1",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1094560
+    },
+    {
+     "resultId": "3-0",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1101840
+    },
+    {
+     "resultId": "4-3",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1109120
+    },
+    {
+     "resultId": "4-4",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1116400
+    },
+    {
+     "resultId": "1-4",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1123680
+    },
+    {
+     "resultId": "3-4",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1130960
+    },
+    {
+     "resultId": "1-3",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1138240
+    },
+    {
+     "resultId": "3-2",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1144920
+    },
+    {
+     "resultId": "2-4",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1151600
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1158280
+    },
+    {
+     "resultId": "2-0",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1164960
+    },
+    {
+     "resultId": "0-1",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1175040
+    },
+    {
+     "resultId": "4-2",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1185120
+    },
+    {
+     "resultId": "0-4",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1191800
+    }
+   ],
+   "hashes": [
+    "77b96b5ca8c1b95e",
+    "b2d9c8a53bd7e82e",
+    "5707c1dd87205933",
+    "db6c684b5ad49d47",
+    "4129804152fa3120",
+    "c8f12d61989b768b",
+    "825bdf05d4144cb8",
+    "78e8cfe5b4ab2601",
+    "e921471870498d76",
+    "0aa621355e31288b",
+    "e3ddce0536021c28",
+    "b3ac30ecbc3da9de",
+    "3153472aeda48205",
+    "abc0a5fa7517630e",
+    "fe0d8f5e6838bfa5",
+    "7aa707cf97fb94ae",
+    "e81be9e2ba08d748",
+    "3c39421e2a838052",
+    "19a1c12c02b1d312",
+    "53c1d2df185623ae",
+    "7e078148305575b8",
+    "432d59c8fc9b696c",
+    "1bcc57a015911de9",
+    "61e187df87449a60",
+    "d82a1ec35a1f4fb8",
+    "1be2099795d5fb0d",
+    "3fc09e6d87feaa04",
+    "5745d6a1a848fae6",
+    "4c0f125eaec32aad",
+    "f798bcbe62ca1f82",
+    "66c767488d432bef",
+    "bfc9f9bc449c8a9f",
+    "fac822025b3910fb",
+    "81dd3dafbb42c4cf",
+    "74aadc6387d808dd",
+    "7bb4c464205b06f9"
+   ]
+  },
+  {
+   "seed": 4,
+   "draws": [
+    {
+     "resultId": "4-4",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "1-3",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "1-0",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1014560
+    },
+    {
+     "resultId": "0-1",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1023040
+    },
+    {
+     "resultId": "1-2",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1031520
+    },
+    {
+     "resultId": "2-4",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1040000
+    },
+    {
+     "resultId": "0-2",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1047280
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1055760
+    },
+    {
+     "resultId": "3-2",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1063040
+    },
+    {
+     "resultId": "3-3",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1070320
+    },
+    {
+     "resultId": "4-0",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1077600
+    },
+    {
+     "resultId": "2-0",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1084880
+    },
+    {
+     "resultId": "3-4",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1093360
+    },
+    {
+     "resultId": "4-2",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1100640
+    },
+    {
+     "resultId": "2-2",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1107920
+    },
+    {
+     "resultId": "3-1",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1115200
+    },
+    {
+     "resultId": "1-4",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1122480
+    },
+    {
+     "resultId": "2-1",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1129760
+    },
+    {
+     "resultId": "3-0",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1138240
+    },
+    {
+     "resultId": "4-3",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1144920
+    },
+    {
+     "resultId": "4-1",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1151600
+    },
+    {
+     "resultId": "0-4",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1158280
+    },
+    {
+     "resultId": "0-3",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1164960
+    },
+    {
+     "resultId": "2-3",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1171640
+    },
+    {
+     "resultId": "0-0",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1178320
+    },
+    {
+     "resultId": "1-1",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1188400
+    }
+   ],
+   "hashes": [
+    "46893169349b5037",
+    "4abb2794693c6cec",
+    "3f9564b155588040",
+    "dc83654947b31784",
+    "e692c7e9d7e7343b",
+    "3ee7a8a5c9bdcdfc",
+    "b82c1ec2a4b492ae",
+    "9db0ddcfd2e557a3",
+    "ed00553032f77e45",
+    "4b1e855b6fa516c1",
+    "d2d3ad01fa521f17",
+    "43de23a2f292b427",
+    "3be230ab2bfbce5d",
+    "2f9186c687fe4d1a",
+    "0b7b58802044bd76",
+    "279e5b7bd0f756d8",
+    "cd7e15f652117d94",
+    "d06fdacd58036267",
+    "f356dc4d18a2216c",
+    "aaf35d1fa8707d14",
+    "69585821d739b2c1",
+    "c7fb45a02de74bdf",
+    "ea77f4a159774e31",
+    "71801ee5839a540f",
+    "456f3a393a9f5fce",
+    "643f0410e0aae003",
+    "d1c749830df42049",
+    "84144ea4379adcab",
+    "28f07eca58135efa",
+    "2e924c281f1dfdbd",
+    "15abbdff87977d4b",
+    "03aa7eecf79a7af9",
+    "eb162f91dd0c8209",
+    "ad1aa0189b89bb59",
+    "28342cc92a37d50b",
+    "4e51d571d442097f"
+   ]
+  },
+  {
+   "seed": 5,
+   "draws": [
+    {
+     "resultId": "3-2",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "4-0",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "1-0",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1014560
+    },
+    {
+     "resultId": "3-0",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1023040
+    },
+    {
+     "resultId": "0-1",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1030320
+    },
+    {
+     "resultId": "2-4",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1038800
+    },
+    {
+     "resultId": "3-4",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1046080
+    },
+    {
+     "resultId": "2-0",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1053360
+    },
+    {
+     "resultId": "4-4",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1061840
+    },
+    {
+     "resultId": "0-4",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1069120
+    },
+    {
+     "resultId": "4-1",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1076400
+    },
+    {
+     "resultId": "3-3",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1083680
+    },
+    {
+     "resultId": "2-3",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1090960
+    },
+    {
+     "resultId": "0-0",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1098240
+    },
+    {
+     "resultId": "1-4",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1106720
+    },
+    {
+     "resultId": "1-2",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1114000
+    },
+    {
+     "resultId": "4-3",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1122480
+    },
+    {
+     "resultId": "1-1",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1129760
+    },
+    {
+     "resultId": "4-2",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1138240
+    },
+    {
+     "resultId": "3-1",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1144920
+    },
+    {
+     "resultId": "0-3",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1151600
+    },
+    {
+     "resultId": "0-2",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1158280
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1168360
+    },
+    {
+     "resultId": "1-3",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1175040
+    },
+    {
+     "resultId": "2-1",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1181720
+    },
+    {
+     "resultId": "2-2",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1191800
+    }
+   ],
+   "hashes": [
+    "e967cefd4673003f",
+    "09cff3369a2813bb",
+    "347d1e295b30c4ef",
+    "e0034dcca7bdfa46",
+    "e227ac2cb4ba3642",
+    "37befda2a2dad624",
+    "22b2ebe96509423e",
+    "3d20f8e43fd1750f",
+    "efb8496177b04631",
+    "e45d8e4c1efed9b3",
+    "33444d757465800d",
+    "9a8c3e797545c29c",
+    "3e1bd2e497754d27",
+    "9e36807ee19f6be2",
+    "229429957d18bab2",
+    "3a40072321fc44ca",
+    "eafb93d14a329273",
+    "5d321769ed55ad95",
+    "625910f2890d5666",
+    "985fcad961465c13",
+    "8fcdda5368b02afc",
+    "20de1695fd3f46d5",
+    "d07f6271c213af0f",
+    "5db35c45c5509f03",
+    "7ef95c1c68af5e3b",
+    "91ee9b86e4894726",
+    "c074a284737d328d",
+    "39e2a4120423dbe7",
+    "daf3961c7b4f5b1b",
+    "ed4b3ea362fd5e05",
+    "daa98411246255ff",
+    "b2b404480a397fc6",
+    "3ac153c84a22c882",
+    "589db280a7621ac5",
+    "84f136b24093c9a1",
+    "2e695571ead0a0e3"
+   ]
+  },
+  {
+   "seed": 6,
+   "draws": [
+    {
+     "resultId": "2-3",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "0-0",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "3-2",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1015760
+    },
+    {
+     "resultId": "1-0",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1023040
+    },
+    {
+     "resultId": "2-4",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1031520
+    },
+    {
+     "resultId": "0-2",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1038800
+    },
+    {
+     "resultId": "0-1",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1047280
+    },
+    {
+     "resultId": "4-4",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1055760
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1063040
+    },
+    {
+     "resultId": "1-2",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1070320
+    },
+    {
+     "resultId": "4-2",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1078800
+    },
+    {
+     "resultId": "2-0",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1086080
+    },
+    {
+     "resultId": "0-3",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1094560
+    },
+    {
+     "resultId": "0-4",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1101840
+    },
+    {
+     "resultId": "3-0",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1109120
+    },
+    {
+     "resultId": "4-0",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1116400
+    },
+    {
+     "resultId": "3-3",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1123680
+    },
+    {
+     "resultId": "2-2",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1130960
+    },
+    {
+     "resultId": "2-1",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1138240
+    },
+    {
+     "resultId": "1-3",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1148320
+    },
+    {
+     "resultId": "4-3",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1155000
+    },
+    {
+     "resultId": "4-1",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1161680
+    },
+    {
+     "resultId": "1-4",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1168360
+    },
+    {
+     "resultId": "3-4",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1175040
+    },
+    {
+     "resultId": "3-1",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1181720
+    },
+    {
+     "resultId": "1-1",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1188400
+    }
+   ],
+   "hashes": [
+    "0fde0724ba267bee",
+    "da172790ceac4f03",
+    "e1d06c1b9c803cfc",
+    "1cb493315d0fecd6",
+    "9d38839fdb536b4d",
+    "70255e6ccdeff7f5",
+    "dab361bae33ec019",
+    "5ef3016c84eeb981",
+    "bbb3d877f87dc72e",
+    "11cdc2bf2f63164d",
+    "742aa60ace3cce87",
+    "e3684ecfa04045db",
+    "96eeb7f55d1be238",
+    "786d7e51dafafef5",
+    "e7e5acc395b15266",
+    "e860c1b523cfe282",
+    "e82fecb84303d183",
+    "133eb341546bcee0",
+    "cb325278ed64dffe",
+    "d453955a8cda9b8f",
+    "a7fa2116b7ecbe6f",
+    "912daeda925a7d04",
+    "2309ae5bcf10fda0",
+    "0c809d7258fc0475",
+    "5175048129b8cf92",
+    "089b035dff08b8f0",
+    "be07c8be243e58eb",
+    "aaaa547ca3131a61",
+    "1cf2e6203fd79204",
+    "941746b2d5ed6501",
+    "04dd7e791915e20a",
+    "59447a9ed1aae52e",
+    "fcbb87a46907c42c",
+    "82437eacb6b927f4",
+    "861fe917fb1ec388",
+    "244c34ade7394cee"
+   ]
+  },
+  {
+   "seed": 7,
+   "draws": [
+    {
+     "resultId": "0-0",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "0-2",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1008480
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1016960
+    },
+    {
+     "resultId": "3-3",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1024240
+    },
+    {
+     "resultId": "2-3",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1031520
+    },
+    {
+     "resultId": "2-0",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1038800
+    },
+    {
+     "resultId": "2-2",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1047280
+    },
+    {
+     "resultId": "1-1",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1054560
+    },
+    {
+     "resultId": "3-0",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1063040
+    },
+    {
+     "resultId": "4-0",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1070320
+    },
+    {
+     "resultId": "1-2",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1077600
+    },
+    {
+     "resultId": "0-4",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1086080
+    },
+    {
+     "resultId": "4-1",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1093360
+    },
+    {
+     "resultId": "2-4",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1100640
+    },
+    {
+     "resultId": "1-0",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1107920
+    },
+    {
+     "resultId": "2-1",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1116400
+    },
+    {
+     "resultId": "1-3",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1124880
+    },
+    {
+     "resultId": "3-2",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1132160
+    },
+    {
+     "resultId": "1-4",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1139440
+    },
+    {
+     "resultId": "4-4",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1146120
+    },
+    {
+     "resultId": "0-3",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1152800
+    },
+    {
+     "resultId": "4-3",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1159480
+    },
+    {
+     "resultId": "0-1",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1166160
+    },
+    {
+     "resultId": "3-1",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1176240
+    },
+    {
+     "resultId": "3-4",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1182920
+    },
+    {
+     "resultId": "4-2",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1189600
+    }
+   ],
+   "hashes": [
+    "de61fbd276e51645",
+    "fa4580f5537a9025",
+    "f258a61801570c69",
+    "6599f2ad981095a8",
+    "e81d20c7ce3a5683",
+    "f28411f4d27df9cf",
+    "3319ae471d987fba",
+    "4c48daf06f14c5f3",
+    "6aee55ac0f4fdb34",
+    "d7e1b6403a73d775",
+    "c5349b420f856591",
+    "6049cd6bc6f50087",
+    "07d948d011c2014e",
+    "2f2128722c7078de",
+    "936e82cedc6c61b1",
+    "bded482e17e6dd33",
+    "986ba4224465e2c8",
+    "9d9f171fc597124e",
+    "6655ed81048696df",
+    "c8170b12b18edbe4",
+    "c6bb18c3f8ecef21",
+    "a217085e51c07b33",
+    "3f718b3f292db489",
+    "809f7d9433d20869",
+    "e47bc085bb58d75d",
+    "b8a9c576015e5134",
+    "97fc46794ee5ea5a",
+    "8ac01aa99fea0793",
+    "2c6a60396997fdd4",
+    "89416a68a056b80f",
+    "4d435670578fc8f9",
+    "186a0b0bd288abff",
+    "21264dd23f2dbc40",
+    "42fa70b914542185",
+    "eb1387f10cfe4f16",
+    "c943315aa244904e"
+   ]
+  },
+  {
+   "seed": 8,
+   "draws": [
+    {
+     "resultId": "0-4",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "3-1",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "1-3",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1014560
+    },
+    {
+     "resultId": "3-4",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1021840
+    },
+    {
+     "resultId": "2-4",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1029120
+    },
+    {
+     "resultId": "2-1",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1036400
+    },
+    {
+     "resultId": "4-2",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1044880
+    },
+    {
+     "resultId": "1-0",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1052160
+    },
+    {
+     "resultId": "2-3",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1060640
+    },
+    {
+     "resultId": "0-1",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1067920
+    },
+    {
+     "resultId": "3-0",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1076400
+    },
+    {
+     "resultId": "0-2",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1083680
+    },
+    {
+     "resultId": "3-2",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1092160
+    },
+    {
+     "resultId": "1-1",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1099440
+    },
+    {
+     "resultId": "0-3",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1107920
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1115200
+    },
+    {
+     "resultId": "4-0",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1122480
+    },
+    {
+     "resultId": "0-0",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1129760
+    },
+    {
+     "resultId": "1-4",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1138240
+    },
+    {
+     "resultId": "1-2",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1144920
+    },
+    {
+     "resultId": "4-1",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1155000
+    },
+    {
+     "resultId": "3-3",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1161680
+    },
+    {
+     "resultId": "4-4",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1168360
+    },
+    {
+     "resultId": "4-3",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1175040
+    },
+    {
+     "resultId": "2-0",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1181720
+    },
+    {
+     "resultId": "2-2",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1191800
+    }
+   ],
+   "hashes": [
+    "595fd938cbbd601e",
+    "5d166dbc60b07459",
+    "a4203a622ac6f7ec",
+    "ba515ae80845e7e1",
+    "be047c3cf620d183",
+    "23650d5137d0b185",
+    "8be70bbeec672fd9",
+    "3f76dc57bd55c0d1",
+    "a229ac4cc08b5069",
+    "2a31591f76bd0ab5",
+    "2a30a62e2307de6d",
+    "20b9874fa521bede",
+    "2959a3c743599aa9",
+    "18d7d74a6a9f1df0",
+    "8de10484b908246d",
+    "a8175ca8bf6f9cfa",
+    "ce7d8d5b41a7a759",
+    "3c79447bbf883440",
+    "4525764f818e8eb5",
+    "80bb0192946b2184",
+    "9cf3e3a40155eb05",
+    "0edc77cca585e89f",
+    "e1bce3dab6e13c94",
+    "75c4e62dd45154ab",
+    "c9ec3217f8789d29",
+    "04ef42227ea8b527",
+    "cf56c19eac86cc4d",
+    "a4b4d07d3834691d",
+    "05666248931f6ade",
+    "b8d7157bee4261f1",
+    "349d5a2b5be47c27",
+    "f142399932a81a71",
+    "3f9ce25b6c03114a",
+    "3fa8341fd86d6537",
+    "b09f2ab6c472100e",
+    "81c0b785fbd77b1a"
+   ]
+  },
+  {
+   "seed": 9,
+   "draws": [
+    {
+     "resultId": "1-0",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "4-2",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1008480
+    },
+    {
+     "resultId": "0-3",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1015760
+    },
+    {
+     "resultId": "4-0",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1023040
+    },
+    {
+     "resultId": "3-2",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1030320
+    },
+    {
+     "resultId": "3-1",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1037600
+    },
+    {
+     "resultId": "1-2",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1044880
+    },
+    {
+     "resultId": "4-4",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1053360
+    },
+    {
+     "resultId": "0-2",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1060640
+    },
+    {
+     "resultId": "2-4",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1069120
+    },
+    {
+     "resultId": "3-3",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1076400
+    },
+    {
+     "resultId": "2-2",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1083680
+    },
+    {
+     "resultId": "1-1",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1090960
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1099440
+    },
+    {
+     "resultId": "1-3",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1106720
+    },
+    {
+     "resultId": "3-4",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1114000
+    },
+    {
+     "resultId": "2-3",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1121280
+    },
+    {
+     "resultId": "1-4",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1128560
+    },
+    {
+     "resultId": "2-1",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1135840
+    },
+    {
+     "resultId": "4-3",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1145920
+    },
+    {
+     "resultId": "4-1",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1152600
+    },
+    {
+     "resultId": "0-4",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1159280
+    },
+    {
+     "resultId": "3-0",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1165960
+    },
+    {
+     "resultId": "0-0",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1172640
+    },
+    {
+     "resultId": "2-0",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1182720
+    },
+    {
+     "resultId": "0-1",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1192800
+    }
+   ],
+   "hashes": [
+    "9c1ea4e7963d7df7",
+    "748af2f1bfb80dfe",
+    "00a8fc8e3a272120",
+    "583cb43f1608f828",
+    "2eece2a8a8c2a087",
+    "ae04c8022077f320",
+    "2768737ab8219f43",
+    "b24e6fcdcc6aee28",
+    "2cc8f34a40c7b303",
+    "3ab2ea22c8c713e8",
+    "c6dfe14aae02e80d",
+    "340861a7c709376c",
+    "065c33bdb172fe25",
+    "68fbc0f32a9ed7ca",
+    "983dc4f9b2d0d2e0",
+    "4b276a192f9fcf5d",
+    "6468b0512d7168a4",
+    "b0024dab90a6e094",
+    "1e8ac23140a448be",
+    "04b23a3e1f9e41b3",
+    "d5228312c54a2e64",
+    "b0b42b08b9118217",
+    "9b8223abb116c942",
+    "23fe7f4cb4c26e9f",
+    "35e6595ee9939cb8",
+    "26bc3ba9fb067a6a",
+    "4deb965655974a78",
+    "2ce3e259a7ace57a",
+    "710d8d5e7ea2a23d",
+    "4e930cccb881867a",
+    "807956bacd8b02b6",
+    "7d558171ca4aab14",
+    "0c10df7f961be064",
+    "3dee54165dd1e484",
+    "0fcd0363c6213495",
+    "08e4b25133b6ebb0"
+   ]
+  },
+  {
+   "seed": 10,
+   "draws": [
+    {
+     "resultId": "2-3",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "4-3",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "3-2",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1014560
+    },
+    {
+     "resultId": "4-0",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1021840
+    },
+    {
+     "resultId": "2-0",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1029120
+    },
+    {
+     "resultId": "1-4",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1037600
+    },
+    {
+     "resultId": "0-4",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1044880
+    },
+    {
+     "resultId": "0-1",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1052160
+    },
+    {
+     "resultId": "0-0",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1060640
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1069120
+    },
+    {
+     "resultId": "4-2",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1076400
+    },
+    {
+     "resultId": "0-3",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1083680
+    },
+    {
+     "resultId": "2-1",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1090960
+    },
+    {
+     "resultId": "2-2",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1099440
+    },
+    {
+     "resultId": "2-4",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1106720
+    },
+    {
+     "resultId": "4-4",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1114000
+    },
+    {
+     "resultId": "1-1",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1121280
+    },
+    {
+     "resultId": "3-4",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1129760
+    },
+    {
+     "resultId": "4-1",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1137040
+    },
+    {
+     "resultId": "1-0",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1143720
+    },
+    {
+     "resultId": "1-3",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1153800
+    },
+    {
+     "resultId": "3-1",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1160480
+    },
+    {
+     "resultId": "3-0",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1167160
+    },
+    {
+     "resultId": "1-2",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1173840
+    },
+    {
+     "resultId": "0-2",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1183920
+    },
+    {
+     "resultId": "3-3",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1194000
+    }
+   ],
+   "hashes": [
+    "0fde0724ba267bee",
+    "39be35a873ef0c40",
+    "8046721109497900",
+    "9be443219adad766",
+    "6ecdf31cb7146e3f",
+    "bd9b5ebc5f36f892",
+    "75ae29b4140fd1b4",
+    "47a37442cee470ab",
+    "61a77050748ab1e5",
+    "f15ccc3dc76ab027",
+    "c65e8eae29349cdd",
+    "5a4084a0cd614bce",
+    "02efeccab5641bc4",
+    "1ba7aa4907d670d2",
+    "12d1007ec758efbb",
+    "36c78c7eabf49cc1",
+    "bdb46a0db0b8737a",
+    "416d4a601178f2b7",
+    "a4add8a4c7ccc6a4",
+    "70bb9b8d5e8d8a6d",
+    "57bd27d7d837c8e8",
+    "7c449dd128da5a64",
+    "8fd18ee25c447b8c",
+    "07fe6fab123d98e7",
+    "b640f23467b8d0cd",
+    "65b9ad8cf5d57a37",
+    "78d23e2d5661efea",
+    "056d95819d4e0531",
+    "3c6779ac2171d850",
+    "184eea150277c05d",
+    "683bc028171ff3ec",
+    "c930f28d0795b119",
+    "a5da59647f71b6db",
+    "86b96d1f7e9814fe",
+    "b1effe1f27c65b5c",
+    "f6044ab1e1598e5d"
+   ]
+  },
+  {
+   "seed": 11,
+   "draws": [
+    {
+     "resultId": "2-3",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "2-4",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "3-1",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1014560
+    },
+    {
+     "resultId": "3-0",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1021840
+    },
+    {
+     "resultId": "4-2",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1029120
+    },
+    {
+     "resultId": "2-1",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1036400
+    },
+    {
+     "resultId": "0-1",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1044880
+    },
+    {
+     "resultId": "2-2",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1053360
+    },
+    {
+     "resultId": "3-2",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1060640
+    },
+    {
+     "resultId": "1-3",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1067920
+    },
+    {
+     "resultId": "1-4",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1075200
+    },
+    {
+     "resultId": "4-3",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1082480
+    },
+    {
+     "resultId": "1-1",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1089760
+    },
+    {
+     "resultId": "3-4",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1098240
+    },
+    {
+     "resultId": "4-0",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1105520
+    },
+    {
+     "resultId": "0-2",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1112800
+    },
+    {
+     "resultId": "0-3",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1121280
+    },
+    {
+     "resultId": "1-0",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1128560
+    },
+    {
+     "resultId": "2-0",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1137040
+    },
+    {
+     "resultId": "1-2",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1147120
+    },
+    {
+     "resultId": "4-1",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1157200
+    },
+    {
+     "resultId": "0-0",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1163880
+    },
+    {
+     "resultId": "4-4",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1173960
+    },
+    {
+     "resultId": "3-3",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1180640
+    },
+    {
+     "resultId": "0-4",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1187320
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1194000
+    }
+   ],
+   "hashes": [
+    "0fde0724ba267bee",
+    "b2efdb1cb0420e4c",
+    "0855d7020cbad35a",
+    "c96faa34fb066992",
+    "e6ff9e4a801bfb0a",
+    "88db353751e45fd3",
+    "7a975f40bde0cfa6",
+    "04ffb035b6efb3cc",
+    "0121bff9657dc532",
+    "a365d961ba43eada",
+    "dcabd1efa5213ed3",
+    "e224b3c580724e61",
+    "effab4c0f2feadfd",
+    "5c58dbae21017246",
+    "820c43b17da523ec",
+    "68c6da6dd44c8839",
+    "c3223435572066b0",
+    "fefe55e3f93b036a",
+    "35ed9561974347f1",
+    "3f18c16fae66100c",
+    "9cdaa00a4b4b9ab1",
+    "d913f753d13e480a",
+    "8c7924126d440f11",
+    "16e6294feb7b9790",
+    "fd23e578a5d6aa77",
+    "f328d73e0a268a5c",
+    "0adc9752e531d96e",
+    "cfd52e1f4bf3201e",
+    "798114d388ff7a63",
+    "2303948b318042c5",
+    "642e3e3ba5ef657c",
+    "6cda760bfe8e0f0e",
+    "dde5341038afb437",
+    "14aa2745353c2921",
+    "7f8cf07b9714ddc5",
+    "ec2e56301987d96a"
+   ]
+  },
+  {
+   "seed": 12,
+   "draws": [
+    {
+     "resultId": "1-2",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "0-1",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1008480
+    },
+    {
+     "resultId": "3-0",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1016960
+    },
+    {
+     "resultId": "4-4",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1024240
+    },
+    {
+     "resultId": "0-4",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1031520
+    },
+    {
+     "resultId": "0-0",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1038800
+    },
+    {
+     "resultId": "3-3",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1047280
+    },
+    {
+     "resultId": "3-2",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1054560
+    },
+    {
+     "resultId": "2-3",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1061840
+    },
+    {
+     "resultId": "4-0",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1069120
+    },
+    {
+     "resultId": "0-2",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1076400
+    },
+    {
+     "resultId": "4-3",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1084880
+    },
+    {
+     "resultId": "1-4",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1092160
+    },
+    {
+     "resultId": "2-2",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1099440
+    },
+    {
+     "resultId": "3-4",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1106720
+    },
+    {
+     "resultId": "3-1",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1114000
+    },
+    {
+     "resultId": "2-1",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1121280
+    },
+    {
+     "resultId": "4-2",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1129760
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1137040
+    },
+    {
+     "resultId": "1-0",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1143720
+    },
+    {
+     "resultId": "1-1",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1153800
+    },
+    {
+     "resultId": "4-1",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1163880
+    },
+    {
+     "resultId": "1-3",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1170560
+    },
+    {
+     "resultId": "2-0",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1177240
+    },
+    {
+     "resultId": "0-3",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1187320
+    },
+    {
+     "resultId": "2-4",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1194000
+    }
+   ],
+   "hashes": [
+    "528a25208c9d8e8c",
+    "944cf26d0441c964",
+    "3bd6dbeca65798c0",
+    "3fd92ba81d8bb3c2",
+    "5c3e2307c1b13eae",
+    "1702fe0607e3064f",
+    "5bf2f37e835a3294",
+    "5e5d6c6bc5501a1e",
+    "666e7fffad518ff1",
+    "121fd3a034ba58ad",
+    "d2559af487c0d01d",
+    "04a1b341574b995f",
+    "4529d94df5727552",
+    "3f2958ec498c85db",
+    "92f983518abe4eab",
+    "41f0263858c04677",
+    "f1212b7e08f2d672",
+    "c4b8077948a99b07",
+    "2c183daa0c7433cc",
+    "3b6752f302383812",
+    "806dbab751524ad8",
+    "d2119e97bd264b40",
+    "5b7d63309c267612",
+    "ec9a5a9c29a80bb8",
+    "260cc17a6506bf4b",
+    "5ea4a676aae3359b",
+    "7e4c72e9be624629",
+    "bd02053f9296edf5",
+    "bd844256809c2752",
+    "12b1ceda20027aae",
+    "8f01bd5687255862",
+    "4755468364dc9606",
+    "05bef3c95205dfc2",
+    "2094d84603b071b7",
+    "8e69735be2a61088",
+    "0d1a88810d129949"
+   ]
+  },
+  {
+   "seed": 13,
+   "draws": [
+    {
+     "resultId": "2-4",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "1-4",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "0-1",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1014560
+    },
+    {
+     "resultId": "0-2",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1023040
+    },
+    {
+     "resultId": "0-0",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1031520
+    },
+    {
+     "resultId": "0-3",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1040000
+    },
+    {
+     "resultId": "1-0",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1047280
+    },
+    {
+     "resultId": "2-2",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1055760
+    },
+    {
+     "resultId": "3-3",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1063040
+    },
+    {
+     "resultId": "4-3",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1070320
+    },
+    {
+     "resultId": "3-4",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1077600
+    },
+    {
+     "resultId": "4-1",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1084880
+    },
+    {
+     "resultId": "2-0",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1092160
+    },
+    {
+     "resultId": "1-2",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1100640
+    },
+    {
+     "resultId": "3-1",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1109120
+    },
+    {
+     "resultId": "2-3",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1116400
+    },
+    {
+     "resultId": "3-2",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1123680
+    },
+    {
+     "resultId": "4-0",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1130960
+    },
+    {
+     "resultId": "0-4",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1138240
+    },
+    {
+     "resultId": "4-2",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1144920
+    },
+    {
+     "resultId": "2-1",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1151600
+    },
+    {
+     "resultId": "4-4",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1161680
+    },
+    {
+     "resultId": "1-3",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1168360
+    },
+    {
+     "resultId": "1-1",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1175040
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1185120
+    },
+    {
+     "resultId": "3-0",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1191800
+    }
+   ],
+   "hashes": [
+    "9d90e3d700521056",
+    "5550dc6f6109eaf6",
+    "9934c883998bbbeb",
+    "934423847d06e0d1",
+    "ea4d23e0bb189066",
+    "cbb724d599766e81",
+    "361c8a3ef043aaed",
+    "d7b780642bb1de65",
+    "24e4edc24de16540",
+    "831442c8611b7b88",
+    "aafcbd48eea7ca3b",
+    "923dcf169b3a631e",
+    "b663f37e8f339492",
+    "9125672b1a817b90",
+    "eab472cf38a30f9c",
+    "47f16c25c1bf0375",
+    "4a78993d7ae06913",
+    "f765b37e807be9d5",
+    "353f4452bba0a5c7",
+    "840e4e2a8f8f1093",
+    "52d3e3eacdb494cd",
+    "81c0759078e63496",
+    "b6667069fa9bcc1b",
+    "8bd3368e09b96ff0",
+    "472db21a32576fcc",
+    "6224323fe8358906",
+    "dcdcfc01ac1e4b62",
+    "2537f86bc96f50f3",
+    "17c521605d08d29e",
+    "1653cb1687ac1d0d",
+    "162a7fa96805d57e",
+    "48bd1e7621d5bc8c",
+    "20c3d6401e335b79",
+    "35c67b6c7d43f213",
+    "cad74b5984ea7b52",
+    "ba808ff6380b5e84"
+   ]
+  },
+  {
+   "seed": 14,
+   "draws": [
+    {
+     "resultId": "2-1",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "2-0",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1008480
+    },
+    {
+     "resultId": "2-4",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1016960
+    },
+    {
+     "resultId": "1-3",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1024240
+    },
+    {
+     "resultId": "0-4",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1031520
+    },
+    {
+     "resultId": "2-2",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1038800
+    },
+    {
+     "resultId": "3-4",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1046080
+    },
+    {
+     "resultId": "0-0",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1053360
+    },
+    {
+     "resultId": "4-4",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1061840
+    },
+    {
+     "resultId": "4-2",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1069120
+    },
+    {
+     "resultId": "1-2",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1076400
+    },
+    {
+     "resultId": "0-1",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1084880
+    },
+    {
+     "resultId": "4-0",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1093360
+    },
+    {
+     "resultId": "0-2",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1100640
+    },
+    {
+     "resultId": "1-0",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1109120
+    },
+    {
+     "resultId": "2-3",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1117600
+    },
+    {
+     "resultId": "3-1",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1124880
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1132160
+    },
+    {
+     "resultId": "0-3",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1139440
+    },
+    {
+     "resultId": "3-3",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1146120
+    },
+    {
+     "resultId": "1-4",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1152800
+    },
+    {
+     "resultId": "4-1",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1159480
+    },
+    {
+     "resultId": "3-0",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1166160
+    },
+    {
+     "resultId": "4-3",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1172840
+    },
+    {
+     "resultId": "3-2",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1179520
+    },
+    {
+     "resultId": "1-1",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1186200
+    }
+   ],
+   "hashes": [
+    "d43d9abcd729e52a",
+    "c58e0f784069d91e",
+    "d217ae3f866f819b",
+    "e334f90ec2a960b1",
+    "5d65c6ffbb879ab9",
+    "edd8a1452c169c1e",
+    "7ed7c864fc2aecd4",
+    "e49b7f5ff141bb9b",
+    "ed22aac5d3a4b632",
+    "1c77062a09821253",
+    "735df1b661147425",
+    "51166c91b19f8c0b",
+    "7116ab5e398abc99",
+    "5f782216323a0890",
+    "08adc783c24b9825",
+    "8d5eb201e1326748",
+    "949298a035881a0d",
+    "2b5bb186736e227c",
+    "0c43ab8908ac9be8",
+    "8b5363c907f40e54",
+    "31f1e1808a58482f",
+    "e8376097bd4e9956",
+    "b1d3bf6bb51a5f18",
+    "ca398bb4c654be18",
+    "c744d77b124ca710",
+    "8b8df28cf0b04aba",
+    "4fcde6c113c745d3",
+    "64768db8162f6085",
+    "7729367e6f2f55e6",
+    "a41a84a0a2f59087",
+    "8a6625b611c94031",
+    "a2e95112672ed573",
+    "94572014e6d45374",
+    "b103baf70963ac05",
+    "092aefd43bd22781",
+    "e6a53331a767be13"
+   ]
+  },
+  {
+   "seed": 15,
+   "draws": [
+    {
+     "resultId": "1-1",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "2-1",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1008480
+    },
+    {
+     "resultId": "2-0",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1016960
+    },
+    {
+     "resultId": "2-3",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1025440
+    },
+    {
+     "resultId": "0-4",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1032720
+    },
+    {
+     "resultId": "3-3",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1040000
+    },
+    {
+     "resultId": "4-4",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1047280
+    },
+    {
+     "resultId": "1-2",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1054560
+    },
+    {
+     "resultId": "0-1",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1063040
+    },
+    {
+     "resultId": "2-2",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1071520
+    },
+    {
+     "resultId": "1-4",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1078800
+    },
+    {
+     "resultId": "1-3",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1086080
+    },
+    {
+     "resultId": "0-0",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1093360
+    },
+    {
+     "resultId": "4-1",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1101840
+    },
+    {
+     "resultId": "1-0",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1109120
+    },
+    {
+     "resultId": "3-0",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1117600
+    },
+    {
+     "resultId": "0-2",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1124880
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1133360
+    },
+    {
+     "resultId": "4-3",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1140640
+    },
+    {
+     "resultId": "4-2",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1147320
+    },
+    {
+     "resultId": "3-1",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1154000
+    },
+    {
+     "resultId": "0-3",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1160680
+    },
+    {
+     "resultId": "3-2",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1167360
+    },
+    {
+     "resultId": "2-4",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1174040
+    },
+    {
+     "resultId": "3-4",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1180720
+    },
+    {
+     "resultId": "4-0",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1187400
+    }
+   ],
+   "hashes": [
+    "744ed49992bdd425",
+    "23d8c551ba7e7de8",
+    "85f40a04f3401ac0",
+    "3207fe72d2aa828c",
+    "adf4ab2839a71d14",
+    "3a4c8d32634b4cbe",
+    "59643ddd0a123f50",
+    "7b56398c76e3c8d7",
+    "60208df626b0dbbf",
+    "cc895b7b8644b8cb",
+    "5b04598dea327bb6",
+    "17cd26d572eece00",
+    "46406bc6eb7176bc",
+    "cd14d564537d8510",
+    "7a4cdccc29ef825d",
+    "47ef3f4265c51964",
+    "20b4d1d9b0ee05d2",
+    "2c42eeb3bf2e5abc",
+    "eb2d8ffb8ab35947",
+    "d7031023866a5867",
+    "afcdbb957097e4a6",
+    "21ca23e858abdd4e",
+    "e846d27996590506",
+    "924eb6a2e356f26e",
+    "9d6b9aba905dc3a4",
+    "97f785c5cc0b8d02",
+    "4e7f29f790eb7192",
+    "138c49aa7aaf24f0",
+    "08d54cd5274a8b6c",
+    "05f0ccef5f4c6dcf",
+    "5a3d55f464e0d546",
+    "53f419a942f9f10b",
+    "c7fc87b5192e484c",
+    "0943b43b4e209142",
+    "a8c94494890bd8a3",
+    "a860d9603893bd59"
+   ]
+  },
+  {
+   "seed": 16,
+   "draws": [
+    {
+     "resultId": "3-1",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "0-3",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "4-0",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1014560
+    },
+    {
+     "resultId": "1-4",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1021840
+    },
+    {
+     "resultId": "1-3",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1029120
+    },
+    {
+     "resultId": "0-0",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1036400
+    },
+    {
+     "resultId": "4-4",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1044880
+    },
+    {
+     "resultId": "2-3",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1052160
+    },
+    {
+     "resultId": "1-0",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1059440
+    },
+    {
+     "resultId": "4-3",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1067920
+    },
+    {
+     "resultId": "2-2",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1075200
+    },
+    {
+     "resultId": "0-1",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1082480
+    },
+    {
+     "resultId": "1-2",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1090960
+    },
+    {
+     "resultId": "2-4",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1099440
+    },
+    {
+     "resultId": "3-2",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1106720
+    },
+    {
+     "resultId": "4-2",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1114000
+    },
+    {
+     "resultId": "2-0",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1121280
+    },
+    {
+     "resultId": "2-1",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1129760
+    },
+    {
+     "resultId": "4-1",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1138240
+    },
+    {
+     "resultId": "0-4",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1144920
+    },
+    {
+     "resultId": "3-4",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1151600
+    },
+    {
+     "resultId": "1-1",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1158280
+    },
+    {
+     "resultId": "3-3",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1168360
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1175040
+    },
+    {
+     "resultId": "0-2",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1181720
+    },
+    {
+     "resultId": "3-0",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1191800
+    }
+   ],
+   "hashes": [
+    "e614175e516ce388",
+    "8218b07d7ee63396",
+    "b655f50911037c94",
+    "fdd31818e59fb1f0",
+    "09c1d6485989c209",
+    "e37dbfe87453017d",
+    "02a4d7934c4f53be",
+    "d021bc08ceb91d86",
+    "041d5e8373a4e4f4",
+    "12224cdfc86816e4",
+    "802d70fab0b8ffa6",
+    "94a127c3b7a2cef1",
+    "8c7104ae6eff4635",
+    "5c56b1a0016fd93d",
+    "7a149bdf882006ca",
+    "0d120af03395204f",
+    "2c6ae75f51601ed2",
+    "e685f9ad8f8f85d5",
+    "4f6cf66a7f0d5aaf",
+    "4c3919470f8f8e86",
+    "108ed596e02fb494",
+    "fba032fdd60e23b5",
+    "eb98b89fdda1197f",
+    "52194eb822975c13",
+    "02b2f8b69730a493",
+    "1d8f806b6ac04972",
+    "97fdf8674e4cdd19",
+    "67b4048d09de658f",
+    "a5542d6144f9b887",
+    "39feb66a0b75204c",
+    "4ab7b0c9692524bc",
+    "d764f257b35b9c1d",
+    "43dae6c3eabdc3f0",
+    "586445ef1980e953",
+    "e14c6d0aed5c8e9d",
+    "630cb2e6964e9301"
+   ]
+  },
+  {
+   "seed": 17,
+   "draws": [
+    {
+     "resultId": "3-2",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "0-4",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "2-3",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1014560
+    },
+    {
+     "resultId": "0-3",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1021840
+    },
+    {
+     "resultId": "0-1",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1029120
+    },
+    {
+     "resultId": "4-0",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1037600
+    },
+    {
+     "resultId": "1-3",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1044880
+    },
+    {
+     "resultId": "3-0",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1052160
+    },
+    {
+     "resultId": "1-2",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1059440
+    },
+    {
+     "resultId": "3-4",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1067920
+    },
+    {
+     "resultId": "4-2",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1075200
+    },
+    {
+     "resultId": "1-4",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1082480
+    },
+    {
+     "resultId": "1-1",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1089760
+    },
+    {
+     "resultId": "1-0",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1098240
+    },
+    {
+     "resultId": "3-3",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1106720
+    },
+    {
+     "resultId": "4-3",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1114000
+    },
+    {
+     "resultId": "2-0",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1121280
+    },
+    {
+     "resultId": "2-4",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1129760
+    },
+    {
+     "resultId": "4-1",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1137040
+    },
+    {
+     "resultId": "3-1",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1143720
+    },
+    {
+     "resultId": "2-2",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1150400
+    },
+    {
+     "resultId": "4-4",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1157080
+    },
+    {
+     "resultId": "2-1",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1163760
+    },
+    {
+     "resultId": "0-2",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1173840
+    },
+    {
+     "resultId": "0-0",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1183920
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1194000
+    }
+   ],
+   "hashes": [
+    "e967cefd4673003f",
+    "230bc0660d0f893e",
+    "db5ad4e42dfe96cb",
+    "baca12275d2bc19c",
+    "6de096ebff02d3ac",
+    "c0f4b3e7f36efb85",
+    "862770ed88b6b640",
+    "7fdf2da4e97dd8c9",
+    "f3975a728a2bdbec",
+    "ac79edefaa47ff7f",
+    "993ffb5e7f560649",
+    "e01813644a76fa95",
+    "c5c1269f159e5bef",
+    "831a720ed99bc165",
+    "4ef3372023fada10",
+    "3fe9b8dd68ec3565",
+    "95b3b578f17ed9ec",
+    "d8f9bb5152549b3c",
+    "3c5a67f7f2e796ff",
+    "6601ec98e72e8f43",
+    "7f56c4ddd453907a",
+    "72bf1ec87c21a752",
+    "369b9640f2d77546",
+    "f0978179cb9751da",
+    "548e517c90c29064",
+    "1563b97efef7b440",
+    "a15cdf64afc43f3d",
+    "1df4c9ef6fc81806",
+    "20aa5b97754c2e5e",
+    "651808e7f3f83051",
+    "e6820665ca4be06f",
+    "13004625358fb4d6",
+    "510721155c44468e",
+    "18aff0d543782417",
+    "4d009f492463ef7c",
+    "50affb9ad64c95dd"
+   ]
+  },
+  {
+   "seed": 18,
+   "draws": [
+    {
+     "resultId": "2-0",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "3-1",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1008480
+    },
+    {
+     "resultId": "2-3",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1015760
+    },
+    {
+     "resultId": "0-4",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1023040
+    },
+    {
+     "resultId": "4-1",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1030320
+    },
+    {
+     "resultId": "2-4",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1037600
+    },
+    {
+     "resultId": "3-4",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1044880
+    },
+    {
+     "resultId": "0-3",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1052160
+    },
+    {
+     "resultId": "0-2",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1059440
+    },
+    {
+     "resultId": "3-0",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1067920
+    },
+    {
+     "resultId": "1-4",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1075200
+    },
+    {
+     "resultId": "2-2",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1082480
+    },
+    {
+     "resultId": "1-0",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1089760
+    },
+    {
+     "resultId": "3-2",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1098240
+    },
+    {
+     "resultId": "4-0",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1105520
+    },
+    {
+     "resultId": "0-0",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1112800
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1121280
+    },
+    {
+     "resultId": "4-2",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1128560
+    },
+    {
+     "resultId": "4-4",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1135840
+    },
+    {
+     "resultId": "1-3",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1142520
+    },
+    {
+     "resultId": "0-1",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1149200
+    },
+    {
+     "resultId": "3-3",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1159280
+    },
+    {
+     "resultId": "1-1",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1165960
+    },
+    {
+     "resultId": "4-3",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1176040
+    },
+    {
+     "resultId": "1-2",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1182720
+    },
+    {
+     "resultId": "2-1",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1192800
+    }
+   ],
+   "hashes": [
+    "927fa1895ec2880d",
+    "76cbf43b5d19dd2b",
+    "839b0fa5a7953be3",
+    "77d0b4ddf3cfc629",
+    "930f3266fab450d7",
+    "34b7d7cf0f9ae590",
+    "34a3c946a972d286",
+    "3c085ec240ce3aa8",
+    "472eea2e5aa43df6",
+    "1d52590f3188b4a8",
+    "b23f71bfbcc061d0",
+    "fdb7a423f92e30e9",
+    "1997d4d6ffb9dd1f",
+    "00b14ab945bc8aca",
+    "34bd674a5af123d5",
+    "6f307d44102a414f",
+    "e744a1e419261098",
+    "e7968965a1b1c511",
+    "ae1cfb4b9017bef7",
+    "d51200956060ceca",
+    "e2ea560129ca9b4a",
+    "24e43150929e6e78",
+    "3066697034ab3bf2",
+    "ae84f5b3da02a4af",
+    "3cef44fb958b64e9",
+    "5682aa8d1067776a",
+    "a1e0f6d411bda838",
+    "5f7af177cb56f960",
+    "e73ff3d30c20a074",
+    "2de79379e326d21a",
+    "9a0dd13e88a6684f",
+    "1223c481589c86a3",
+    "6a0fa72c313c7378",
+    "8175e039e5409964",
+    "3f11b01bbbcf077e",
+    "ae206ddc15d734a8"
+   ]
+  },
+  {
+   "seed": 19,
+   "draws": [
+    {
+     "resultId": "0-1",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "1-4",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1008480
+    },
+    {
+     "resultId": "2-2",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1015760
+    },
+    {
+     "resultId": "4-0",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1023040
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1030320
+    },
+    {
+     "resultId": "1-2",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1037600
+    },
+    {
+     "resultId": "3-2",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1046080
+    },
+    {
+     "resultId": "2-4",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1053360
+    },
+    {
+     "resultId": "2-3",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1060640
+    },
+    {
+     "resultId": "4-1",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1067920
+    },
+    {
+     "resultId": "0-2",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1075200
+    },
+    {
+     "resultId": "2-1",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1083680
+    },
+    {
+     "resultId": "3-1",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1092160
+    },
+    {
+     "resultId": "1-3",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1099440
+    },
+    {
+     "resultId": "3-0",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1106720
+    },
+    {
+     "resultId": "0-0",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1114000
+    },
+    {
+     "resultId": "0-3",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1122480
+    },
+    {
+     "resultId": "3-3",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1129760
+    },
+    {
+     "resultId": "4-2",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1137040
+    },
+    {
+     "resultId": "4-3",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1143720
+    },
+    {
+     "resultId": "1-1",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1150400
+    },
+    {
+     "resultId": "0-4",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1160480
+    },
+    {
+     "resultId": "1-0",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1167160
+    },
+    {
+     "resultId": "2-0",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1177240
+    },
+    {
+     "resultId": "4-4",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1187320
+    },
+    {
+     "resultId": "3-4",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1194000
+    }
+   ],
+   "hashes": [
+    "93a8b6231a29fc95",
+    "360e20de2dec668a",
+    "27876e9cd768042d",
+    "67bcd8086ba12c7f",
+    "0fb09659754d7e5d",
+    "b38564ec5cb36c45",
+    "6e2dec9b33301db6",
+    "2945e5066729d205",
+    "b5fa8fec9d6414d9",
+    "d2754c6f0d3f6cad",
+    "9fa75d6ed86ba0c9",
+    "4880f6ef2d34a72d",
+    "2b6946cfad9f71cb",
+    "a5b02606e8090bda",
+    "08bde29d13bde60d",
+    "2ea4e7f77a6defc6",
+    "54d08c65628a8f37",
+    "42d247cc2d31c5cd",
+    "2d097f64a8dd47e3",
+    "cf180f3db952639f",
+    "1cfb7245255062a6",
+    "8f46befed8c41608",
+    "3d978868b36cc9b1",
+    "98f40ece41bd1c28",
+    "6a65137c548b7f6c",
+    "0ec56ff881773e34",
+    "529de80a951df8f2",
+    "4246e499b04bbb43",
+    "a70aed5e016861af",
+    "a75e8bdc275b24ba",
+    "8dcb6ca86b18c6af",
+    "cc9b53a27c5d0ca2",
+    "c167a6fa284cb35d",
+    "e8e9c8f5f32b196b",
+    "8b70a58056dcf174",
+    "57df9dcae5d4c5ac"
+   ]
+  },
+  {
+   "seed": 20,
+   "draws": [
+    {
+     "resultId": "3-4",
+     "participant": 0,
+     "round": 1,
+     "bid": null,
+     "at": 1000000
+    },
+    {
+     "resultId": "1-4",
+     "participant": 1,
+     "round": 1,
+     "bid": null,
+     "at": 1007280
+    },
+    {
+     "resultId": "3-0",
+     "participant": 2,
+     "round": 1,
+     "bid": null,
+     "at": 1014560
+    },
+    {
+     "resultId": "1-1",
+     "participant": 3,
+     "round": 1,
+     "bid": null,
+     "at": 1021840
+    },
+    {
+     "resultId": "2-1",
+     "participant": 4,
+     "round": 1,
+     "bid": null,
+     "at": 1030320
+    },
+    {
+     "resultId": "0-4",
+     "participant": 5,
+     "round": 1,
+     "bid": null,
+     "at": 1038800
+    },
+    {
+     "resultId": "4-0",
+     "participant": 6,
+     "round": 1,
+     "bid": null,
+     "at": 1046080
+    },
+    {
+     "resultId": "4-3",
+     "participant": 7,
+     "round": 1,
+     "bid": null,
+     "at": 1053360
+    },
+    {
+     "resultId": "2-0",
+     "participant": 8,
+     "round": 1,
+     "bid": null,
+     "at": 1060640
+    },
+    {
+     "resultId": "OVERIG",
+     "participant": 8,
+     "round": 2,
+     "bid": null,
+     "at": 1069120
+    },
+    {
+     "resultId": "0-3",
+     "participant": 7,
+     "round": 2,
+     "bid": null,
+     "at": 1076400
+    },
+    {
+     "resultId": "0-2",
+     "participant": 6,
+     "round": 2,
+     "bid": null,
+     "at": 1083680
+    },
+    {
+     "resultId": "1-2",
+     "participant": 5,
+     "round": 2,
+     "bid": null,
+     "at": 1092160
+    },
+    {
+     "resultId": "3-1",
+     "participant": 4,
+     "round": 2,
+     "bid": null,
+     "at": 1100640
+    },
+    {
+     "resultId": "1-0",
+     "participant": 3,
+     "round": 2,
+     "bid": null,
+     "at": 1107920
+    },
+    {
+     "resultId": "1-3",
+     "participant": 2,
+     "round": 2,
+     "bid": null,
+     "at": 1116400
+    },
+    {
+     "resultId": "4-4",
+     "participant": 1,
+     "round": 2,
+     "bid": null,
+     "at": 1123680
+    },
+    {
+     "resultId": "2-2",
+     "participant": 0,
+     "round": 2,
+     "bid": null,
+     "at": 1130960
+    },
+    {
+     "resultId": "0-1",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1138240
+    },
+    {
+     "resultId": "2-4",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1148320
+    },
+    {
+     "resultId": "0-0",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1155000
+    },
+    {
+     "resultId": "3-2",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1165080
+    },
+    {
+     "resultId": "3-3",
+     "participant": 0,
+     "round": "veiling",
+     "bid": 20,
+     "at": 1171760
+    },
+    {
+     "resultId": "4-2",
+     "participant": 4,
+     "round": "veiling",
+     "bid": 0.5,
+     "at": 1178440
+    },
+    {
+     "resultId": "4-1",
+     "participant": 8,
+     "round": "veiling",
+     "bid": 12.25,
+     "at": 1185120
+    },
+    {
+     "resultId": "2-3",
+     "participant": 2,
+     "round": "veiling",
+     "bid": 0,
+     "at": 1191800
+    }
+   ],
+   "hashes": [
+    "7d19b45bfe8edc2b",
+    "3c348fcaa2d134f1",
+    "32e4cc6de95031fe",
+    "0f12087a12e4c198",
+    "b2463826f1c1ca40",
+    "07f062155ca751a7",
+    "06f063f9c35afdee",
+    "d762899eb8887377",
+    "c7b535cc5cc69fa1",
+    "1a145ad5b55ecdc4",
+    "0d75421c7437c049",
+    "e450b5b5eec84ebd",
+    "f9f8db28ad3863f5",
+    "c4e8ea548becf7c8",
+    "d8f78ca2670c68e6",
+    "7535d3fa4c6b6034",
+    "06ceabf19313095d",
+    "37b9192f6a36ef06",
+    "b617fd75b79743ee",
+    "6124d3ec3b7a2a71",
+    "3b274722f37d950b",
+    "f3ec65a6b8c0d423",
+    "f4ec2dac04ac1121",
+    "e9c1b237259318ad",
+    "c30a25a9bdbe8457",
+    "6b070c90f344c95d",
+    "ccea1ffc0d84794f",
+    "8e39b008c8922a1b",
+    "46765537ace38afb",
+    "df132b62a839ea12",
+    "adcdda8bfc365c6f",
+    "607f2a85e50e7e2f",
+    "49cf77685f0c8962",
+    "fd1ac127cf459fd8",
+    "37521db9aef7eff8",
+    "162f0c94d58f6fa0"
+   ]
+  }
+ ],
+ "savedV2": "{\"version\":2,\"phase\":\"draw\",\"turn\":4,\"remaining\":[\"0-0\",\"0-1\",\"0-2\",\"0-4\",\"1-1\",\"1-2\",\"1-3\",\"1-4\",\"2-0\",\"2-1\",\"2-2\",\"2-3\",\"2-4\",\"3-0\",\"3-1\",\"3-2\",\"3-3\",\"3-4\",\"4-1\",\"4-3\",\"4-4\",\"OVERIG\"],\"draws\":[{\"resultId\":\"1-0\",\"participant\":0,\"round\":1,\"bid\":null,\"at\":1000000},{\"resultId\":\"4-2\",\"participant\":1,\"round\":1,\"bid\":null,\"at\":1008480},{\"resultId\":\"0-3\",\"participant\":2,\"round\":1,\"bid\":null,\"at\":1015760},{\"resultId\":\"4-0\",\"participant\":3,\"round\":1,\"bid\":null,\"at\":1023040}],\"auctionBoard\":null,\"auctionTurn\":null,\"spin\":{\"id\":\"spin-5\",\"resultId\":\"3-2\",\"participant\":4,\"round\":1,\"bid\":null,\"startedAt\":1030320},\"lastSpin\":{\"id\":\"spin-4\",\"resultId\":\"4-0\",\"participant\":3,\"round\":1,\"bid\":null,\"startedAt\":1023040}}",
+ "savedV2Auction": "{\"version\":2,\"phase\":\"auction\",\"turn\":18,\"remaining\":[\"0-0\",\"0-3\",\"0-4\",\"1-1\",\"2-3\",\"3-0\",\"4-1\",\"4-3\"],\"draws\":[{\"resultId\":\"4-4\",\"participant\":0,\"round\":1,\"bid\":null,\"at\":1000000},{\"resultId\":\"1-3\",\"participant\":1,\"round\":1,\"bid\":null,\"at\":1007280},{\"resultId\":\"1-0\",\"participant\":2,\"round\":1,\"bid\":null,\"at\":1014560},{\"resultId\":\"0-1\",\"participant\":3,\"round\":1,\"bid\":null,\"at\":1023040},{\"resultId\":\"1-2\",\"participant\":4,\"round\":1,\"bid\":null,\"at\":1031520},{\"resultId\":\"2-4\",\"participant\":5,\"round\":1,\"bid\":null,\"at\":1040000},{\"resultId\":\"0-2\",\"participant\":6,\"round\":1,\"bid\":null,\"at\":1047280},{\"resultId\":\"OVERIG\",\"participant\":7,\"round\":1,\"bid\":null,\"at\":1055760},{\"resultId\":\"3-2\",\"participant\":8,\"round\":1,\"bid\":null,\"at\":1063040},{\"resultId\":\"3-3\",\"participant\":8,\"round\":2,\"bid\":null,\"at\":1070320},{\"resultId\":\"4-0\",\"participant\":7,\"round\":2,\"bid\":null,\"at\":1077600},{\"resultId\":\"2-0\",\"participant\":6,\"round\":2,\"bid\":null,\"at\":1084880},{\"resultId\":\"3-4\",\"participant\":5,\"round\":2,\"bid\":null,\"at\":1093360},{\"resultId\":\"4-2\",\"participant\":4,\"round\":2,\"bid\":null,\"at\":1100640},{\"resultId\":\"2-2\",\"participant\":3,\"round\":2,\"bid\":null,\"at\":1107920},{\"resultId\":\"3-1\",\"participant\":2,\"round\":2,\"bid\":null,\"at\":1115200},{\"resultId\":\"1-4\",\"participant\":1,\"round\":2,\"bid\":null,\"at\":1122480},{\"resultId\":\"2-1\",\"participant\":0,\"round\":2,\"bid\":null,\"at\":1129760}],\"auctionBoard\":[\"0-0\",\"0-3\",\"0-4\",\"1-1\",\"2-3\",\"3-0\",\"4-1\",\"4-3\"],\"auctionTurn\":{\"participant\":3,\"bid\":7.5},\"spin\":{\"id\":\"spin-19\",\"resultId\":\"3-0\",\"participant\":3,\"round\":\"veiling\",\"bid\":7.5,\"startedAt\":1138240},\"lastSpin\":{\"id\":\"spin-18\",\"resultId\":\"2-1\",\"participant\":0,\"round\":2,\"bid\":null,\"startedAt\":1129760}}"
+}

@@ -2,6 +2,15 @@
 // speler die een volledig spel doorloopt zoals de app dat doet.
 import { createInitialState, createReducer, isTurnReleased } from '../src/game/engine.js'
 import { releaseDelay } from '../src/game/timeline.js'
+import { ALL_RESULTS, OTHER_ID } from '../src/game/config.js'
+
+// Instelbare spellen: 49 losse scores (0-0 … 6-6) en een eenvoudige set instellingen.
+export const SCORES = ALL_RESULTS.filter((r) => !r.other).map((r) => r.id)
+export const players = (n) => Array.from({ length: n }, (_, i) => ({ id: i, name: `Speler ${i + 1}` }))
+export function makeConfig({ n = 4, rounds = 2, lots = 0, priceCents = 1000, mega = [], pool } = {}) {
+  const size = n * rounds + lots
+  return { players: players(n), rounds, priceCents, pool: pool ?? [...SCORES.slice(0, size - 1), OTHER_ID], mega }
+}
 
 // Kleine, voorspelbare generator (mulberry32) voor herhaalbare tests.
 export function seededRandomInt(seed = 1) {
@@ -21,9 +30,9 @@ export function counterIds() {
   return () => `spin-${++i}`
 }
 
-export function makeGame({ seed = 1, randomInt } = {}) {
+export function makeGame({ seed = 1, randomInt, config } = {}) {
   const reducer = createReducer({ randomInt: randomInt ?? seededRandomInt(seed), newId: counterIds() })
-  let state = createInitialState()
+  let state = config ? createInitialState(config) : createInitialState()
   let now = 1_000_000
   return {
     get state() {

@@ -8,13 +8,17 @@ import { MEGA_WIN_IDS, TIMING } from './config.js'
 // Moment waarop de tweede rol stilstaat (vóór het kleine terugveren).
 export const STOP_DELAY = TIMING.reel2Stop - TIMING.reelSettle
 
+// Standaard MEGA WIN-lijst (DEMO). In een instelbaar spel legt de engine bij
+// elke draai vast of het een MEGA WIN is (`spin.mega`); oudere opgeslagen
+// draaien zonder die vlag vallen terug op de standaardlijst.
 export const isMegaWin = (resultId) => MEGA_WIN_IDS.includes(resultId)
+export const spinIsMega = (spin) => spin.mega ?? isMegaWin(spin.resultId)
 const isAuction = (spin) => spin.round === 'veiling'
 
 // Veiling: zo lang blijft de uitslag staan voordat het vak oplicht.
 // Bij een MEGA WIN wacht het vak tot de animatie voorbij is.
 export function holdDelay(spin) {
-  return isMegaWin(spin.resultId) ? TIMING.megaWin : TIMING.auctionHold
+  return spinIsMega(spin) ? TIMING.megaWin : TIMING.auctionHold
 }
 
 // Moment waarop de trekking in de administratie verschijnt.
@@ -27,7 +31,7 @@ export function commitDelay(spin) {
 // Moment waarop de volgende beurt mag beginnen.
 export function releaseDelay(spin) {
   if (isAuction(spin)) return commitDelay(spin)
-  const wait = isMegaWin(spin.resultId) ? Math.max(TIMING.nextTurnDelay, TIMING.megaWin) : TIMING.nextTurnDelay
+  const wait = spinIsMega(spin) ? Math.max(TIMING.nextTurnDelay, TIMING.megaWin) : TIMING.nextTurnDelay
   return STOP_DELAY + wait
 }
 

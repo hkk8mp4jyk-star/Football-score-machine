@@ -29,7 +29,26 @@ export const RESULTS = [
   { id: OTHER_ID, home: null, away: null, other: true },
 ]
 
-export const RESULT_BY_ID = Object.fromEntries(RESULTS.map((r) => [r.id, r]))
+// Alle uitslagen waaruit een instelbaar spel (multiplayer) zijn pool kiest:
+// 0-0 t/m 6-6 (49) plus OVERIGE UITSLAGEN = 50. De DEMO en het standaardspel
+// gebruiken hierboven `RESULTS` (0-0 t/m 4-4 + Overige).
+export const MAX_POOL_GOALS = 6
+export const POOL_GOALS = Array.from({ length: MAX_POOL_GOALS + 1 }, (_, i) => i) // [0..6]
+export const ALL_RESULTS = [
+  ...POOL_GOALS.flatMap((home) => POOL_GOALS.map((away) => ({ id: `${home}-${away}`, home, away, other: false }))),
+  { id: OTHER_ID, home: null, away: null, other: true },
+]
+
+export const RESULT_BY_ID = Object.fromEntries(ALL_RESULTS.map((r) => [r.id, r]))
+
+// Grenzen voor instelbare spellen.
+export const MIN_PLAYERS = 1
+export const MAX_PLAYERS = 12
+export const MIN_ROUNDS = 1
+export const MAX_ROUNDS = 4
+export const MAX_AUCTION_LOTS = 10
+export const MAX_NAME_LENGTH = 20
+export const MAX_PRICE_CENTS = 1_000_000 // €10.000 per vaste trekking
 
 export const ROUNDS = 2
 export const DRAW_TURNS = PARTICIPANTS.length * ROUNDS // 18

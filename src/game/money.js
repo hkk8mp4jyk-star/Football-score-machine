@@ -6,13 +6,19 @@ export const REGULAR_VALUE_CENTS = 1000 // €10 per uitslag in de vaste rondes
 
 const toCents = (euros) => Math.round((euros ?? 0) * 100)
 
-// Vaste rondes: €10. Veiling: het daadwerkelijk betaalde bod.
-export function drawValueCents(draw) {
-  return draw.round === 'veiling' ? toCents(draw.bid) : REGULAR_VALUE_CENTS
+// Vaste rondes: de prijs per vaste trekking van het spel (DEMO: €10).
+// Veiling: het daadwerkelijk betaalde bod.
+export function drawValueCents(draw, priceCents = REGULAR_VALUE_CENTS) {
+  return draw.round === 'veiling' ? toCents(draw.bid) : priceCents
 }
 
-export function totalCents(draws) {
-  return draws.reduce((sum, d) => sum + drawValueCents(d), 0)
+export function totalCents(draws, priceCents = REGULAR_VALUE_CENTS) {
+  return draws.reduce((sum, d) => sum + drawValueCents(d, priceCents), 0)
+}
+
+// Totale pot van een spel: alle vaste trekkingen tegen de spelprijs plus alle biedingen.
+export function potCents(state) {
+  return totalCents(state.draws, state.config?.priceCents ?? REGULAR_VALUE_CENTS)
 }
 
 const whole = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 })

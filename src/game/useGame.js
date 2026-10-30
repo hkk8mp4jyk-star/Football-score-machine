@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer } from 'react'
 import { STATE_VERSION, createInitialState, reducer } from './engine.js'
 import { clock } from './clock.js'
+import { validateConfig } from './gameConfig.js'
 
 // Lokale opslag-adapter (DEMO). In multiplayer komt hier een variant die:
 //   - dispatch  -> verzoek naar de server stuurt
@@ -12,12 +13,15 @@ const KEY = 'fsm-demo-state'
 // Herstelt een opgeslagen stand. Een draai die tijdens het herladen liep,
 // blijft gewoon staan: de tijdlijn bepaalt waar hij nu is (verder draaien,
 // onthullen of al vastgelegd).
+// Versie 2 (vóór de instelbare spellen) was altijd het standaardspel: die
+// krijgt de standaardinstellingen erbij en speelt ongewijzigd verder.
 export function restoreState(raw) {
   try {
     if (!raw) return createInitialState()
     const parsed = JSON.parse(raw)
-    if (parsed?.version !== STATE_VERSION) return createInitialState()
-    return { ...createInitialState(), ...parsed }
+    if (parsed?.version === 2 && !('config' in parsed)) return { ...createInitialState(), ...parsed, version: STATE_VERSION }
+    if (parsed?.version !== STATE_VERSION || validateConfig(parsed.config).length) return createInitialState()
+    return { ...createInitialState(parsed.config), ...parsed }
   } catch {
     return createInitialState()
   }
