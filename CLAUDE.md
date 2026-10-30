@@ -7,8 +7,8 @@ Digitale fruitautomaat voor de jaarlijkse voetbalpool met negen vrienden.
 React-app (prototype goedgekeurd) die stap voor stap multiplayer wordt via
 Supabase. Fase 1 en 2 zijn klaar en goedgekeurd; fase 3 (Edge Function) is
 gebouwd. Nieuw Supabase-project (V2): database geïnstalleerd, `db:test`
-geslaagd, Edge Function `game` uitgerold, live test **5A geslaagd** en de
-logtelling voor 5B/5C gerepareerd (30-10-2026); 5B en 5C wachten op akkoord. **Fase 4 alleen starten na
+geslaagd, Edge Function `game` uitgerold, live tests **5A en 5B geslaagd**
+(PT409 via PostgREST aangetoond, 30-10-2026); 5C wacht op akkoord. **Fase 4 alleen starten na
 expliciet akkoord van de gebruiker.**
 
 ---
@@ -376,9 +376,23 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
    geen hangende transacties of locks, geen fouten/5xx in de logs, geen
    `version_conflict`. Alle REST-statussen: 200/201, plus 1 bedoelde 409
    (`seats`, bezette naam).
-   Daarna, elk met eigen akkoord: **5A** `npm run
-   fn:test:5a`, dan **5B** `npm run fn:test:5b`, pas daarna **5C** `npm run
-   fn:test:5c -- --bevestig`. Na elke fase: exitcode en opruimen beoordelen;
+   **5B gedaan 30-10-2026 14:54:32–14:55:22 UTC** (`npm run fn:test:5b`,
+   script = commit 41f46bd met gerepareerde logtelling, één keer): **8/8
+   stappen, exitcode 0**. 1 anonieme login, kamer, 2 gelijktijdige SPIN's.
+   (a) *Gelijktijdige verzoeken correct afgehandeld*: client 1× `200`, 1×
+   `409 turn_not_released`; database precies één trekking, versie 1.
+   (b) *PT409 via PostgREST aangetoond*: `commit_room_state` 1× `POST | 200`
+   (14:54:43.462) en 1× `POST | 409` (14:54:43.639), 0× 5xx, `rpcAll` 2 =
+   200 + 409; precies één `version_conflict` in de databaselog
+   (14:54:43.726). Het intern PT409 werd door de server opnieuw geprobeerd en
+   eindigde bij de client als `turn_not_released`. Geen herhaallus:
+   tellingen identiek na 10 s én bij onafhankelijke hermeting minuten later
+   (5B-venster = 5B-start tot nu). Rollbacks 35 → 36 (alleen het PT409).
+   Opruimen volledig (kamer, 1 testgebruiker, hulpfunctie; 0 sessies).
+   Nacontrole: database leeg, alleen `game`, alle diensten gezond, 16
+   verbindingen (3 PostgREST + 1 Auth, idle), geen hangende transacties of
+   wachtende locks, geen 5xx/`PGRST`/fouten in de logs.
+   Daarna, met eigen akkoord: **5C** `npm run fn:test:5c -- --bevestig`. Na elke fase: exitcode en opruimen beoordelen;
    bij exitcode ≠ 0 niet doorgaan en niet automatisch herhalen.
    **Stopcriterium**: één 5xx, time-out of hangende verbinding.
 
