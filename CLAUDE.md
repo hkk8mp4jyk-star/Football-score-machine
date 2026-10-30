@@ -6,8 +6,8 @@ gebruiker: **Nederlands**. De gebruiker werkt op **mobiel**.
 Digitale fruitautomaat voor de jaarlijkse voetbalpool met negen vrienden.
 React-app (prototype goedgekeurd) die stap voor stap multiplayer wordt via
 Supabase. Fase 1 en 2 zijn klaar en goedgekeurd; fase 3 (Edge Function) is
-gebouwd. Overstap naar een nieuw Supabase-project (V2) is lokaal voorbereid;
-de database-installatie daar wacht op akkoord. **Fase 4 alleen starten na
+gebouwd. Nieuw Supabase-project (V2): database geïnstalleerd (30-10-2026);
+`db:test`, Edge Function-uitrol en live test wachten elk op akkoord. **Fase 4 alleen starten na
 expliciet akkoord van de gebruiker.**
 
 ---
@@ -168,7 +168,7 @@ src/audio/sound.js     synthetische geluiden
     `postgres`. Onze migraties verlenen alles expliciet; `security.sql` toetst
     dat.
   - Token (Network secret voor api.supabase.com) heeft toegang tot V2, niet
-    `projects_read`. Schrijfrechten (migratie/deploy) nog niet bewezen.
+    `projects_read`. Migreren werkt; uitrollen van functies nog niet bewezen.
 - **Oud project `nptulnnuejivwcgcltuy`** (eu-west-1): **defect** (Auth/REST
   HTTP 521 na herstarts, zie Openstaande punten). Niet meer gebruiken, niet
   wijzigen; blijft voorlopig bestaan.
@@ -292,8 +292,15 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
    PGlite (scratchpad, niet in repo): beide migraties + `security.sql` met
    nagebootste Supabase-rollen en "expose UIT" → 55/55; tegenproef zonder
    migratie 2 faalt op de PT409-controles.
-2. `npm run db:migrate` (2 migraties) → read-only nacontrole: rechten, RLS,
-   `private`, publicatie, `pg_get_functiondef` bevat PT409.
+2. **Gedaan 30-10-2026**: `npm run db:migrate` (remote versies
+   20261030141020 `multiplayer_schema`, 20261030141022
+   `version_conflict_pt409`). Read-only nacontrole geslaagd: 3 tabellen met
+   RLS en 3 SELECT-policies (authenticated, via `private.is_room_member`);
+   rechten exact zoals ontworpen (anon niets; authenticated alleen SELECT +
+   `is_room_member` + usage `private`; service_role tabellen, sequence en
+   `commit_room_state`); `commit_room_state` bevat PT409 en geen 40001;
+   publicatie `rooms` + `seats`; PostgREST-schemacache: 3 relaties, geen
+   fouten; alle diensten gezond; tabellen leeg.
 3. `npm run db:test` (maakt tijdelijk testkamers, ruimt op; concurrency via
    Management API, niet via PostgREST).
 4. `npm run fn:deploy` → één verzoek zonder token: verwacht 401.
@@ -346,7 +353,8 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   telt precies 3 pogingen). `security.sql` +4 controles (PT409 i.p.v. 40001,
   expliciete serverrechten incl. sequence, expliciet leesrecht +
   `is_room_member`, geen bijrechten voor deelnemers). `deno check` en
-  Deno-rooktest geslaagd. Nog niets op V2 uitgevoerd.
+  Deno-rooktest geslaagd. Migraties op V2 uitgevoerd en nagecontroleerd
+  (zie §7b, procedure stap 2).
 - **Live test `fn:test` (30-10-2026, oud project, domein toegestaan)**: anonieme login
   werkt (echte Supabase Auth, `is_anonymous = true`); geldig/ongeldig/vervalst/
   verwijderd token, servertijd, kamer + 9 namen, autorisatie (geen
