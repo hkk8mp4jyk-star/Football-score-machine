@@ -6,8 +6,9 @@ gebruiker: **Nederlands**. De gebruiker werkt op **mobiel**.
 Digitale fruitautomaat voor de jaarlijkse voetbalpool met negen vrienden.
 React-app (prototype goedgekeurd) die stap voor stap multiplayer wordt via
 Supabase. Fase 1 en 2 zijn klaar en goedgekeurd; fase 3 (Edge Function) is
-gebouwd. Nieuw Supabase-project (V2): database geïnstalleerd (30-10-2026);
-`db:test`, Edge Function-uitrol en live test wachten elk op akkoord. **Fase 4 alleen starten na
+gebouwd. Nieuw Supabase-project (V2): database geïnstalleerd en `db:test`
+geslaagd (30-10-2026); Edge Function-uitrol en live test wachten elk op
+akkoord. **Fase 4 alleen starten na
 expliciet akkoord van de gebruiker.**
 
 ---
@@ -301,8 +302,16 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
    `commit_room_state`); `commit_room_state` bevat PT409 en geen 40001;
    publicatie `rooms` + `seats`; PostgREST-schemacache: 3 relaties, geen
    fouten; alle diensten gezond; tabellen leeg.
-3. `npm run db:test` (maakt tijdelijk testkamers, ruimt op; concurrency via
-   Management API, niet via PostgREST).
+3. **Gedaan 30-10-2026**: `npm run db:test` → **62/62** (security.sql 55 in
+   rollback-transactie, 1 concurrency-test op `commit_room_state`, 6
+   servertests incl. 10 gelijktijdige claims/SPIN's en volledig spel 18+8).
+   Alle verzoeken via Management API `/database/query` (direct Postgres,
+   `mgmt-api`), niet via PostgREST; herhalingen begrensd (429: max 8,
+   versieconflict: max 3). Conflicten correct: precies 9 + 9
+   `version_conflict` (PT409) in de logs om 14:13/14:14, daarna geen enkele
+   meer. Na afloop: 0 kamers/plaatsen/trekkingen/gebruikers, 13 verbindingen
+   (gelijk aan vooraf), geen hangende transacties of locks, alle diensten
+   gezond, geen fouten in de logs.
 4. `npm run fn:deploy` → één verzoek zonder token: verwacht 401.
 5. Live test gefaseerd: eerst zonder gelijktijdigheid, dan 2 gelijktijdige
    SPIN's, pas daarna 10. Tussendoor controleren: geen
