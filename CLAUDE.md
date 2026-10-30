@@ -174,7 +174,7 @@ src/audio/sound.js     synthetische geluiden
   HTTP 521 na herstarts, zie Openstaande punten). Niet meer gebruiken, niet
   wijzigen; blijft voorlopig bestaan.
 - Deelnemers loggen in via **anonieme Supabase-login** (geen accounts of
-  wachtwoorden). Live te testen met `npm run fn:test` (zie §7b).
+  wachtwoorden). Live te testen met `npm run fn:test:5a` (zie §7b).
 - Hosting: **GitHub Pages** (`.github/workflows/pages.yml`: `npm ci`,
   `npm test`, `npm run build` bij push naar `main`).
 - **Server-autoritatief**: telefoons lezen alleen (RLS + Realtime). Alle
@@ -189,7 +189,7 @@ src/audio/sound.js     synthetische geluiden
   het script wacht dan en probeert opnieuw.
 - **Netwerk in Claude Code-omgeving**: `api.supabase.com` en
   `twzjsmxydnfmowrmffsl.supabase.co` zijn toegestaan (door de gebruiker in de
-  omgevingsinstellingen; nodig voor `fn:test`).
+  omgevingsinstellingen; nodig voor `fn:test:*`).
 
 ## 7. Database en beveiliging (fase 2, uitgevoerd)
 
@@ -239,7 +239,8 @@ src/server/actions.js             alle acties + autorisatie (gedeeld met tests)
 src/server/http.js                CORS, POST/JSON, Bearer-token, foutcodes → HTTP
 src/server/supabaseStore.js       opslag via supabase-js; status alleen via commit_room_state
 scripts/server-integration.mjs    serverlogica tegen de echte database (in db:test)
-scripts/live-test.mjs             live test met echte anonieme logins (fn:test)
+scripts/live-test.mjs             live test in fasen 5a/5b/5c met echte anonieme logins
+tests/live-test.test.js           lokale tests van het live-testscript (zonder netwerk)
 tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-regels)
 ```
 
@@ -281,11 +282,40 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   `turn_not_released`/`no_auction_turn`/`game_finished`/`not_auction`/
   `spin_in_progress`/`conflict` 409, `too_large` 413 (>4 kB),
   `too_many_rooms` 429, `server_error` 500 (zonder interne details).
-- **Live test** (`npm run fn:test`): rolt tijdelijk hulpfunctie
-  `fsm-testlogin` uit (doet `signInAnonymously()` met de sleutel uit de eigen
-  functie-omgeving, beveiligd met een eenmalige willekeurige code; dit script
-  ziet nooit een API-sleutel), speelt alle scenario's met echte tokens en
-  ruimt hulpfunctie, testkamers en testgebruikers altijd op.
+- **Live test** (`scripts/live-test.mjs`), drie afzonderlijke fasen; één
+  fase per run, nooit automatisch een volgende:
+
+| Commando | Fase | Inhoud |
+|---|---|---|
+| `npm run fn:test:5a` | 5A basis | 3 anonieme logins (na elkaar), 401-controles, servertijd, kamer, opzoeken, naam claimen, weigeringen, **één** SPIN, status ophalen, herstel (opnieuw versturen → geen 2e trekking; later ophalen → beurt vrij). **Geen** gelijktijdige verzoeken (lokaal getoetst: max. 1 verzoek tegelijk) |
+| `npm run fn:test:5b` | 5B beperkt | 1 login, kamer, **2** gelijktijdige SPIN's |
+| `npm run fn:test:5c -- --bevestig` | 5C uitgebreid | idem met **10**; zonder `--bevestig` weigert het script |
+
+  - 5B/5C controleren apart: (1) **client**: precies één 200, de rest 409
+    (`turn_not_released`/`conflict`), nooit 5xx; (2) **database**: precies
+    één trekking, versie 1; (3) **PostgREST-logs** (intern):
+    `commit_room_state` 1× 200, k× 409 (= PT409), 0× 5xx, k ≤ 3·(n−1);
+    (4) **geen lus**: na 10 s geen nieuwe conflicten, geen
+    `idle in transaction`, rollbacks begrensd. Intern PT409 ≠ client-409: de
+    server herhaalt een PT409 (max 3) en de client ziet daarna meestal
+    `turn_not_released`. Is k = 0 (geen overlap), dan slaagt de fase met
+    waarschuwing "PT409 niet aangetoond".
+  - Veiligheid: alleen project `twzjsmxydnfmowrmffsl` (anders exit 2, ook via
+    `SUPABASE_PROJECT_REF`); elk verzoek tijdslimiet incl. lezen van het
+    antwoord (beheer 30 s, functies 20 s); herhalingen begrensd (429: 5,
+    login "nog niet klaar" 404/503: 6 pogingen, `game`-verzoeken nooit);
+    fasetijdslimiet (5A 240 s, 5B/5C 180 s) breekt lopende testverzoeken af;
+    stappen na elkaar, stop bij eerste fout.
+  - Opruimen in `finally`, altijd: testkamers (op organizer-id), anonieme
+    testgebruikers (alleen eigen id's, `is_anonymous`), hulpfunctie, daarna
+    controle "niets achtergebleven". Elke stap 30 s, geheel 120 s.
+  - Voor- en nacontrole: diensten gezond, geen hangende transacties.
+  - **Exitcodes**: 0 geslaagd · 1 test mislukt · 2 verkeerd gestart/project
+    · 3 opruimen onvolledig (handmatig controleren!) · 4 voorcontrole mislukt
+    (niets aangemaakt) · 5 fasetijdslimiet.
+  - Hulpfunctie `fsm-testlogin`: doet `signInAnonymously()` met de sleutel uit
+    de eigen functie-omgeving, beveiligd met een eenmalige code; het script
+    ziet nooit een API-sleutel.
 
 ### Veilige installatie- en testprocedure V2 (elke stap apart akkoord)
 
@@ -323,11 +353,12 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
    service-sleutel richting Auth. Nog niet bewezen: database-acties via
    PostgREST met de service-sleutel (volgt in stap 5a). Database daarna leeg,
    alle diensten gezond.
-5. Live test gefaseerd: eerst zonder gelijktijdigheid, dan 2 gelijktijdige
-   SPIN's, pas daarna 10. Tussendoor controleren: geen
-   `idle in transaction`, geen `version_conflict`-stroom in de logs, health
-   groen. **Stopcriterium**: één 500 of hangende verbinding = direct stoppen.
-   Opruimen moet altijd draaien (eerder liet een afgebroken run data achter).
+5. Live test in drie afzonderlijke fasen (script klaar en lokaal getest,
+   nog niet live gedraaid), elk met eigen akkoord: **5A** `npm run
+   fn:test:5a`, dan **5B** `npm run fn:test:5b`, pas daarna **5C** `npm run
+   fn:test:5c -- --bevestig`. Na elke fase: exitcode en opruimen beoordelen;
+   bij exitcode ≠ 0 niet doorgaan en niet automatisch herhalen.
+   **Stopcriterium**: één 5xx, time-out of hangende verbinding.
 
 ## 8. Afspraken: trekking, sync, animaties, herstel
 
@@ -367,6 +398,15 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   (52 + 6 servertests tegen de echte database als service_role, incl. volledig
   spel 18+8 en gelijktijdigheid; database daarna leeg). Rooktest in Deno 2.5
   (`deno check` + handler) geslaagd.
+- **Live-testscript in fasen (lokaal)**: `npm test` → **110 tests** (+22 in
+  `tests/live-test.test.js`: fasekeuze en 5C-bevestiging, projectbewaking
+  (oud project geweigerd, alle URL's naar V2), tijdslimiet bij hangend
+  verzoek/hangende inhoud/genegeerd afbreeksignaal, 429 en login begrensd,
+  `game` nooit herhaald, afbreken; 5A slaagt met max. 1 gelijktijdig verzoek
+  en 1 trekking; opruimen altijd, ook bij fasetijdslimiet; hangend opruimen →
+  exit 3; 5B precies 2 en 5C precies 10 gelijktijdige SPIN's; 5xx of
+  oplopende conflicten → mislukt; k = 0 → waarschuwing). Commandoregel:
+  verkeerd starten → exit 2 zonder netwerkverkeer.
 - **V2-voorbereiding (lokaal)**: `npm test` → **88 tests** (+3: PT409 →
   versieconflict, 23505/overige fouten, HTTP 409 i.p.v. 500; conflicttest
   telt precies 3 pogingen). `security.sql` +4 controles (PT409 i.p.v. 40001,
@@ -398,8 +438,8 @@ Commando's: `npm run dev` (vite --host), `npm test`, `npm run build`,
 
 ## 10. Nog te bouwen (niet zonder akkoord starten)
 
-3. ~~Edge Function~~ — gebouwd (§7b); installatie op V2 + live test volgens
-   de veilige procedure (§7b) staan nog open.
+3. ~~Edge Function~~ — gebouwd en op V2 uitgerold (§7b); live test 5A/5B/5C
+   staat nog open.
 4. **Kamer-/aanmeldschermen** in de bestaande stijl (kamer maken,
    uitnodigingslink/code, naam kiezen). Publieke key in frontend-config:
    eerst met de gebruiker afstemmen hoe die wordt aangeleverd.

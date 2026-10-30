@@ -1,61 +1,156 @@
 #!/usr/bin/env node
 // Live test van de uitgerolde Edge Function 'game' met echte anonieme
-// Supabase-logins, precies zoals de telefoons dat straks doen.
+// Supabase-logins, in drie afzonderlijke fasen. Elke fase moet expliciet
+// gestart worden; een fase start nooit een andere.
 //
-//   npm run fn:test
+//   npm run fn:test:5a                 basis: login, kamer, namen, één SPIN, herstel
+//   npm run fn:test:5b                 2 gelijktijdige SPIN's (PT409 via PostgREST)
+//   npm run fn:test:5c -- --bevestig   10 gelijktijdige SPIN's (alleen na akkoord)
 //
-// Werkwijze:
-// 1. Er wordt tijdelijk een hulpfunctie 'fsm-testlogin' uitgerold die
-//    `signInAnonymously()` uitvoert met de publieke sleutel uit de eigen
-//    omgeving van de functie. Zo ziet dit script nooit een API-sleutel. De
-//    hulpfunctie antwoordt alleen met een eenmalige, willekeurige code.
-// 2. Met die echte tokens worden alle scenario's tegen 'game' gespeeld.
-// 3. Na afloop (ook bij een fout) worden de hulpfunctie, de testkamers en de
-//    anonieme testgebruikers verwijderd.
+// Werkwijze per fase:
+// 1. Vooraf: juiste project, alle diensten gezond, geen hangende transacties.
+// 2. Tijdelijke hulpfunctie 'fsm-testlogin' doet `signInAnonymously()` met de
+//    publieke sleutel uit de eigen functie-omgeving; dit script ziet nooit een
+//    API-sleutel. De hulpfunctie antwoordt alleen op een eenmalige code.
+// 3. Stappen lopen na elkaar; bij de eerste fout stopt de fase.
+// 4. Opruimen (testkamers, testgebruikers, hulpfunctie) draait altijd, met een
+//    eigen tijdslimiet, en wordt gecontroleerd.
 //
-// Nodig: netwerktoegang tot https://<ref>.supabase.co (functies) en
-// api.supabase.com (beheer).
+// Veiligheid: elk verzoek heeft een tijdslimiet, elke herhaling is begrensd,
+// elke fase heeft een totale tijdslimiet, en een fase wordt nooit automatisch
+// opnieuw gestart. Alleen project twzjsmxydnfmowrmffsl is toegestaan.
+//
+// Eindstatus (exitcode): 0 geslaagd · 1 test mislukt · 2 verkeerd gestart of
+// verkeerd project · 3 opruimen onvolledig · 4 voorcontrole mislukt (niets
+// aangemaakt) · 5 tijdslimiet van de fase overschreden.
 
 import { randomBytes } from 'node:crypto'
+import { pathToFileURL } from 'node:url'
 import { estimateOffset } from '../src/game/clock.js'
-import { TURN_ORDER } from '../src/game/config.js'
 import { releaseDelay } from '../src/game/timeline.js'
 import { deriveView } from '../src/game/view.js'
 
-const REF = process.env.SUPABASE_PROJECT_REF || 'twzjsmxydnfmowrmffsl'
-const API = `https://api.supabase.com/v1/projects/${REF}`
-const FUNCTIONS = `https://${REF}.supabase.co/functions/v1`
-const HELPER = 'fsm-testlogin'
-const NONCE = randomBytes(24).toString('hex')
+export const EXPECTED_REF = 'twzjsmxydnfmowrmffsl'
+export const HELPER = 'fsm-testlogin'
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+export const EXIT = { ok: 0, failed: 1, usage: 2, cleanup: 3, preflight: 4, timeout: 5 }
 
-function mgmtHeaders(extra = {}) {
-  const h = { ...extra }
-  if (process.env.SUPABASE_ACCESS_TOKEN) h.Authorization = `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`
-  return h
+export const LIMITS = {
+  mgmtTimeoutMs: 30_000, // elk verzoek aan de beheer-API
+  functionTimeoutMs: 20_000, // elk verzoek aan een Edge Function
+  max429Retries: 5, // beheer-API zegt "te veel verzoeken"
+  maxSignInAttempts: 6, // net uitgerolde hulpfunctie kan even 404/503 geven
+  signInRetryDelayMs: 2_000,
+  phaseDeadlineMs: { '5a': 240_000, '5b': 180_000, '5c': 180_000 },
+  cleanupStepTimeoutMs: 30_000,
+  cleanupDeadlineMs: 120_000,
+  logPolls: 6, // logs komen met vertraging binnen
+  logPollIntervalMs: 5_000,
+  loopCheckDelayMs: 10_000, // daarna mag het aantal conflicten niet meer stijgen
+  maxReleaseWaitMs: 15_000,
+  maxExtraRollbacks: 50,
 }
 
-async function sql(query) {
-  for (let attempt = 0; ; attempt++) {
-    const res = await fetch(`${API}/database/query`, {
-      method: 'POST',
-      headers: mgmtHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ query }),
-    })
-    if (res.status === 429 && attempt < 8) {
-      await sleep(2000 * (attempt + 1))
-      continue
-    }
-    const data = await res.json()
-    if (!res.ok) throw new Error(`sql → HTTP ${res.status}: ${data.message}`)
-    return data
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export class UsageError extends Error {}
+export class TimeoutError extends Error {}
+
+// ---------------------------------------------------------------------------
+// Start: welke fase, welk project
+// ---------------------------------------------------------------------------
+export function parseArgs(argv, env = {}) {
+  const ref = env.SUPABASE_PROJECT_REF || EXPECTED_REF
+  if (ref !== EXPECTED_REF) throw new UsageError(`alleen project ${EXPECTED_REF} is toegestaan, niet ${ref}`)
+  const args = argv.filter((a) => a !== '--bevestig')
+  const confirmed = argv.includes('--bevestig')
+  if (args.length !== 1 || !['5a', '5b', '5c'].includes(args[0])) {
+    throw new UsageError('gebruik: node scripts/live-test.mjs 5a | 5b | 5c --bevestig  (precies één fase)')
+  }
+  const phase = args[0]
+  if (phase === '5c' && !confirmed) throw new UsageError('fase 5c draait alleen met --bevestig (na afzonderlijke toestemming)')
+  return { phase, ref }
+}
+
+// ---------------------------------------------------------------------------
+// Tijdslimieten
+// ---------------------------------------------------------------------------
+export function withDeadline(promise, ms, label) {
+  let timer
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new TimeoutError(`${label}: tijdslimiet van ${ms} ms overschreden`)), ms)
+  })
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer))
+}
+
+// Eén verzoek met harde tijdslimiet voor het hele verzoek, inclusief het
+// lezen van het antwoord; ook als de onderliggende fetch het afbreeksignaal
+// negeert. `parent` kan alle lopende verzoeken tegelijk afbreken.
+export async function fetchWithTimeout(fetchImpl, url, init, ms, parent) {
+  if (parent?.aborted) throw new Error('afgebroken')
+  const controller = new AbortController()
+  const onAbort = () => controller.abort(parent.reason)
+  parent?.addEventListener('abort', onAbort, { once: true })
+  const aborted = new Promise((_, reject) => controller.signal.addEventListener('abort', () => reject(new Error('afgebroken')), { once: true }))
+  const request = (async () => {
+    const res = await fetchImpl(url, { ...init, signal: controller.signal })
+    return { status: res.status, ok: res.ok, text: await res.text() }
+  })()
+  try {
+    return await withDeadline(Promise.race([request, aborted]), ms, `${init?.method ?? 'GET'} ${new URL(url).pathname}`)
+  } catch (e) {
+    controller.abort()
+    throw e
+  } finally {
+    parent?.removeEventListener('abort', onAbort)
   }
 }
 
-const HELPER_SOURCE = `
+const parseJson = (text) => {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+const defaultSleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+// ---------------------------------------------------------------------------
+// Verbindingen: beheer-API, hulpfunctie, Edge Function 'game'
+// ---------------------------------------------------------------------------
+export function createLiveClient({ fetchImpl = fetch, ref = EXPECTED_REF, limits = LIMITS, sleep = defaultSleep, accessToken } = {}) {
+  if (ref !== EXPECTED_REF) throw new UsageError(`alleen project ${EXPECTED_REF} is toegestaan`)
+  const api = `https://api.supabase.com/v1/projects/${ref}`
+  const functions = `https://${ref}.supabase.co/functions/v1`
+  const nonce = randomBytes(24).toString('hex')
+  const phaseAbort = new AbortController() // breekt testverzoeken af, niet het opruimen
+  const users = []
+  const state = { helperDeployAttempted: false }
+
+  const mgmtHeaders = (extra = {}) => (accessToken ? { ...extra, Authorization: `Bearer ${accessToken}` } : extra)
+
+  async function mgmt(method, route, { body, form, headers } = {}) {
+    for (let attempt = 0; ; attempt++) {
+      const res = await fetchWithTimeout(
+        fetchImpl,
+        api + route,
+        { method, headers: mgmtHeaders(headers), body: form ?? (body ? JSON.stringify(body) : undefined) },
+        limits.mgmtTimeoutMs,
+      )
+      if (res.status === 429 && attempt < limits.max429Retries) {
+        await sleep(2_000 * (attempt + 1))
+        continue
+      }
+      const data = parseJson(res.text) ?? res.text
+      if (!res.ok) throw new Error(`${method} ${route.split('?')[0]} → HTTP ${res.status}: ${data?.message ?? String(data).slice(0, 200)}`)
+      return data
+    }
+  }
+
+  const helperSource = `
 import { createClient } from 'npm:@supabase/supabase-js@2.118.0'
-const NONCE = '${NONCE}'
+const NONCE = '${nonce}'
 Deno.serve(async (req) => {
   if (req.method !== 'POST' || req.headers.get('x-test-nonce') !== NONCE) return new Response('not found', { status: 404 })
   const sb = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_ANON_KEY'), { auth: { persistSession: false, autoRefreshToken: false } })
@@ -65,210 +160,433 @@ Deno.serve(async (req) => {
 })
 `
 
-async function deployHelper() {
-  const form = new FormData()
-  form.append('metadata', JSON.stringify({ name: HELPER, entrypoint_path: 'index.ts', verify_jwt: false }))
-  form.append('file', new Blob([HELPER_SOURCE]), 'index.ts')
-  const res = await fetch(`${API}/functions/deploy?slug=${HELPER}`, { method: 'POST', headers: mgmtHeaders(), body: form })
-  if (!res.ok) throw new Error(`hulpfunctie uitrollen → HTTP ${res.status}: ${await res.text()}`)
-}
-
-async function deleteHelper() {
-  const res = await fetch(`${API}/functions/${HELPER}`, { method: 'DELETE', headers: mgmtHeaders() })
-  if (!res.ok && res.status !== 404) throw new Error(`hulpfunctie verwijderen → HTTP ${res.status}`)
-}
-
-const users = []
-async function signInAnonymously() {
-  for (let attempt = 0; ; attempt++) {
-    const res = await fetch(`${FUNCTIONS}/${HELPER}`, { method: 'POST', headers: { 'x-test-nonce': NONCE } })
-    // Net uitgerolde functie kan de eerste seconden nog 404/503 geven.
-    if (!res.ok && attempt < 10 && res.status !== 400) {
-      await sleep(1500)
-      continue
-    }
-    const data = await res.json()
-    if (!res.ok) throw new Error(`anonieme login mislukt: ${data.error} (${data.code})`)
-    users.push(data.user_id)
-    return { token: data.access_token, id: data.user_id, isAnonymous: data.is_anonymous }
+  return {
+    ref,
+    users,
+    state,
+    sql: (query) => mgmt('POST', '/database/query', { body: { query }, headers: { 'Content-Type': 'application/json' } }),
+    health: () => mgmt('GET', '/health?services=db&services=rest&services=auth&services=realtime'),
+    async deployHelper() {
+      state.helperDeployAttempted = true
+      const form = new FormData()
+      form.append('metadata', JSON.stringify({ name: HELPER, entrypoint_path: 'index.ts', verify_jwt: false }))
+      form.append('file', new Blob([helperSource]), 'index.ts')
+      await mgmt('POST', `/functions/deploy?slug=${HELPER}`, { form })
+    },
+    async deleteHelper() {
+      try {
+        await mgmt('DELETE', `/functions/${HELPER}`)
+      } catch (e) {
+        if (!/HTTP 404/.test(e.message)) throw e
+      }
+    },
+    async helperExists() {
+      const list = await mgmt('GET', '/functions')
+      return list.some((f) => f.slug === HELPER)
+    },
+    // Tellingen uit de logs sinds `sinceIso`: wat PostgREST met de RPC deed.
+    async logStats(sinceIso) {
+      const sql = `select
+        countIf(event_message like 'POST | 200 | %/rest/v1/rpc/commit_room_state%') as rpc200,
+        countIf(event_message like 'POST | 409 | %/rest/v1/rpc/commit_room_state%') as rpc409,
+        countIf(match(event_message, '^POST \\\\| 5[0-9][0-9] \\\\| .*/rest/v1/rpc/commit_room_state')) as rpc5xx,
+        countIf(event_message = 'version_conflict') as versionConflicts
+        from logs`
+      const end = new Date(Date.now() + 60_000).toISOString()
+      const data = await mgmt('GET', `/analytics/endpoints/logs?sql=${encodeURIComponent(sql)}&iso_timestamp_start=${sinceIso}&iso_timestamp_end=${end}`)
+      if (data?.error || !data?.result?.[0]) throw new Error(`logs niet beschikbaar: ${JSON.stringify(data?.error ?? data).slice(0, 200)}`)
+      const r = data.result[0]
+      return { rpc200: Number(r.rpc200), rpc409: Number(r.rpc409), rpc5xx: Number(r.rpc5xx), versionConflicts: Number(r.versionConflicts) }
+    },
+    async signIn() {
+      for (let attempt = 1; ; attempt++) {
+        const res = await fetchWithTimeout(
+          fetchImpl,
+          `${functions}/${HELPER}`,
+          { method: 'POST', headers: { 'x-test-nonce': nonce } },
+          limits.functionTimeoutMs,
+          phaseAbort.signal,
+        )
+        // Alleen "nog niet klaar" (404/503) opnieuw; een echte weigering niet.
+        if ((res.status === 404 || res.status === 503) && attempt < limits.maxSignInAttempts) {
+          await sleep(limits.signInRetryDelayMs)
+          continue
+        }
+        const data = parseJson(res.text) ?? {}
+        if (!res.ok) throw new Error(`anonieme login mislukt: HTTP ${res.status} ${data.error ?? ''} ${data.code ?? ''}`.trim())
+        if (!UUID_RE.test(data.user_id ?? '')) throw new Error('anonieme login gaf geen geldig gebruikers-id')
+        users.push(data.user_id)
+        return { token: data.access_token, id: data.user_id, isAnonymous: data.is_anonymous }
+      }
+    },
+    // Eén verzoek aan 'game', nooit herhaald. `auth`: null = geen header.
+    async game(token, body, { auth } = {}) {
+      const headers = { 'Content-Type': 'application/json' }
+      const authorization = auth === undefined ? `Bearer ${token}` : auth
+      if (authorization) headers.Authorization = authorization
+      const res = await fetchWithTimeout(
+        fetchImpl,
+        `${functions}/game`,
+        { method: 'POST', headers, body: JSON.stringify(body) },
+        limits.functionTimeoutMs,
+        phaseAbort.signal,
+      )
+      return { status: res.status, body: parseJson(res.text) }
+    },
+    abortAll(reason = 'fase afgebroken') {
+      phaseAbort.abort(new Error(reason))
+    },
   }
 }
 
-async function game(token, body, { signal, rawAuth } = {}) {
-  const headers = { 'Content-Type': 'application/json' }
-  if (rawAuth !== undefined) {
-    if (rawAuth) headers.Authorization = rawAuth
-  } else headers.Authorization = `Bearer ${token}`
-  const res = await fetch(`${FUNCTIONS}/game`, { method: 'POST', headers, body: JSON.stringify(body), signal: signal ?? AbortSignal.timeout(30_000) })
-  return { status: res.status, body: await res.json().catch(() => null) }
+// Databasecontroles en opruimen via de beheer-API (alleen eigen testgegevens).
+function idList(ids) {
+  if (!ids.length || !ids.every((id) => UUID_RE.test(id))) throw new Error('ongeldige id-lijst')
+  return ids.map((id) => `'${id}'`).join(', ')
 }
 
+export function createDb(sql) {
+  return {
+    async activity() {
+      const [r] = await sql(`select (select count(*) from pg_stat_activity)::int as conns,
+        (select count(*) from pg_stat_activity where state like 'idle in transaction%')::int as idle_tx,
+        (select xact_rollback from pg_stat_database where datname = current_database())::text as rollbacks`)
+      return { conns: r.conns, idleTx: r.idle_tx, rollbacks: Number(r.rollbacks) }
+    },
+    async anonUsers(ids) {
+      const [r] = await sql(`select count(*)::int as n, coalesce(bool_and(is_anonymous), false) as anon from auth.users where id in (${idList(ids)})`)
+      return r
+    },
+    async roomStats(roomId) {
+      const id = idList([roomId])
+      const [r] = await sql(`select r.version,
+        (select count(*) from public.draws d where d.room_id = r.id)::int as draws,
+        (select count(distinct d.result_id) from public.draws d where d.room_id = r.id)::int as unique_results,
+        (select coalesce(json_agg(json_build_object('participant', d.participant, 'spun_by', d.spun_by, 'on_behalf', d.on_behalf)), '[]') from public.draws d where d.room_id = r.id) as rows
+        from public.rooms r where r.id = ${id}`)
+      return r ?? null
+    },
+    deleteRooms: (ids) => sql(`delete from public.rooms where organizer_id in (${idList(ids)})`),
+    deleteUsers: (ids) => sql(`delete from auth.users where is_anonymous and id in (${idList(ids)})`),
+    async leftovers(ids) {
+      if (!ids.length) return { rooms: 0, users: 0 }
+      const [r] = await sql(`select (select count(*) from public.rooms where organizer_id in (${idList(ids)}))::int as rooms,
+        (select count(*) from auth.users where id in (${idList(ids)}))::int as users`)
+      return r
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Fasen
+// ---------------------------------------------------------------------------
 function assert(cond, message) {
   if (!cond) throw new Error(message)
 }
 
-const results = []
-async function step(name, fn) {
-  try {
-    await fn()
-    results.push(true)
-    console.log(`  ✓ ${name}`)
-  } catch (e) {
-    results.push(false)
-    console.log(`  ✗ ${name}\n      ${e.message}`)
+const show = (r) => `${r.status}:${r.body?.error ?? ''}`
+
+async function setupRoom({ client, step, ctx, users: count }) {
+  await step('hulpfunctie voor anonieme login uitrollen', () => client.deployHelper())
+  await step(`anoniem aanmelden via Supabase Auth (${count}×, na elkaar)`, async () => {
+    ctx.phones = []
+    for (let i = 0; i < count; i++) ctx.phones.push(await client.signIn())
+    assert(ctx.phones.every((p) => p.isAnonymous === true), 'niet alle gebruikers zijn anoniem')
+    const r = await ctx.db.anonUsers(ctx.phones.map((p) => p.id))
+    assert(r.n === count && r.anon === true, `auth.users: ${JSON.stringify(r)}`)
+  })
+  await step('kamer aanmaken (organisator = deelnemer 0)', async () => {
+    const c = await client.game(ctx.phones[0].token, { action: 'create_room', participant: 0 })
+    assert(c.status === 200 && /^[A-HJ-NP-Z2-9]{6}$/.test(c.body?.room?.code ?? ''), `${show(c)} ${JSON.stringify(c.body)}`)
+    ctx.roomId = c.body.room.id
+    ctx.code = c.body.room.code
+  })
+}
+
+// Gelijktijdige SPIN's door de organisator op dezelfde spelversie, met
+// controle van de client-antwoorden, de database en de PostgREST-logs.
+async function concurrentSpins({ client, step, ctx, limits, sleep, log, n }) {
+  const since = new Date(Date.now() - 5_000).toISOString()
+  let base
+  await step('uitgangssituatie: kamer op versie 0, geen trekkingen', async () => {
+    const s = await ctx.db.roomStats(ctx.roomId)
+    assert(s?.version === 0 && s.draws === 0, JSON.stringify(s))
+    base = await ctx.db.activity()
+  })
+  await step(`${n} gelijktijdige SPIN-verzoeken: precies één HTTP 200, de rest HTTP 409`, async () => {
+    const org = ctx.phones[0]
+    const r = await Promise.all(Array.from({ length: n }, () => client.game(org.token, { action: 'spin', roomId: ctx.roomId })))
+    const summary = r.map(show).join(', ')
+    assert(r.filter((x) => x.status === 200).length === 1, summary)
+    assert(r.every((x) => x.status === 200 || (x.status === 409 && ['turn_not_released', 'conflict'].includes(x.body?.error))), `onverwacht antwoord: ${summary}`)
+    log(`      client (Edge Function): ${summary}`)
+  })
+  await step('database: precies één definitieve trekking, versie 1', async () => {
+    const s = await ctx.db.roomStats(ctx.roomId)
+    assert(s?.version === 1 && s.draws === 1 && s.unique_results === 1, JSON.stringify(s))
+  })
+  let stats
+  await step('PostgREST: RPC één keer 200, conflicten als 409, nooit 5xx', async () => {
+    for (let i = 0; i < limits.logPolls; i++) {
+      stats = await client.logStats(since)
+      if (stats.rpc200 >= 1) break
+      await sleep(limits.logPollIntervalMs)
+    }
+    assert(stats.rpc200 === 1, `RPC 200: ${stats.rpc200} (verwacht 1) ${JSON.stringify(stats)}`)
+    assert(stats.rpc5xx === 0, `RPC 5xx: ${stats.rpc5xx} ${JSON.stringify(stats)}`)
+    // Begrensd: elk verliezend verzoek doet hoogstens 3 pogingen.
+    assert(stats.rpc409 <= (n - 1) * 3, `meer interne conflicten dan begrensd mogelijk: ${JSON.stringify(stats)}`)
+    // Intern conflict ≠ antwoord aan de client: een PT409 wordt door de
+    // server opnieuw geprobeerd en eindigt bij de client meestal als
+    // 'turn_not_released'. Hier tellen we wat PostgREST echt teruggaf.
+    log(`      intern (PostgREST): commit_room_state 200×${stats.rpc200}, 409 (PT409)×${stats.rpc409}, 5xx×${stats.rpc5xx}; version_conflict in logs: ${stats.versionConflicts}`)
+    if (stats.rpc409 === 0) {
+      ctx.warnings.push('Geen intern PT409 opgetreden: de verzoeken overlapten niet in de database. Correcte afhandeling van PT409 is in deze run dus niet aangetoond.')
+    }
+  })
+  await step('geen herhaallus: na wachten geen nieuwe conflicten, geen hangende transacties', async () => {
+    await sleep(limits.loopCheckDelayMs)
+    const later = await client.logStats(since)
+    assert(later.rpc409 === stats.rpc409 && later.versionConflicts === stats.versionConflicts && later.rpc5xx === 0, `logs liepen op: ${JSON.stringify(stats)} → ${JSON.stringify(later)}`)
+    const a = await ctx.db.activity()
+    assert(a.idleTx === 0, `hangende transacties: ${a.idleTx}`)
+    assert(a.rollbacks - base.rollbacks <= limits.maxExtraRollbacks, `rollbacks opgelopen met ${a.rollbacks - base.rollbacks}`)
+  })
+}
+
+export const PHASES = {
+  '5a': {
+    title: 'Fase 5A — basisfunctionaliteit (geen gelijktijdige verzoeken)',
+    async run({ client, step, ctx, limits, sleep, now, log }) {
+      await setupRoom({ client, step, ctx, users: 3 })
+      const [org, p1, outsider] = ctx.phones
+
+      await step('zonder, met ongeldig of met vervalst token: 401', async () => {
+        const a = await client.game(null, { action: 'time' }, { auth: null })
+        const b = await client.game(null, { action: 'time' }, { auth: 'Bearer onzin' })
+        const parts = org.token.split('.')
+        const forged = [parts[0], Buffer.from(JSON.stringify({ sub: outsider.id, role: 'authenticated' })).toString('base64url'), parts[2]].join('.')
+        const c = await client.game(forged, { action: 'time' })
+        assert(a.status === 401 && b.status === 401 && c.status === 401, `${a.status} ${b.status} ${c.status}`)
+      })
+      await step('servertijd en klokafwijking', async () => {
+        const sent = now()
+        const r = await client.game(org.token, { action: 'time' })
+        const received = now()
+        assert(r.status === 200 && Number.isFinite(r.body?.serverNow), show(r))
+        ctx.offset = estimateOffset(sent, r.body.serverNow, received)
+        assert(Math.abs(ctx.offset) < 60_000, `afwijking ${ctx.offset} ms`)
+        log(`      afwijking t.o.v. server ${Math.round(ctx.offset)} ms, rondreis ${received - sent} ms`)
+      })
+      await step('kamer opzoeken met code: vrije en bezette namen, geen gebruikers-id’s', async () => {
+        const l = await client.game(outsider.token, { action: 'lookup_room', code: ctx.code })
+        assert(l.status === 200 && l.body.seats.length === 1 && !JSON.stringify(l.body).includes(org.id), JSON.stringify(l.body))
+      })
+      await step('deelnemer sluit aan en claimt een naam', async () => {
+        const r = await client.game(p1.token, { action: 'claim_seat', code: ctx.code, participant: 1 })
+        assert(r.status === 200 && r.body.mySeat === 1, show(r))
+      })
+      await step('bezette naam claimen en kamer bekijken als buitenstaander: geweigerd', async () => {
+        const a = await client.game(outsider.token, { action: 'claim_seat', code: ctx.code, participant: 1 })
+        assert(a.status === 409 && a.body?.error === 'seat_taken', show(a))
+        const b = await client.game(outsider.token, { action: 'get_room', roomId: ctx.roomId })
+        assert(b.status === 404, show(b))
+      })
+      await step('deelnemer kan geen organisatoracties of andermans SPIN uitvoeren (na elkaar)', async () => {
+        const got = []
+        for (const body of [
+          { action: 'spin', roomId: ctx.roomId },
+          { action: 'spin', roomId: ctx.roomId, onBehalf: true },
+          { action: 'release_seat', roomId: ctx.roomId, participant: 0 },
+          { action: 'auction_prepare', roomId: ctx.roomId, participant: 1, bidCents: 100 },
+          { action: 'RESET', roomId: ctx.roomId },
+        ]) {
+          got.push(show(await client.game(p1.token, body)))
+        }
+        const want = ['403:not_your_turn', '403:not_your_turn', '403:not_organizer', '403:not_organizer', '400:unknown_action']
+        assert(JSON.stringify(got) === JSON.stringify(want), got.join(', '))
+        const s = await ctx.db.roomStats(ctx.roomId)
+        assert(s.version === 0 && s.draws === 0, JSON.stringify(s))
+      })
+      await step('één gewone SPIN door wie aan de beurt is', async () => {
+        const r = await client.game(org.token, { action: 'spin', roomId: ctx.roomId })
+        assert(r.status === 200 && r.body.spin?.participant === 0 && r.body.onBehalf === false, show(r))
+        ctx.spin = r.body.spin
+        const s = await ctx.db.roomStats(ctx.roomId)
+        assert(s.version === 1 && s.draws === 1 && s.rows[0].spun_by === org.id && s.rows[0].on_behalf === false, JSON.stringify(s))
+      })
+      await step('spelstatus ophalen: lopende draai zichtbaar en synchroon', async () => {
+        const r = await client.game(p1.token, { action: 'get_room', roomId: ctx.roomId })
+        assert(r.status === 200 && r.body.room.state.spin?.id === ctx.spin.id, show(r))
+        const view = deriveView(r.body.room.state, r.body.serverNow)
+        assert(view.reelSpin?.id === ctx.spin.id, 'lopende draai ontbreekt in de weergave')
+      })
+      await step('herstel: verzoek opnieuw versturen (antwoord kwijt) geeft geen tweede trekking', async () => {
+        const r = await client.game(org.token, { action: 'spin', roomId: ctx.roomId })
+        assert(r.status === 409 && r.body?.error === 'turn_not_released', show(r))
+        const s = await ctx.db.roomStats(ctx.roomId)
+        assert(s.version === 1 && s.draws === 1, JSON.stringify(s))
+      })
+      await step('herstel: later opnieuw ophalen → uitslag vastgelegd, volgende beurt vrij', async () => {
+        const wait = ctx.spin.startedAt + releaseDelay(ctx.spin) - (now() + (ctx.offset ?? 0)) + 500
+        await sleep(Math.min(Math.max(wait, 0), limits.maxReleaseWaitMs))
+        const r = await client.game(p1.token, { action: 'get_room', roomId: ctx.roomId })
+        assert(r.status === 200, show(r))
+        const view = deriveView(r.body.room.state, r.body.serverNow)
+        assert(view.state.draws.length === 1 && view.state.draws[0].resultId === ctx.spin.resultId, 'uitslag niet vastgelegd')
+        assert(view.state.turn === 1 && view.locked === false, `beurt ${view.state.turn}, locked ${view.locked}`)
+      })
+    },
+  },
+  '5b': {
+    title: 'Fase 5B — beperkte gelijktijdigheid (2 gelijktijdige SPIN-verzoeken)',
+    async run(env) {
+      await setupRoom({ ...env, users: 1 })
+      await concurrentSpins({ ...env, n: 2 })
+    },
+  },
+  '5c': {
+    title: 'Fase 5C — uitgebreide gelijktijdigheid (10 gelijktijdige SPIN-verzoeken)',
+    async run(env) {
+      await setupRoom({ ...env, users: 1 })
+      await concurrentSpins({ ...env, n: 10 })
+    },
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Uitvoeren van één fase, met voorcontrole, opruimen en eindstatus
+// ---------------------------------------------------------------------------
+async function healthCheck({ client, db }) {
+  const health = await client.health()
+  const unhealthy = health.filter((s) => s.status !== 'ACTIVE_HEALTHY').map((s) => `${s.name}=${s.status}`)
+  if (unhealthy.length) throw new Error(`niet gezond: ${unhealthy.join(', ')}`)
+  const a = await db.activity()
+  if (a.idleTx > 0) throw new Error(`${a.idleTx} hangende transactie(s)`)
+  return a
+}
+
+export async function runCleanup({ client, db, limits = LIMITS }) {
+  const ids = client.users.slice()
+  const steps = []
+  const run = async (name, fn) => {
+    try {
+      await withDeadline(Promise.resolve().then(fn), limits.cleanupStepTimeoutMs, name)
+      steps.push({ name, ok: true })
+    } catch (e) {
+      steps.push({ name, ok: false, error: e.message })
+    }
   }
+  try {
+    await withDeadline(
+      (async () => {
+        if (ids.length) {
+          await run('testkamers verwijderen', () => db.deleteRooms(ids))
+          await run(`anonieme testgebruikers verwijderen (${ids.length})`, () => db.deleteUsers(ids))
+        }
+        if (client.state.helperDeployAttempted) await run('hulpfunctie verwijderen', () => client.deleteHelper())
+        await run('controle: niets achtergebleven', async () => {
+          const left = await db.leftovers(ids)
+          const helper = client.state.helperDeployAttempted ? await client.helperExists() : false
+          if (left.rooms || left.users || helper) {
+            throw new Error(`achtergebleven: ${left.rooms} kamer(s), ${left.users} gebruiker(s), hulpfunctie ${helper ? 'nog aanwezig' : 'weg'}`)
+          }
+        })
+      })(),
+      limits.cleanupDeadlineMs,
+      'opruimen',
+    )
+  } catch (e) {
+    steps.push({ name: 'opruimen binnen tijdslimiet', ok: false, error: e.message })
+  }
+  return steps
+}
+
+export async function runPhase({ phase, client, db, limits = LIMITS, log = console.log, now = Date.now, sleep = defaultSleep }) {
+  const def = PHASES[phase]
+  if (!def) throw new UsageError(`onbekende fase ${phase}`)
+  log(`${def.title}\nProject ${client.ref}\n`)
+
+  try {
+    await withDeadline(healthCheck({ client, db }), limits.cleanupStepTimeoutMs, 'voorcontrole')
+    log('  ✓ voorcontrole: juiste project, diensten gezond, geen hangende transacties')
+  } catch (e) {
+    log(`  ✗ voorcontrole mislukt: ${e.message}\n\nNiets aangemaakt. Eindstatus: VOORCONTROLE MISLUKT (exitcode ${EXIT.preflight})`)
+    return { exitCode: EXIT.preflight, results: [], cleanup: [], warnings: [] }
+  }
+
+  const results = []
+  const ctx = { db, warnings: [], stopped: false }
+  const step = async (name, fn) => {
+    if (ctx.stopped) throw new Error('fase gestopt')
+    try {
+      await fn()
+      results.push({ name, ok: true })
+      log(`  ✓ ${name}`)
+    } catch (e) {
+      results.push({ name, ok: false, error: e.message })
+      log(`  ✗ ${name}\n      ${e.message}`)
+      ctx.stopped = true // bij de eerste fout stoppen
+      throw e
+    }
+  }
+
+  let timedOut = false
+  let cleanup = []
+  try {
+    await withDeadline(def.run({ client, step, ctx, limits, sleep, now, log }), limits.phaseDeadlineMs[phase], `fase ${phase}`)
+  } catch (e) {
+    if (e instanceof TimeoutError) {
+      timedOut = true
+      results.push({ name: 'fase binnen tijdslimiet', ok: false, error: e.message })
+      log(`  ✗ ${e.message}`)
+    } else if (!results.some((r) => !r.ok)) {
+      results.push({ name: 'onverwachte fout', ok: false, error: e.message })
+      log(`  ✗ onverwachte fout: ${e.message}`)
+    }
+  } finally {
+    ctx.stopped = true
+    client.abortAll()
+    log('\nOpruimen:')
+    cleanup = await runCleanup({ client, db, limits })
+    for (const c of cleanup) log(`  ${c.ok ? '✓' : '✗'} ${c.name}${c.ok ? '' : `\n      ${c.error}`}`)
+  }
+
+  try {
+    const after = await withDeadline(healthCheck({ client, db }), limits.cleanupStepTimeoutMs, 'nacontrole')
+    log(`  ✓ nacontrole: diensten gezond, ${after.conns} verbindingen, geen hangende transacties`)
+  } catch (e) {
+    results.push({ name: 'nacontrole', ok: false, error: e.message })
+    log(`  ✗ nacontrole: ${e.message}`)
+  }
+
+  for (const w of ctx.warnings) log(`\n  ⚠ ${w}`)
+
+  const failed = results.filter((r) => !r.ok).length
+  const cleanupOk = cleanup.every((c) => c.ok)
+  const exitCode = !cleanupOk ? EXIT.cleanup : timedOut ? EXIT.timeout : failed ? EXIT.failed : EXIT.ok
+  const label = {
+    [EXIT.ok]: 'GESLAAGD',
+    [EXIT.failed]: 'MISLUKT',
+    [EXIT.cleanup]: 'OPRUIMEN ONVOLLEDIG — controleer handmatig',
+    [EXIT.timeout]: 'TIJDSLIMIET OVERSCHREDEN',
+  }[exitCode]
+  log(`\n${results.length - failed} van ${results.length} stappen geslaagd. Eindstatus: ${label} (exitcode ${exitCode})`)
+  return { exitCode, results, cleanup, warnings: ctx.warnings }
 }
 
 async function main() {
-  console.log(`Live test Edge Function 'game' (${REF})\n`)
-  await deployHelper()
-  const ctx = {}
+  let args
   try {
-    await step('anonieme login werkt (echte Supabase Auth) en levert een anonieme gebruiker op', async () => {
-      ctx.phones = []
-      for (let i = 0; i < 10; i++) ctx.phones.push(await signInAnonymously()) // 9 deelnemers + 1 buitenstaander
-      assert(ctx.phones.every((p) => p.isAnonymous === true), 'niet alle gebruikers zijn anoniem')
-      const ids = ctx.phones.map((p) => `'${p.id}'`).join(',')
-      const [row] = await sql(`select count(*)::int as n, bool_and(is_anonymous) as anon from auth.users where id in (${ids})`)
-      assert(row.n === 10 && row.anon === true, `auth.users: ${JSON.stringify(row)}`)
-    })
-    if (!ctx.phones) throw new Error('zonder anonieme login kunnen de overige tests niet draaien')
-    const [org, ...rest] = ctx.phones
-    const outsider = rest.pop()
-    const P = [org, ...rest] // deelnemer 0 = organisator
-
-    await step('zonder, met ongeldig of met vervalst token: 401', async () => {
-      const a = await game(null, { action: 'time' }, { rawAuth: null })
-      const b = await game(null, { action: 'time' }, { rawAuth: 'Bearer onzin' })
-      const parts = org.token.split('.')
-      const forged = [parts[0], Buffer.from(JSON.stringify({ sub: outsider.id, role: 'authenticated' })).toString('base64url'), parts[2]].join('.')
-      const c = await game(forged, { action: 'time' })
-      assert(a.status === 401 && b.status === 401 && c.status === 401, `${a.status} ${b.status} ${c.status}`)
-    })
-
-    await step('servertijd en klokafwijking', async () => {
-      const sent = Date.now()
-      const r = await game(org.token, { action: 'time' })
-      const received = Date.now()
-      assert(r.status === 200 && Number.isFinite(r.body.serverNow), JSON.stringify(r))
-      ctx.offset = estimateOffset(sent, r.body.serverNow, received)
-      assert(Math.abs(ctx.offset) < 60_000, `afwijking ${ctx.offset} ms`)
-      console.log(`      (afwijking t.o.v. server ${Math.round(ctx.offset)} ms, rondreis ${received - sent} ms)`)
-    })
-
-    await step('kamer maken, opzoeken en 9 namen claimen', async () => {
-      const c = await game(org.token, { action: 'create_room', participant: 0 })
-      assert(c.status === 200 && /^[A-HJ-NP-Z2-9]{6}$/.test(c.body.room.code), JSON.stringify(c.body))
-      ctx.roomId = c.body.room.id
-      ctx.code = c.body.room.code
-      const l = await game(outsider.token, { action: 'lookup_room', code: ctx.code })
-      assert(l.status === 200 && l.body.seats.length === 1 && !JSON.stringify(l.body).includes(org.id), JSON.stringify(l.body))
-      const claims = await Promise.all(P.slice(1).map((p, i) => game(p.token, { action: 'claim_seat', code: ctx.code, participant: i + 1 })))
-      assert(claims.every((r) => r.status === 200), claims.map((r) => r.status).join(','))
-    })
-
-    await step('naam van een ander claimen of kamer bekijken als buitenstaander: geweigerd', async () => {
-      const a = await game(outsider.token, { action: 'claim_seat', code: ctx.code, participant: 3 })
-      const b = await game(outsider.token, { action: 'get_room', roomId: ctx.roomId })
-      assert(a.status === 409 && a.body.error === 'seat_taken', JSON.stringify(a.body))
-      assert(b.status === 404, JSON.stringify(b.body))
-    })
-
-    await step('deelnemer mag geen organisatoracties of andermans SPIN uitvoeren', async () => {
-      const r = await Promise.all([
-        game(P[3].token, { action: 'spin', roomId: ctx.roomId }),
-        game(P[3].token, { action: 'spin', roomId: ctx.roomId, onBehalf: true }),
-        game(P[3].token, { action: 'release_seat', roomId: ctx.roomId, participant: 4 }),
-        game(P[3].token, { action: 'auction_prepare', roomId: ctx.roomId, participant: 3, bidCents: 100 }),
-        game(P[3].token, { action: 'RESET', roomId: ctx.roomId }),
-        game(outsider.token, { action: 'spin', roomId: ctx.roomId, onBehalf: true }),
-      ])
-      const got = r.map((x) => `${x.status}:${x.body?.error}`)
-      const want = ['403:not_your_turn', '403:not_your_turn', '403:not_organizer', '403:not_organizer', '400:unknown_action', '404:room_not_found']
-      assert(JSON.stringify(got) === JSON.stringify(want), got.join(', '))
-      const [c] = await sql(`select version, (select count(*) from public.draws where room_id = '${ctx.roomId}')::int as draws from public.rooms where id = '${ctx.roomId}'`)
-      assert(c.version === 0 && c.draws === 0, JSON.stringify(c))
-    })
-
-    await step('10 gelijktijdige SPIN-verzoeken via HTTP: precies één trekking', async () => {
-      const r = await Promise.all(Array.from({ length: 10 }, () => game(org.token, { action: 'spin', roomId: ctx.roomId })))
-      const ok = r.filter((x) => x.status === 200)
-      const summary = r.map((x) => `${x.status}:${x.body?.error ?? ''}${x.status === 500 ? ' ' + x.body?.message : ''}`).join(', ')
-      assert(ok.length === 1, summary)
-      ctx.spin = ok[0].body.spin
-      assert(r.every((x) => x.status === 200 || ['turn_not_released', 'conflict'].includes(x.body?.error)), `onverwachte fout: ${summary}`)
-      const [c] = await sql(`select count(*)::int as n, bool_and(spun_by = '${org.id}') as by from public.draws where room_id = '${ctx.roomId}'`)
-      assert(c.n === 1 && c.by, JSON.stringify(c))
-    })
-
-    await step('herstel: status opnieuw ophalen tijdens de draai, rollen lopen synchroon verder', async () => {
-      const r = await game(P[6].token, { action: 'get_room', roomId: ctx.roomId })
-      const now = r.body.serverNow
-      const view = deriveView(r.body.room.state, now)
-      assert(view.reelSpin?.id === ctx.spin.id, 'lopende draai ontbreekt')
-      assert(now - ctx.spin.startedAt >= 0 && now - ctx.spin.startedAt < 10_000, `tijd ${now - ctx.spin.startedAt}`)
-    })
-
-    await step('verbinding valt weg tijdens SPIN: opnieuw versturen geeft geen tweede trekking', async () => {
-      // Wacht tot deelnemer 1 aan de beurt is.
-      await sleep(Math.max(0, ctx.spin.startedAt + releaseDelay(ctx.spin) - (Date.now() + ctx.offset)) + 300)
-      const abort = new AbortController()
-      const lost = game(P[1].token, { action: 'spin', roomId: ctx.roomId }, { signal: abort.signal }).catch(() => 'afgebroken')
-      setTimeout(() => abort.abort(), 5)
-      await lost
-      await sleep(1500)
-      const retry = await game(P[1].token, { action: 'spin', roomId: ctx.roomId })
-      const r = await game(P[1].token, { action: 'get_room', roomId: ctx.roomId })
-      const draws = await sql(`select participant from public.draws where room_id = '${ctx.roomId}' and participant = 1`)
-      // Ofwel de afgebroken aanvraag is toch verwerkt (retry geweigerd), ofwel
-      // niet (retry slaagt). Nooit twee trekkingen.
-      assert(draws.length === 1, `${draws.length} trekkingen voor deelnemer 1 (retry ${retry.status} ${retry.body?.error ?? ''})`)
-      assert(r.body.room.state.spin?.participant === 1, 'draai van deelnemer 1 niet zichtbaar')
-      ctx.spin = r.body.room.state.spin
-    })
-
-    await step('noodfunctie: organisator draait expliciet namens deelnemer 2', async () => {
-      await sleep(Math.max(0, ctx.spin.startedAt + releaseDelay(ctx.spin) - (Date.now() + ctx.offset)) + 300)
-      assert(TURN_ORDER[2].participant === 2, 'beurtvolgorde')
-      const without = await game(org.token, { action: 'spin', roomId: ctx.roomId })
-      const withFlag = await game(org.token, { action: 'spin', roomId: ctx.roomId, onBehalf: true })
-      assert(without.status === 403 && without.body.error === 'not_your_turn', JSON.stringify(without.body))
-      assert(withFlag.status === 200 && withFlag.body.onBehalf === true && withFlag.body.spin.participant === 2, JSON.stringify(withFlag.body))
-      const [d] = await sql(`select on_behalf, spun_by from public.draws where room_id = '${ctx.roomId}' and participant = 2`)
-      assert(d.on_behalf === true && d.spun_by === org.id, JSON.stringify(d))
-    })
-
-    await step('plek vrijgeven door organisator, nieuwe telefoon claimt de naam', async () => {
-      const r = await game(org.token, { action: 'release_seat', roomId: ctx.roomId, participant: 4 })
-      const old = await game(P[4].token, { action: 'get_room', roomId: ctx.roomId })
-      const claim = await game(outsider.token, { action: 'claim_seat', code: ctx.code, participant: 4 })
-      assert(r.status === 200 && old.status === 404 && claim.status === 200, `${r.status} ${old.status} ${claim.status}`)
-    })
-
-    await step('verwijderde (uitgelogde) gebruiker: token wordt geweigerd', async () => {
-      await sql(`delete from auth.users where id = '${P[8].id}'`)
-      const r = await game(P[8].token, { action: 'time' })
-      assert(r.status === 401, `status ${r.status}`)
-    })
-  } finally {
-    const ids = users.map((u) => `'${u}'`).join(',') || `'00000000-0000-0000-0000-000000000000'`
-    await sql(`delete from public.rooms where organizer_id in (${ids})`).catch((e) => console.log(`  ! kamers opruimen: ${e.message}`))
-    await sql(`delete from auth.users where id in (${ids})`).catch((e) => console.log(`  ! gebruikers opruimen: ${e.message}`))
-    await deleteHelper().catch((e) => console.log(`  ! ${e.message}`))
+    args = parseArgs(process.argv.slice(2), process.env)
+  } catch (e) {
+    console.error(e.message)
+    process.exit(EXIT.usage)
   }
-  await step('opgeruimd: geen testkamers, testgebruikers of hulpfunctie meer', async () => {
-    const ids = users.map((u) => `'${u}'`).join(',') || `'00000000-0000-0000-0000-000000000000'`
-    const [c] = await sql(`select (select count(*) from public.rooms)::int as rooms, (select count(*) from auth.users where id in (${ids}))::int as users`)
-    const fns = await (await fetch(`${API}/functions`, { headers: mgmtHeaders() })).json()
-    assert(c.rooms === 0 && c.users === 0 && !fns.some((f) => f.slug === HELPER), `${JSON.stringify(c)}, functies: ${fns.map((f) => f.slug)}`)
-  })
-
-  const failed = results.filter((r) => !r).length
-  console.log(`\n${results.length - failed} van ${results.length} live tests geslaagd.`)
-  if (failed) process.exit(1)
+  const client = createLiveClient({ ref: args.ref, accessToken: process.env.SUPABASE_ACCESS_TOKEN })
+  const db = createDb(client.sql)
+  const { exitCode } = await runPhase({ phase: args.phase, client, db })
+  process.exit(exitCode)
 }
 
-main().catch((e) => {
-  console.error(`\nFout: ${e.message}`)
-  process.exit(1)
-})
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()

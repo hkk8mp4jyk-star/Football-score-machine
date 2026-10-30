@@ -134,11 +134,16 @@ toe met dezelfde engine en kiest zelf de uitslag.
 
 ```bash
 npm run fn:deploy    # functie uitrollen
-npm run fn:test      # live test met echte anonieme logins (ruimt alles op)
+npm run fn:test:5a   # live test fase 5A: basis, geen gelijktijdige verzoeken
+npm run fn:test:5b   # fase 5B: 2 gelijktijdige SPIN's
+npm run fn:test:5c -- --bevestig   # fase 5C: 10 gelijktijdige SPIN's
 ```
 
 Installeren en testen gaat stap voor stap: migreren, `db:test`, uitrollen,
-dan pas de live test, eerst zonder en daarna met gelijktijdige verzoeken.
+dan pas de live test: elke fase afzonderlijk, eerst zonder en daarna met
+gelijktijdige verzoeken. Elke fase ruimt altijd op en eindigt met een
+exitcode (0 geslaagd, 1 mislukt, 2 verkeerd gestart, 3 opruimen onvolledig,
+4 voorcontrole mislukt, 5 tijdslimiet).
 
 Acties: `time`, `create_room`, `lookup_room`, `claim_seat`, `get_room`,
 `release_seat` (organisator), `spin` (wie aan de beurt is; organisator namens
