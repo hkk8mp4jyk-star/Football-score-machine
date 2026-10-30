@@ -1,8 +1,9 @@
 # Football Score Machine
 
 Digitale fruitautomaat voor de jaarlijkse voetbalpool met negen vrienden.
-Dit is het **visuele prototype**: alleen ontwerp, animaties en een lokale demo.
-Nog geen database, accounts of multiplayer.
+Het visuele prototype (met lokale demo) is af; multiplayer via Supabase wordt
+in fases gebouwd (fase 1 engine en fase 2 database zijn klaar). Zie `CLAUDE.md`
+voor alle afspraken en de stand van zaken.
 
 ## Wat zit erin
 
@@ -115,7 +116,7 @@ access token toe (Network secret voor `api.supabase.com`); lokaal zet je
 ### Voorbereid op Supabase (realtime multiplayer)
 
 - Alle spelstatus is één serialiseerbaar object; elke wijziging is een actie
-  (`SPIN_START`, `SPIN_COMMIT`, `RESET`). Die reducer kan zo naar een
+  (`SPIN_START`, `AUCTION_PREPARE`, `RESET`). Die reducer kan zo naar een
   server-functie, zodat de **server** de uitslag kiest.
 - Een draai heeft een `startedAt`-tijdstempel. De rollen rekenen hun positie
   uit die tijd uit, dus alle telefoons die dezelfde draai ontvangen, draaien
