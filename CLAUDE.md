@@ -7,8 +7,9 @@ Digitale fruitautomaat voor de jaarlijkse voetbalpool met negen vrienden.
 React-app (prototype goedgekeurd) die stap voor stap multiplayer wordt via
 Supabase. Fase 1 en 2 zijn klaar en goedgekeurd; fase 3 (Edge Function) is
 gebouwd. Nieuw Supabase-project (V2): database geïnstalleerd, `db:test`
-geslaagd en Edge Function `game` uitgerold (30-10-2026); de gefaseerde live
-test wacht op akkoord. **Fase 4 alleen starten na
+geslaagd, Edge Function `game` uitgerold en live test **5A geslaagd**
+(30-10-2026); 5B en 5C wachten op akkoord (eerst logtelling repareren, zie
+Openstaande punten). **Fase 4 alleen starten na
 expliciet akkoord van de gebruiker.**
 
 ---
@@ -353,8 +354,21 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
    service-sleutel richting Auth. Nog niet bewezen: database-acties via
    PostgREST met de service-sleutel (volgt in stap 5a). Database daarna leeg,
    alle diensten gezond.
-5. Live test in drie afzonderlijke fasen (script klaar en lokaal getest,
-   nog niet live gedraaid), elk met eigen akkoord: **5A** `npm run
+5. **5A gedaan 30-10-2026 14:38 UTC** (`npm run fn:test:5a`, script =
+   commit ffec8f7, één keer): **13/13 stappen, exitcode 0**. Echte anonieme
+   login (3×), 401 zonder/ongeldig/vervalst token, klokafwijking 161 ms
+   (rondreis 376 ms), kamer + opzoeken (geen user-id's), naam claimen,
+   weigeringen, precies één SPIN (`commit_room_state` 1× 200 via PostgREST:
+   Edge Function ↔ PostgREST met service-sleutel werkt), status ophalen
+   synchroon, opnieuw versturen → `turn_not_released` (geen 2e trekking),
+   later ophalen → uitslag vastgelegd en beurt vrij. Opruimen volledig
+   (kamers, 3 testgebruikers, hulpfunctie; 0 sessies). Onafhankelijk
+   nagecontroleerd: database leeg, alleen `game` aanwezig, alle diensten
+   gezond, 15 verbindingen (2 PostgREST + 1 Auth-pool, idle; vooraf 13),
+   geen hangende transacties of locks, geen fouten/5xx in de logs, geen
+   `version_conflict`. Alle REST-statussen: 200/201, plus 1 bedoelde 409
+   (`seats`, bezette naam).
+   Daarna, elk met eigen akkoord: **5A** `npm run
    fn:test:5a`, dan **5B** `npm run fn:test:5b`, pas daarna **5C** `npm run
    fn:test:5c -- --bevestig`. Na elke fase: exitcode en opruimen beoordelen;
    bij exitcode ≠ 0 niet doorgaan en niet automatisch herhalen.
@@ -477,6 +491,13 @@ Commando's: `npm run dev` (vite --host), `npm test`, `npm run build`,
 - **Logs uitlezen**: `GET /v1/projects/{ref}/analytics/endpoints/logs?sql=…`
   met tabel `logs` (ClickHouse-dialect, geen `*`, kolommen `timestamp`,
   `event_message`; max ~1 verzoek per paar seconden).
+- **Bug in live-testscript (gevonden bij 5A, nog niet gerepareerd)**: de
+  logtelling `rpc5xx` in `logStats` (`scripts/live-test.mjs`) gebruikt
+  `match()` met escaped `|`; live telde die 29 terwijl er aantoonbaar 0 5xx
+  waren (alle statussen nagelopen). 5A gebruikt `logStats` niet; **5B/5C
+  zouden er onterecht op mislukken**. Voorstel: regex vervangen door
+  `like 'POST | 5__ | %/rest/v1/rpc/commit_room_state%'` en de logquery
+  vóór 5B eerst read-only valideren.
 - Organisator die van telefoon wisselt verliest organisatorrechten
   (`organizer_id` = oude anonieme gebruiker); overdracht bestaat nog niet.
 - Geen "spel opnieuw beginnen" online (RESET bewust niet toegestaan);
