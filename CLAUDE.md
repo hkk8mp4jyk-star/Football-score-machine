@@ -6,9 +6,9 @@ gebruiker: **Nederlands**. De gebruiker werkt op **mobiel**.
 Digitale fruitautomaat voor de jaarlijkse voetbalpool met negen vrienden.
 React-app (prototype goedgekeurd) die stap voor stap multiplayer wordt via
 Supabase. Fase 1 en 2 zijn klaar en goedgekeurd; fase 3 (Edge Function) is
-gebouwd. Nieuw Supabase-project (V2): database geïnstalleerd en `db:test`
-geslaagd (30-10-2026); Edge Function-uitrol en live test wachten elk op
-akkoord. **Fase 4 alleen starten na
+gebouwd. Nieuw Supabase-project (V2): database geïnstalleerd, `db:test`
+geslaagd en Edge Function `game` uitgerold (30-10-2026); de gefaseerde live
+test wacht op akkoord. **Fase 4 alleen starten na
 expliciet akkoord van de gebruiker.**
 
 ---
@@ -230,8 +230,8 @@ het script vergelijkt op **naam**).
 ## 7b. Edge Function `game` (fase 3, gebouwd)
 
 Eén functie, uitgerold als `game` (`npm run fn:deploy`), URL
-`https://twzjsmxydnfmowrmffsl.supabase.co/functions/v1/game` (V2: nog niet
-uitgerold). Schemawijziging na fase 3: alleen migratie 2 (PT409).
+`https://twzjsmxydnfmowrmffsl.supabase.co/functions/v1/game` (V2: versie 1,
+ACTIVE, verify_jwt uit, uitgerold 30-10-2026). Schemawijziging na fase 3: alleen migratie 2 (PT409).
 
 ```
 supabase/functions/game/index.ts  Deno-ingang: token controleren, service_role-client
@@ -312,7 +312,17 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
    meer. Na afloop: 0 kamers/plaatsen/trekkingen/gebruikers, 13 verbindingen
    (gelijk aan vooraf), geen hangende transacties of locks, alle diensten
    gezond, geen fouten in de logs.
-4. `npm run fn:deploy` → één verzoek zonder token: verwacht 401.
+4. **Gedaan 30-10-2026**: `npm run fn:deploy` (code identiek aan lokaal
+   geteste commit 90e0265) → `game` versie 1, ACTIVE, verify_jwt uit.
+   Verificatie zonder geldige login: zonder token, ongeldig token en
+   Basic-header → 401 `unauthorized` (JSON van onze code); GET → 405;
+   OPTIONS → 204 met CORS. Logs: functie start in ~35 ms, geen fouten;
+   ongeldig token werd echt bij Auth gecontroleerd (`bad_jwt` in Auth-log →
+   401). Daaruit volgt: `SUPABASE_URL` en `SUPABASE_SERVICE_ROLE_KEY` zijn
+   aanwezig (anders start `index.ts` niet) en de gateway accepteerde de
+   service-sleutel richting Auth. Nog niet bewezen: database-acties via
+   PostgREST met de service-sleutel (volgt in stap 5a). Database daarna leeg,
+   alle diensten gezond.
 5. Live test gefaseerd: eerst zonder gelijktijdigheid, dan 2 gelijktijdige
    SPIN's, pas daarna 10. Tussendoor controleren: geen
    `idle in transaction`, geen `version_conflict`-stroom in de logs, health
