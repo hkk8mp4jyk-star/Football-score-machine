@@ -289,17 +289,23 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   rondes nu volledig afgespeeld.
 - **Fase 2** (goedgekeurd): schema, RLS, `commit_room_state`, DB-tests
   (52/52).
+- **Fase 3** (gebouwd, wacht op akkoord): Edge Function `game` uitgerold
+  (ACTIVE, verify_jwt uit). `npm test` → **85 tests** (51 + 34 servertests:
+  toegang/invoer, kamer/namen, SPIN-autorisatie, noodfunctie, veiling,
+  10 gelijktijdige SPIN's/claims, 10.000 proeftrekkingen chi-kwadraat,
+  herstel, versieconflict, HTTP-laag). `npm run db:test` → **58/58**
+  (52 + 6 servertests tegen de echte database als service_role, incl. volledig
+  spel 18+8 en gelijktijdigheid; database daarna leeg). Rooktest in Deno 2.5
+  (`deno check` + handler) geslaagd. **`npm run fn:test` (live, anonieme
+  login) nog niet gedraaid**: netwerk naar `*.supabase.co` geblokkeerd.
 
 Commando's: `npm run dev` (vite --host), `npm test`, `npm run build`,
-`npm run preview`, `npm run build:artifact`, `npm run db:*`.
+`npm run preview`, `npm run build:artifact`, `npm run db:*`, `npm run fn:*`.
 
 ## 10. Nog te bouwen (niet zonder akkoord starten)
 
-3. **Edge Function** — één functie voor alle acties (kamer + code maken, naam
-   claimen, SPIN, AUCTION_PREPARE, plek vrijgeven, draaien namens), met
-   `engine.js`, `secureRandomInt`, `commit_room_state` en server-side
-   autorisatie. Tests: concurrency, 10.000 proeftrekkingen uniform, anonieme
-   login.
+3. ~~Edge Function~~ — gebouwd (§7b); alleen de live test `fn:test` staat
+   nog open.
 4. **Kamer-/aanmeldschermen** in de bestaande stijl (kamer maken,
    uitnodigingslink/code, naam kiezen). Publieke key in frontend-config:
    eerst met de gebruiker afstemmen hoe die wordt aangeleverd.
@@ -318,4 +324,12 @@ Commando's: `npm run dev` (vite --host), `npm test`, `npm run build`,
 - Token mist `advisors_read` (security advisors niet op te vragen).
 - Supabase free plan pauzeert na 7 dagen inactiviteit.
 - Het access token heeft volledige rechten: na de bouw intrekken/vernieuwen.
-- Anonieme login nog in de praktijk verifiëren (fase 3).
+- Anonieme login + live functie verifiëren: domein
+  `nptulnnuejivwcgcltuy.supabase.co` toestaan in de omgevingsinstellingen,
+  dan `npm run fn:test`.
+- Organisator die van telefoon wisselt verliest organisatorrechten
+  (`organizer_id` = oude anonieme gebruiker); overdracht bestaat nog niet.
+- Geen "spel opnieuw beginnen" online (RESET bewust niet toegestaan);
+  nieuw spel = nieuwe kamer.
+- Anonieme logins kunnen kamers maken (max 5 per gebruiker); eventueel later
+  CAPTCHA/rate limit op anonieme aanmelding in Supabase Auth.
