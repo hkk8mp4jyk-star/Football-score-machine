@@ -8,18 +8,22 @@ goedgekeurd) die stap voor stap een instelbaar multiplayer-spel wordt via
 Supabase V2 (1–12 spelers, 1–4 vaste rondes, eigen pool, optionele veiling).
 Backend (database, Edge Function `game`, live tests 5A/5B) staat op V2 met de
 oude, vaste spelregels. **Huidige stand: plan F1–F12 (§10); F1 (engine)
-en F2 (machine-UI instelbaar) klaar en goedgekeurd; F3 wacht op opdracht.** Elke fase pas na expliciet akkoord van de
+en F2 (machine-UI instelbaar) klaar en goedgekeurd; F7 (multiplayer-schermen)
+plus het online spelverloop (startanimatie, SPIN-regels, veiling met
+aankondiging; §4 "Online spel – definitief", 31-10-2026) lokaal gebouwd met
+de nagebootste server, wacht op beoordeling (niet gecommit). Nog niets aan de
+echte server/Supabase gekoppeld.** Elke fase pas na expliciet akkoord van de
 gebruiker. **Commit/push alleen na expliciete toestemming per keer.**
 
 ---
 
 ## 0. Werkafspraken (altijd)
 
-- **DEMO openen**: de DEMO blijft bestaan als interne testmodus en is straks
-  (na F7) alleen bereikbaar via **`?demo`** achter het webadres, bijv.
+- **DEMO openen**: de DEMO blijft bestaan als interne testmodus en is (sinds
+  F7) alleen bereikbaar via **`?demo`** achter het webadres, bijv.
   `https://<gebruiker>.github.io/<repo>/?demo` of lokaal
-  `http://localhost:5173/?demo`. Er komt geen zichtbare DEMO-knop. Tot F7
-  opent de app nog direct in de DEMO. De DEMO mag niet onbedoeld veranderen
+  `http://localhost:5173/?demo`. Er is geen zichtbare DEMO-knop. Zonder
+  `?demo` opent het online beginscherm (`src/App.jsx` → `DemoApp`/`OnlineApp`). De DEMO mag niet onbedoeld veranderen
   (standaardinstellingen, zie §1; pixel-/timingregressie bij wijzigingen).
 - **Publiceren**: ontwikkelen op de ontwikkelbranch. Pas als multiplayer
   volledig werkt en op meerdere telefoons is getest, een voorstel doen voor
@@ -181,13 +185,191 @@ Uit `src/game/config.js` → `TIMING` en `src/game/timeline.js`:
 - De zwarte browserbalk verdwijnt pas bij installatie op beginscherm (PWA) —
   uitgesteld naar later.
 
+**Nieuwe flow (31-10-2026, vervangt B1; definitief):**
+Home → Nieuw spel (één doorlopend formulier met de spelregels) → "Spel
+aanmaken" → Wachtkamer. De organisator stelt eerst het volledige spel in;
+pas daarna bestaat de kamer en kan hij uitnodigen.
+- **Home**: alleen "Nieuw spel" en "Meedoen", geen kleine toelichtingen. Bij
+  een actief spel: wedstrijdnaam + "Verder met huidig spel" (geen tekst over
+  rondes/spelers).
+- **Nieuw spel** (alles verplicht): Jouw naam (organisator, D4-regels),
+  Thuisploeg, Uitploeg (elk 1–30 tekens, spaties aan begin/eind weg, verder
+  zoals ingevoerd; apart opgeslagen als `match.home`/`match.away`). Deze drie
+  velden zijn bij een nieuw spel **volledig leeg: geen placeholders of
+  voorbeelden** (geen "Bijv. …"), alleen de labels erboven; Aantal
+  deelnemers incl. organisator (zelf invullen, 1–12) en Prijs per vaste
+  trekking (€, €0 mag) **naast elkaar op één regel**, beide leeg; Vaste
+  rondes 1|2|3|4 (één keuze, standaard niets).
+- **Wedstrijdnaam** = `"Thuisploeg – Uitploeg"` (en-dash), overal de
+  speltitel (home, wachtkamer, meedoen, meldingen, uitnodiging). Clubnamen
+  liggen vast na het aanmaken.
+- **Uitslagen**: raster 0-0 t/m 6-6 direct zichtbaar, standaard niets
+  gekozen; OVERIG altijd gekozen (niet uit te zetten); snelkeuzes blijven.
+  Twee tabbladen: "Uitslagen" (alle uitslagen, kiezen wat meedoet) en
+  "MEGA WIN" (uitsluitend de gekozen gewone uitslagen, nooit OVERIG). Een
+  uitslag die uit de pool gaat verliest automatisch MEGA WIN.
+- **Automatische controle** onder het raster, altijd zichtbaar (ook als het
+  niet klopt; "–" zolang deelnemers of rondes ontbreken, negatief bij te
+  weinig): Vaste trekkingen = deelnemers × rondes; Veilinguitslagen =
+  geselecteerde uitslagen (incl. OVERIG) − vaste trekkingen. Geldig bij
+  genoeg uitslagen, 0–10 veilinguitslagen en alle velden ingevuld.
+  Teksten: "Selecteer nog X uitslagen om alle vaste trekkingen mogelijk te
+  maken." / "Verwijder X uitslagen om maximaal 10 veilinguitslagen over te
+  houden." / "Nog invullen: …" / "Alles klopt: … vaste trekkingen en …
+  veilinguitslagen | geen veiling."
+- **"Spel aanmaken"** alleen actief als alles geldig is; de server
+  (`createRoom`) controleert opnieuw en maakt alleen een geldig spel; de
+  organisator is speler 1; daarna wachtkamer.
+- **Meedoen via code**: geen kop/label; "Vul de kamercode in die je van de
+  organisator kreeg." boven het veld, codeveld, "Verder". **Via link** (en
+  na de code): alleen wedstrijdnaam, naamveld en "Meedoen". Bezette naam
+  (hoofdletterongevoelig): "Deze naam is al in gebruik. Kies een andere naam."
+- **Wachtkamer** (rest beoordelen we later): wedstrijdnaam bovenaan,
+  kamercode, "Deel uitnodiging", "Kopieer link", "x van y deelnemers"
+  (y = ingesteld aantal); bij y deelnemers niemand meer toegelaten
+  (`room_full`). Spelregels wijzigen kan nog (incl. aantal deelnemers, niet
+  lager dan aangemeld; clubnamen niet).
+
+**Online spel – definitief (31-10-2026, opdracht "Deel 1–10"; gaat vóór
+oudere afspraken hieronder):**
+- **Configureren**: velden en raster zoals "Nieuwe flow". MEGA WIN-uitslagen
+  zijn **groen**, gewone gekozen uitslagen **goud**, niet gekozen donker
+  (op beide tabbladen). Onvolledig (leeg, "Selecteer nog X uitslagen …",
+  "Nog invullen: …") = **neutrale** melding; **rood** alleen bij echt
+  ongeldig (te veel veilinguitslagen, ongeldige invoer). Negatieve
+  veilinguitslagen tonen als negatief getal (bijv. -5). "Spel aanmaken" is
+  donkergrijs/uitgeschakeld tot alles geldig is, daarna goud.
+- **Spelnaam = wedstrijdnaam** "THUISCLUB – UITCLUB" (niet de naam van de
+  organisator): wachtkamer, uitnodiging, scoremachine (clubnamen op de rollen,
+  online via `teams`; de DEMO houdt "Werder Bremen II"/"Bremer"),
+  startanimatie, eindstand, straks deelafbeelding en geschiedenis.
+  **Beginscherm met actief spel**: de wedstrijdnaam staat direct op de gouden
+  knop (geen aparte titel); verder ongewijzigd.
+- **Wachtkamer organisator**: wedstrijdnaam, kamercode, "Deel uitnodiging"
+  (deelmenu), "Kopieer link", teller "x van y deelnemers", deelnemerslijst
+  (slepen + ▲▼, ✕ met bevestiging), spelregels met "Wijzig" (alles behalve
+  clubnamen tot de start), "Loot volgorde" (direct), "＋ Deelnemer"
+  (zonder telefoon), "＋ Zelf meedoen" (als de organisator zichzelf had
+  verwijderd en er plek is), "Start het spel". **Geen helperteksten.**
+  Standaardvolgorde = aanmeldvolgorde. De organisator is standaard
+  deelnemer, kan zichzelf (met bevestiging) verwijderen en **blijft
+  organisator**. **Deelnemer zonder telefoon**: door de organisator
+  toegevoegd, het hele spel gekoppeld aan diens toestel (geen eigen
+  toestel later), telt volledig mee; de organisator drukt voor hem SPIN.
+  Ontwikkelknop heet **"＋ Testspeler"** (alleen lokale testomgeving).
+- **Starten**: alleen als het **werkelijke aantal deelnemers precies gelijk is
+  aan het ingestelde aantal** én alles geldig is (dus niet met 8 van 9).
+  **Eén druk** op "Start het spel" start definitief (de aparte
+  startbevestiging van B4 vervalt); daarna liggen deelnemers, volgorde en
+  spelregels vast. De server legt `startedAt` vast; dubbele start wordt
+  geweigerd (`room_changed` / `registration_closed`).
+- **Wachtkamer deelnemers** (correctie 31-10-2026): één compact, verticaal
+  gecentreerd blok: wedstrijdnaam, daaronder de namen in **compacte donkere
+  naamvakken met subtiele gouden rand**, **1–6 deelnemers één kolom, 7–12
+  twee kolommen** (kolom voor kolom gevuld, max. 6 per kolom: 7 = 4+3,
+  12 = 6+6), direct daaronder de drie kleine draaiende rollen (animatie
+  ongewijzigd) en "WARMING UP". Namen in aanmeldvolgorde (nog niet de
+  trekkingsvolgorde; verspringt niet bij volgordewijziging), geen nummers,
+  geen "Jij", geen labels. Geen volgorde, spelregels of MEGA WIN (de server
+  stuurt ze ook niet). Past met 12 namen op 320 px (ook 320×568) zonder
+  scrollen.
+- **Gezamenlijke startanimatie** (alle telefoons, op `startedAt`, ~11–16 s):
+  **A BONUS TRIGGER**: de drie rollen versnellen en stoppen één voor één op
+  een gouden munt; bij de derde: gouden flits, lichtstralen, confetti,
+  gekleurde lopende lampjes, "BONUSSPEL!". **B Namen**: alle namen draaien
+  als grote fruitautomaat, vertragen en vallen één voor één op hun plek
+  (genummerd vanaf 1) = de vóór de start vastgelegde volgorde (geen nieuwe
+  loting); daarna kort de volledige volgorde. **C Welcome to Fabulous Las
+  Vegas Nevada**: het originele welkomstbord (ruitvorm, rode ster met gele
+  rand, WELCOME op zeven witte "dollars", blauw "to Fabulous", rood LAS
+  VEGAS, blauw NEVADA, lampjes die aangaan) + samenvatting (wedstrijd,
+  deelnemers, vaste trekkingen per deelnemer, prijs per vaste trekking,
+  veilinguitslagen), ~3,2 s; daarna automatisch de scoremachine. Alles volgt
+  uit de tijd: wie later binnenkomt valt op het juiste punt in of ziet
+  direct de scoremachine (geen herhaling). SPIN kan pas na de animatie
+  (`intro_running`).
+- **Wie bedient de scoremachine (definitief)**: de deelnemer die aan de beurt
+  is drukt zelf **SPIN** op zijn eigen telefoon; alleen hij ziet de actieve
+  knop, anderen zien de machine zonder SPIN. Uitzonderingen: (1) deelnemer
+  zonder telefoon → SPIN op het toestel van de organisator; (2) de organisator
+  kan tijdens de actuele beurt **"Draai namens <naam>"** (knop op de plek van
+  SPIN, met bevestiging "Alleen als … niet reageert"). Deelnemer en
+  organisator tegelijk → precies één trekking (engine + versiecontrole; mock
+  met Web Locks). Uitslag centraal en één keer; niets terug te draaien.
+- **Veiling**: scoremachine, laatste uitslag en beschikbare uitslagen blijven
+  zichtbaar. De organisator (hamerknop) kiest winnaar + bod (vóór bevestigen
+  te corrigeren) en drukt **"Bevestig veiling"** (DEMO houdt "Beurt
+  vrijgeven"): daarmee is de beurt toegewezen, er start nog géén trekking;
+  daarna geen tweede bevestiging (`auction_confirmed`). Op alle telefoons
+  ~2,6 s de aankondiging **"WINNAAR VEILING #n" / NAAM / €35,00** (gouden
+  flits, vonken; geen tekst "Winnend bod") over de machine; `n` = werkelijk
+  volgnummer van de veiling in het spel (#1, #2, …, door de server
+  vastgelegd in `announce.lot`). Geen herhaling bij opnieuw verbinden
+  (alleen binnen het tijdvenster). Daarna "<naam> draait voor €…" boven de
+  machine; alleen de winnaar heeft SPIN (organisator kan namens). Bevestigen
+  start geen trekking. Bedrag zoals "Draait voor": €35,00.
+- **Verloop/betrouwbaarheid**: snake-volgorde, uitslag verdwijnt definitief,
+  MEGA-animatie, OVERIG nooit MEGA, veiling na de vaste rondes, geen
+  automatische volgende trekking, geen ongedaan maken, geen nieuwe
+  deelnemers of volgordewijziging na de start, geen pauzeknop. Status staat
+  op de server; terugkeren op hetzelfde toestel en offline deelnemers komen
+  bij terugkeer op de actuele stand.
+- **Faseovergangen (definitief, correctie 31-10-2026)**: **alleen de
+  organisator** bepaalt wanneer de veilingfase begint ("Start de veiling",
+  na de laatste vaste trekking; zonder veiling direct "Bekijk de
+  eindstand") en wanneer de eindstand verschijnt ("Bekijk de eindstand", na
+  de laatste veilingtrekking). Deelnemers hebben die knoppen niet (op de
+  plek staat niets). De server legt de overgang **centraal en eenmalig**
+  vast (`advancePhase(step)` → `room.ack.auctionStart`/`finish`; tweede keer
+  `nothing_to_advance`, deelnemer `not_organizer`); alle telefoons gaan
+  automatisch mee en zien bij opnieuw verbinden de actuele fase. "Bevestig
+  veiling" kan pas na "Start de veiling" (`auction_not_open`). Trekking- en
+  veilingregels ongewijzigd.
+- **Goedgekeurd na visuele beoordeling (31-10-2026), niet wijzigen**: het Las
+  Vegas-bord (formaat, vormgeving, verlichting) en de namenanimatie
+  (snelheid, door elkaar draaien, vertragen, één voor één vastzetten,
+  timing en effecten).
+- Geschiedenis blijft verborgen. Een deelbare PNG bestaat nog niet (F10).
+
+**Besluiten wachtkamer B1–B10 (31-10-2026; B1, B4, B6, B9 aangepast, zie
+hierboven):**
+- **B1** *(vervangen door de nieuwe flow hierboven)* Organisator vult naam in → kamer wordt direct gemaakt → wachtkamer;
+  deelnemers kunnen zich al aanmelden terwijl de organisator instelt.
+- **B2** Nieuw spel blanco: geen aantal deelnemers, geen rondes, prijs leeg,
+  geen losse uitslagen (alleen OVERIG, altijd), geen MEGA. Snelkeuzes ("Standaard (0-0 t/m 4-4)",
+  "Alles", "Wissen", "Standaard MEGA", "Geen MEGA") blijven, nooit
+  automatisch toegepast. DEMO houdt haar standaard.
+- **B3** Status in gewone taal (geen formules): rondes ontbreken, prijs
+  ontbreekt, te weinig / te veel uitslagen (met "nodig: x tot y, nu z"),
+  of "Alles klopt: … vaste trekkingen en een veiling van … kavels / geen
+  veiling". Start uitgeschakeld zolang het niet klopt.
+- **B4** Eén startbevestiging: Deelnemers, Vaste rondes, Prijs per trekking,
+  Uitslagen, Veilingtrekkingen (of "Geen veiling") + "deelnemers, volgorde
+  en spelregels liggen daarna vast"; knoppen "Annuleren" / "Definitief
+  starten". De server start alleen als de kamer niet intussen veranderde
+  (`room_changed`, versiecontrole; D8).
+- **B5** Volgorde: slepen (⋮⋮) én ▲▼; "Loot volgorde" direct, zonder
+  bevestiging; wijzigen tot de start.
+- **B6** Verwijderen met korte bevestiging; organisator kan zichzelf niet
+  verwijderen; verwijderde deelnemer kan zich opnieuw aanmelden zolang de
+  wachtkamer open is ("Je bent verwijderd" + "Opnieuw aanmelden").
+- **B7** "Geschiedenis" voorlopig helemaal verborgen.
+- **B8** Precies twee knoppen: "Deel uitnodiging" (deelmenu van de telefoon;
+  zonder deelmenu wordt de uitnodiging gekopieerd) en "Kopieer link".
+  Uitnodiging = naam organisator + link + kamercode. Geen WhatsApp-knop.
+- **B9** Wachtkamer deelnemer: alleen naam organisator, lijst aangemelde
+  deelnemers, eigen naam met "Jij", "Wachten tot de organisator het spel
+  start". Geen spelregels/raster/MEGA/prijzen (server stuurt ze ook niet).
+- **B10** Eerst lokaal met mock (F7); echte server/Supabase pas na
+  beoordeling en apart akkoord.
+
 **Nieuwe schermen (multiplayer, in de bestaande stijl; machine ongewijzigd):**
-- **Beginscherm**: "Nieuw spel", "Meedoen", "Geschiedenis"; bij een actief
-  spel automatisch "Verder met huidig spel". Geen DEMO-knop (DEMO via `?demo`).
-- **Nieuw spel**: eigen naam → kamer → instellingen → uitnodigen → wachten →
-  volgorde → start. **Meedoen**: kamercode + naam; via een uitnodigingslink
+- **Beginscherm**: "Nieuw spel", "Meedoen" (Geschiedenis verborgen, B7); bij
+  een actief spel bovenaan wedstrijdnaam + "Verder met huidig spel". Geen DEMO-knop (DEMO via `?demo`).
+- **Nieuw spel**: naam + clubs + spelregels (één formulier) → "Spel
+  aanmaken" → wachtkamer → uitnodigen → wachten → volgorde → start. **Meedoen**: kamercode + naam; via een uitnodigingslink
   (`?kamer=CODE`) direct naar de aanmelding van die kamer.
-- **Uitnodigen**: link delen (deelmenu/WhatsApp), link kopiëren, code tonen.
+- **Uitnodigen**: "Deel uitnodiging" (deelmenu), "Kopieer link", code tonen (B8).
 - **Wachtkamer**: iedereen ziet wie er is en "wachten op de organisator";
   alleen de organisator: instellingen, verwijderen, volgorde slepen/loten,
   starten.
@@ -211,6 +393,78 @@ Uit `src/game/config.js` → `TIMING` en `src/game/timeline.js`:
   (andere telefoon/gewiste gegevens = niet zichtbaar).
 
 ## 5. React-architectuur en spelengine
+
+**Multiplayer-schermen (F7)**, strikt gescheiden van de DEMO:
+```
+src/App.jsx                 router: ?demo → DemoApp, anders OnlineApp (isDemoUrl)
+src/DemoApp.jsx             de DEMO (voorheen App.jsx, inhoud ongewijzigd)
+src/lobby/lobbyRules.js     pure wachtkamerregels (ook voor de echte server in F3):
+                            createRoom({name, home, away, draft}) alleen geldig spel,
+                            draft = {maxPlayers, rounds, priceCents, pool, mega},
+                            room.match {home, away}, matchName, normalizeClub,
+                            parsePlayerCount, setupStatus (formulier), selectie
+                            togglePoolResult/toggleMegaResult/choosePool/megaCandidates,
+                            maxPlayersOf (room_full), joinRoom, removePlayer, setOrder, shuffleOrder,
+                            updateSettings/normalizeDraft, draftStatus, startGame
+                            (expectedVersion → room_changed), lobbyConfig, roomView
+                            (deelnemer: draft = null), roomSummary, parsePrice; LobbyError
+src/online/api.js           interface + getApi(), ApiError, codes, ERROR_TEXT, inviteUrl
+src/online/realApi.js       echte server: nog stub ('not_available'), F6
+src/online/mock/mockApi.js  NAGEBOOTSTE SERVER: zelfde regels/foutcodes; kamers in
+                            localStorage 'fsm-mock-server', identiteit + sessie per
+                            tabblad in sessionStorage ('fsm-mock-user'/'-session'),
+                            meldingen via BroadcastChannel 'fsm-mock'; addFakePlayer
+src/online/OnlineApp.jsx    schermkeuze (home/new/code/join/room/notice), ?kamer=CODE,
+                            terugkeren via sessie, delen/kopiëren, meldingen (toast)
+src/online/useRoom.js       kamer ophalen + volgen; hoogste versie wint
+src/online/lobbyText.js     statusteksten in gewone taal (B3)
+src/lobby/playRules.js      pure spelregels online: spinTurn (wie mag SPIN, onBehalf,
+                            deelnemer zonder telefoon, intro_running), confirmAuction
+                            (Bevestig veiling + announce met lot #n), nextStep/
+                            advancePhase (faseovergangen, alleen organisator →
+                            room.ack), turnInfo, introTimeline/
+                            introPhase/INTRO (startanimatie), ANNOUNCE_MS
+src/online/intro/*          slotMath (tijdgestuurde rolpositie), MiniReels (WARMING UP,
+                            BONUS TRIGGER), StartIntro (BonusTrigger, NamesReveal,
+                            VegasWelcome), VegasSign (SVG-bord), AuctionAnnounce
+src/online/screens/OnlineGame.jsx  online scoremachine (MainScreen/AuctionScreen met
+                            teams/altAction), Draai namens, Bevestig veiling, menu
+src/online/screens/*        common (OnlineScreen, Status, ConfirmSheet, Toast),
+                            EntryScreens (Home, NewGame, JoinScreen, CodeScreen, Notice),
+                            Lobby (LobbyOrganizer, LobbyParticipant, StartConfirm,
+                            RemoveConfirm), PlayerList (slepen/▲▼/✕), SettingsSheet
+                            (useRules + RulesFields: gedeeld door Nieuw spel en
+                            "Wijzig" in de wachtkamer),
+                            OnlineGame (zie boven)
+```
+- **Bestaande componenten** kregen alleen optionele props (zonder props
+  identieke DEMO-markup, getoetst): `SlotMachine teams`, `MainScreen`/
+  `AuctionScreen` `teams` + `altAction` + `canAdvance` (false = knop
+  "Start de veiling"/"Bekijk de eindstand" verborgen; online alleen de
+  organisator), `AuctionSetup confirmLabel`. De DEMO houdt haar lokale
+  bevestiging (`fsm-demo-ack`); online komt `ack` uit de kamer.
+- Kamer (mock en straks server): `match`, `organizerName`, `players[{slot,
+  userId|null, name, manual?}]`, `order`, `draft{maxPlayers, rounds,
+  priceCents, pool, mega}`, `startedAt`, `announce{participant, bidCents,
+  lot, at}`, `ack{auctionStart, finish}` (faseovergangen), `spinLog[{spinId,
+  participant, spunBy, onBehalf, at}]`, `state` (engine, ongewijzigd). `roomView`: `controlSlots` (welke deelnemers dit
+  toestel mag bedienen), deelnemers in de wachtkamer alleen `{slot, name}`.
+- Lettertypen voor het Las Vegas-bord (Yellowtail, Archivo Black) worden
+  alleen door `OnlineApp` geladen (DEMO/`index.html` ongewijzigd).
+- Mock-beperking: identiteit per tabblad in sessionStorage; een gesloten
+  tabblad is in de mock dus een "nieuwe telefoon". De echte server gebruikt
+  een blijvende anonieme sessie (terugkeren op hetzelfde toestel).
+- **Mock nooit in productie**: `USE_MOCK = import.meta.env.DEV ||
+  VITE_USE_MOCK === '1'`; alleen dan wordt `mock/mockApi.js` geladen en
+  verschijnen testonderdelen ("＋ Nep-speler", testmodus-melding). In
+  `npm run build` vallen ze weg (gecontroleerd: geen `fsm-mock`,
+  `Nep-speler`, `addFakePlayer`, `Testmodus` in `dist/`). Testen:
+  `npm run dev` of `VITE_USE_MOCK=1 npx vite build`. Een extra telefoon
+  nabootsen = nieuw tabblad (niet dupliceren: dat kopieert sessionStorage).
+- De schermen beslissen niets zelf; alles via `api` (server-autoritatief).
+  De echte server (F3/F6) moet dezelfde interface en foutcodes leveren en kan
+  `lobbyRules.js` hergebruiken. CSS: blok "Multiplayer-schermen (F7)"
+  onderaan `index.css`, alleen nieuwe `ol-`-klassen.
 
 ```
 src/game/config.js     standaardregels (DEMO), ALL_RESULTS (0-0…6-6 + OVERIG), grenzen, timing
@@ -600,6 +854,60 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   1280 px), geen horizontaal scrollen, geen consolefouten; bevinding 4 rondes
   overlapten de knop "Uitslagen bekijken" → opgelost met `rounds-many`
   (gemeten ruimte bij 320 px 14 px, bij 390 px 46 px).
+- **Correcties na beoordeling F8 (31-10-2026, lokaal, niet gecommit)**:
+  `npm test` → **277 tests** (+4: faseovergangen alleen organisator,
+  eenmalig, pas na de laatste trekking, veiling pas bevestigen na "Start de
+  veiling", zonder veiling direct eindstand; veilingnummers #1/#2;
+  wachtkamer 1 kolom t/m 6, 2 kolommen bij 7–12; deelnemer zonder knop
+  "Start de veiling"). **Browser** (3 telefoons, 320/390/430 px): **35/35**
+  per breedte: deelnemers zien geen overgangsknoppen, organisator klikt →
+  iedereen automatisch naar veiling/eindstand, herladen → actuele fase,
+  aankondiging "Winnaar veiling #1" en "#2". Wachtkamer 6 en 12 deelnemers
+  op 320 (×568), 390 en 430 px: geen scrollen, juiste kolommen, geen
+  afgekapte namen. Startanimatie-bestanden ongewijzigd. Lege velden "Nieuw
+  spel" gecontroleerd (al in orde). DEMO 16/16 pixel-identiek.
+- **Online spelverloop (31-10-2026, lokaal, niet gecommit)**: `npm test` →
+  **273 tests** (+11 in `tests/play.test.js`: introtijdlijn en -fases,
+  rollen exact op munt/naam, SPIN alleen voor wie aan de beurt is,
+  organisator alleen expliciet namens, deelnemer zonder telefoon, tweede
+  SPIN geweigerd, veiling bevestigen (rechten, bod, geen tweede
+  bevestiging, start geen trekking), aankondigingsvenster, mock: volledig
+  spel met 3 telefoons incl. gelijktijdig drukken → 1 trekking; lobby:
+  organisator zichzelf verwijderen/terug, zonder telefoon, start alleen bij
+  precies y van y; schermen: wachtkamer deelnemer, startanimatie A/B/C,
+  actieve deelnemer vs. toeschouwer, Draai namens, aankondiging).
+  **Browser** (mock-build, 3 telefoons + 2 testspelers + 1 zonder
+  telefoon, 320/390/430 px): **27/27** per breedte, incl. gelijktijdig SPIN
+  + Draai namens → precies één trekking, herladen tijdens spel/veiling →
+  geen herhaling van animatie/aankondiging, geen consolefouten. Frames per
+  fase + video van de startanimatie. **DEMO**: 16/16 pixel-identiek
+  (oude build `/` vs. nieuwe `/?demo`), draaien/herladen gelijk.
+- **F7 aangepaste flow (31-10-2026, lokaal, niet gecommit)**: `npm test` →
+  **262 tests** (lobby 37, schermen 30; nieuw: blanco formulier, clubs,
+  aantal deelnemers 1–12, wedstrijdnaam, setupStatus, server maakt alleen
+  geldige spellen, 0 / 10 / 11 veilinguitslagen, definitieve teksten,
+  selectie OVERIG/MEGA, ingesteld maximum → `room_full`, maximum niet onder
+  aangemeld). Browserflow 30/30 op 320/390/430 px, geen horizontaal
+  scrollen of consolefouten. DEMO opnieuw 16/16 pixel-identiek.
+  **Open punt wachtkamer**: de start rekent (ongewijzigd) met de aangemelde
+  deelnemers; met minder dan het ingestelde aantal kan de start dus
+  geblokkeerd zijn ("Met x van y deelnemers kloppen de spelregels nog
+  niet.") of een andere veiling opleveren. Beslissen bij de beoordeling van
+  de wachtkamer.
+- **F7 multiplayer-schermen met mock (31-10-2026, lokaal, niet gecommit)**:
+  `npm test` → **250 tests** (196 bestaande ongewijzigd groen + 30 in
+  `tests/lobby.test.js`: blanco beginstand, kamer maken, aanmelden, dubbele
+  namen, max. 12, terugkeren, spelregels tijdens aanmelden, geldige/ongeldige
+  concepten, statusteksten, prijsinvoer, volgorde/loten (alle 24 volgordes),
+  verwijderen + opnieuw aanmelden, start + `room_changed`, registratie dicht
+  na start, deelnemer ziet geen spelregels/user-id's, mock met meerdere
+  telefoons, realApi-stub; + 24 in `tests/online-ui.test.jsx`: router
+  `?demo`, alle schermen gerenderd). `npm run build` slaagt, mock niet in de
+  bundel. **Browserflow** (Playwright, mock-build, meerdere tabbladen,
+  320/390/430 px): 33/33 controles per breedte, geen horizontaal scrollen,
+  geen consolefouten; 26 schermafbeeldingen per breedte. **DEMO**: oude
+  build (vóór F1) op `/` vs. nieuwe op `/?demo`: 16/16 schermen
+  pixel-identiek; draaien/herladen gelijk; `/` raakt `fsm-demo-state` niet.
 - **F1 engine instelbaar (30-10-2026, lokaal)**: `npm test` → **160 tests**
   (120 bestaande ongewijzigd groen + 40 nieuw in `tests/gameConfig.test.js`
   en `tests/engine-config.test.js`): 50 uitslagen; slangvolgorde voor alle
@@ -678,8 +986,8 @@ voorlopig overgeslagen.
 | F4 | Migratie 3 + `db:test` | V2 | |
 | F5 | Uitrol `game` + live tests 5A/5B aangepast aan wachtkamer/start | V2 | |
 | F6 | Online fundament frontend: supabase-js, publieke sleutel (env), `callGame` (tijdslimiet, nooit automatisch herhaald), kloksync, statusopslag (hoogste versie wint), sessie/terugkeer | L | |
-| F7 | Schermen Begin (+ "Verder met huidig spel"), Nieuw spel, Meedoen, Wachtkamer, Instellingen, Volgorde; router met `?demo` en `?kamer=`; Playwright tegen nagebootste server | L | |
-| F8 | Online spel: synchrone animaties (servertijd), herstel, online menu ("draai namens", "plek vrijgeven"), verbindingsbalkje; daarna korte live test | L → V2 | |
+| F7 | Schermen Begin (+ "Verder met huidig spel"), Nieuw spel, Meedoen, Wachtkamer, Instellingen, Volgorde; router met `?demo` en `?kamer=`; Playwright tegen nagebootste server | L | **gebouwd, wacht op beoordeling** (31-10-2026, vóór F3 uitgevoerd op verzoek; B1–B10) |
+| F8 | Online spel: synchrone animaties (servertijd), herstel, online menu ("draai namens", "plek vrijgeven"), verbindingsbalkje; daarna korte live test | L → V2 | **lokaal met mock gebouwd** (startanimatie, SPIN-regels, Draai namens, veiling + aankondiging), wacht op beoordeling; nog niet op de echte server |
 | F9 | Veiling online (0–10, tegelindeling) | L → V2 | |
 | F10 | Eindscherm (pot, terug), deelafbeelding (canvas → PNG, deelmenu/opslaan) | L | |
 | F11 | Publieke sleutel als GitHub-variabele (begeleid), test op telefoons; daarna pas voorstel voor `main`/Pages (toestemming) | V2/Pages | |
@@ -697,6 +1005,11 @@ voorlopig overgeslagen.
   eventueel zachte drempel naar standalone-modus.
 
 ### Openstaande punten
+- **Voor F3/F4 (echte server/database)**: `playRules.js` en `lobbyRules.js`
+  overnemen in de Edge Function; database uitbreiden met wedstrijd
+  (`home`/`away`), `organizer_name`, `max_players`, deelnemers zonder
+  telefoon (`seats.user_id` nullable + `manual`), `started_at`, `announce`;
+  `draws.spun_by`/`on_behalf` vullen uit `spinLog`. Pas na apart akkoord.
 - Uitslag ~4,3 s vóór stilstand in netwerkverkeer zichtbaar: **geaccepteerd
   (D9)**, geen verharding.
 - Token mist `advisors_read` (security advisors niet op te vragen).

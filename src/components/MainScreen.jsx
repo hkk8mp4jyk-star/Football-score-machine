@@ -3,7 +3,11 @@ import OtherBanner from './OtherBanner.jsx'
 import { Footer, NavRow, PlayerSpot, RoundBadges } from './Header.jsx'
 import { auctionLots, configOf, drawTurns, playerName, reelSymbolsFor, turnOrder } from '../game/gameConfig.js'
 
-export default function MainScreen({ state, reelSpin, reveal, locked, canSpinFor, showOther, onSpin, onSettled, onNext, onOverview, onMenu }) {
+// Online (optioneel): `teams` (clubnamen op de rollen) en `altAction` (knop
+// in plaats van de verborgen SPIN-knop, bijv. "Draai namens …") en
+// `canAdvance` (false: geen knop "Start de veiling"/"Bekijk de eindstand";
+// die overgang is aan de organisator).
+export default function MainScreen({ state, reelSpin, reveal, locked, canSpinFor, showOther, onSpin, onSettled, onNext, onOverview, onMenu, teams, altAction, canAdvance = true }) {
   const config = configOf(state)
   const order = turnOrder(config)
   const totalTurns = drawTurns(config)
@@ -38,7 +42,7 @@ export default function MainScreen({ state, reelSpin, reveal, locked, canSpinFor
       <main className="stage">
         <div className="stage-glow" aria-hidden="true" />
         <div className="machine-holder">
-          <SlotMachine spin={reelSpin} restResultId={lastId} onSettled={onSettled} symbols={reelSymbolsFor(config)} />
+          <SlotMachine spin={reelSpin} restResultId={lastId} onSettled={onSettled} symbols={reelSymbolsFor(config)} teams={teams} />
           <OtherBanner show={showOther} />
         </div>
 
@@ -49,12 +53,14 @@ export default function MainScreen({ state, reelSpin, reveal, locked, canSpinFor
           {reveal && state.phase !== 'draw' ? (
             <button
               type="button"
-              className={`gold-btn gold-btn-next ${locked ? 'is-hidden' : ''}`}
+              className={`gold-btn gold-btn-next ${locked || !canAdvance ? 'is-hidden' : ''}`}
               onClick={onNext}
-              disabled={locked}
+              disabled={locked || !canAdvance}
             >
               {state.phase === 'finished' ? 'Bekijk de eindstand' : 'Start de veiling'}
             </button>
+          ) : altAction && spinHidden ? (
+            altAction
           ) : (
             <button
               type="button"

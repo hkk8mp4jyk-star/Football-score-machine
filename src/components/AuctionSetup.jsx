@@ -3,7 +3,8 @@ import { DEFAULT_CONFIG } from '../game/gameConfig.js'
 
 // Compact invoervenster voor de organisator: deelnemer en winnend bod.
 // `players`: de spelers van dit spel in speelvolgorde (standaard de DEMO).
-export default function AuctionSetup({ initial, onConfirm, onClose, players = DEFAULT_CONFIG.players }) {
+// `confirmLabel`: online "Bevestig veiling"; de DEMO houdt "Beurt vrijgeven".
+export default function AuctionSetup({ initial, onConfirm, onClose, players = DEFAULT_CONFIG.players, confirmLabel = 'Beurt vrijgeven' }) {
   const [participant, setParticipant] = useState(initial?.participant ?? null)
   const [bid, setBid] = useState(initial?.bid != null ? String(initial.bid).replace('.', ',') : '')
   const inputRef = useRef(null)
@@ -61,7 +62,7 @@ export default function AuctionSetup({ initial, onConfirm, onClose, players = DE
         </label>
 
         <button type="submit" className="gold-btn setup-confirm" disabled={!valid}>
-          Beurt vrijgeven
+          {confirmLabel}
         </button>
       </form>
     </div>

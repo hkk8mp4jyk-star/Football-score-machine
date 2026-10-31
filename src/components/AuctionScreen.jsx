@@ -45,6 +45,9 @@ export default function AuctionScreen({
   onFinish,
   onOverview,
   onMenu,
+  teams,
+  altAction,
+  canAdvance = true,
 }) {
   const config = configOf(state)
   const spinning = !!state.spin
@@ -83,10 +86,12 @@ export default function AuctionScreen({
   let action = null
   if (finished) {
     action = (
-      <button type="button" className="gold-btn gold-btn-next" onClick={onFinish}>
+      <button type="button" className={`gold-btn gold-btn-next${canAdvance ? '' : ' is-hidden'}`} onClick={onFinish} disabled={!canAdvance}>
         Bekijk de eindstand
       </button>
     )
+  } else if (altAction && !spinVisible) {
+    action = altAction // online: bijv. "Draai namens …"
   } else {
     action = (
       <button
@@ -124,7 +129,7 @@ export default function AuctionScreen({
         </div>
         {/* Zelfde machine als in ronde 1 en 2: zelfde breedte en verhoudingen. */}
         <div className="machine-holder">
-          <SlotMachine spin={reelSpin} restResultId={lastId} onSettled={onSettled} symbols={reelSymbolsFor(config)} />
+          <SlotMachine spin={reelSpin} restResultId={lastId} onSettled={onSettled} symbols={reelSymbolsFor(config)} teams={teams} />
           <OtherBanner show={showOther} />
         </div>
         {bottom.length > 0 && (

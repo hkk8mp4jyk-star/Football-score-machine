@@ -17,7 +17,8 @@ function Bulbs({ count, side }) {
 // rollen synchroon op `spin.startedAt` draaien. Na de laatste rol meldt hij
 // `onSettled`. In multiplayer starten alle telefoons zo tegelijk.
 // `symbols`: aantal symbolen per rol (6 = 0–4 + ★, 8 = 0–6 + ★).
-export default function SlotMachine({ spin, restResultId, compact = false, onSettled, symbols = REEL_SYMBOLS }) {
+// `teams`: clubnamen boven de rollen (online: de wedstrijd); standaard de DEMO.
+export default function SlotMachine({ spin, restResultId, compact = false, onSettled, symbols = REEL_SYMBOLS, teams }) {
   const [mode, setMode] = useState('idle') // idle | spinning | win
   const [stopped, setStopped] = useState(0)
   const targets = spin ? reelTargets(spin.resultId, symbols) : restResultId ? reelTargets(restResultId, symbols) : [0, 0]
@@ -60,7 +61,7 @@ export default function SlotMachine({ spin, restResultId, compact = false, onSet
             restSymbol={targets[0]}
             onStop={() => handleStop(1)}
             onTick={stopped < 1 ? sfx.tick : undefined}
-            label={compact ? null : HOME_TEAM}
+            label={compact ? null : (teams?.home ?? HOME_TEAM)}
             symbols={symbols}
           />
           <div className="reel-dash" aria-hidden="true">
@@ -73,7 +74,7 @@ export default function SlotMachine({ spin, restResultId, compact = false, onSet
             restSymbol={targets[1]}
             onStop={() => handleStop(2)}
             onTick={stopped >= 1 ? sfx.tick : undefined}
-            label={compact ? null : AWAY_TEAM}
+            label={compact ? null : (teams?.away ?? AWAY_TEAM)}
             symbols={symbols}
           />
         </div>
