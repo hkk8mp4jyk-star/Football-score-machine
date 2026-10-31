@@ -281,11 +281,11 @@ describe('bevestigen', () => {
 })
 
 const settleId = (r, t) => deriveView(r.state, t, {}).reveal?.id
+const game = (r, user, now, props = {}) => html(<OnlineGame room={roomView(r, user)} actions={{}} onHome={noop} notify={noop} now={now} {...props} />)
 
 describe('gestart spel', () => {
   const started = (draft = { rounds: 1, priceCents: 500, pool: ['0-0', '1-1', '2-2', 'OVERIG'], mega: [], maxPlayers: 3 }) =>
     startGame(room(3, draft), { userId: 'org', now: 1_000_000 })
-  const game = (r, user, now, props = {}) => html(<OnlineGame room={roomView(r, user)} actions={{}} onHome={noop} notify={noop} now={now} {...props} />)
   it('startanimatie: BONUS TRIGGER → BONUSSPEL! → namen → Las Vegas-bord met samenvatting', () => {
     const r = started()
     const tl = introTimeline(3)
@@ -362,5 +362,35 @@ describe('volgorde verplaatsen', () => {
     const s = html(<PlayerList players={[{ slot: 0, name: 'Lars', isOrganizer: true, isMe: false }]} />)
     expect(s).not.toMatch(/ol-handle|ol-icon/)
     expect(s).toContain('Organisator')
+  })
+})
+
+describe('eindstand: definitieve spelersvolgorde (regressie)', () => {
+  it('per deelnemer in de bij de start vastgelegde volgorde, niet alfabetisch/aanmelding/uitslagen/bedragen', () => {
+    // aanmelden: Lars, Sanne, Bas, Marieke; startvolgorde: Marieke, Lars, Bas, Sanne
+    let r = createRoom({ id: 'r', code: 'K7QM2P', userId: 'org', name: 'Lars', ...CLUBS, draft: { maxPlayers: 4, rounds: 1, priceCents: 1000, pool: ['0-0', '1-0', '1-1', '2-0', '2-2', 'OVERIG'], mega: [] } })
+    for (const [u, n] of [['u1', 'Sanne'], ['u2', 'Bas'], ['u3', 'Marieke']]) r = joinRoom(r, { userId: u, name: n }).room
+    r = setOrder(r, { userId: 'org', order: [3, 0, 2, 1] })
+    r = startGame(r, { userId: 'org', now: 1_000_000 })
+    let t = 1_000_000 + introTimeline(4).endAt + 1
+    const rel = () => r.state.spin.startedAt + 9000
+    for (const u of ['u3', 'org', 'u2', 'u1']) {
+      r = spinTurn(r, { userId: u, now: t }).room
+      t = rel()
+    }
+    r = advancePhase(r, { userId: 'org', step: 'auction', now: t })
+    // twee veilingen voor Bas (hoogste bedrag), zodat bedragen een andere volgorde zouden geven
+    for (const bid of [5000, 4000]) {
+      r = confirmAuction(r, { userId: 'org', participant: 2, bidCents: bid, now: t })
+      r = spinTurn(r, { userId: 'u2', now: t + 10 }).room
+      t = rel()
+    }
+    r = advancePhase(r, { userId: 'org', step: 'final', now: t })
+    const s = game(r, 'u1', t + 10)
+    expect(s).toContain('screen-finished')
+    const names = [...s.matchAll(/class="person-name">([^<]+)</g)].map((m) => m[1])
+    expect(names).toEqual(['Marieke', 'Lars', 'Bas', 'Sanne'])
+    expect(names).not.toEqual([...names].sort()) // niet alfabetisch
+    expect(r.state.config.players.map((p) => p.name)).toEqual(names)
   })
 })

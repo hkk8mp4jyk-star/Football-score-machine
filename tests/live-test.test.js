@@ -229,7 +229,8 @@ describe('live test: fase 5A (basis)', () => {
     expect(out.results.filter((r) => !r.ok)).toEqual([])
     expect(out.exitCode).toBe(EXIT.ok)
     expect(env.track.max).toBe(1) // nooit twee verzoeken tegelijk
-    expect(env.store.draws).toHaveLength(1) // precies één trekking
+    expect(env.store.draws).toHaveLength(2) // één eigen SPIN + één expliciet namens
+    expect(env.store.draws.map((d) => d.on_behalf)).toEqual([false, true])
     expect(env.lines.join('\n')).toContain('Fase 5A')
     expect(env.lines.join('\n')).not.toMatch(/Fase 5B|Fase 5C|gelijktijdige SPIN-verzoeken/)
     expect(env.track.calls).not.toContain('logStats') // geen conflictcontrole: die hoort bij 5B/5C
@@ -285,10 +286,11 @@ describe('live test: fase 5B en 5C (gelijktijdigheid)', () => {
     const out = await env.run('5b')
     expect(out.exitCode).toBe(EXIT.ok)
     expect(env.track.spinBatchMax).toBe(2)
-    expect(env.track.calls.filter((c) => c === 'game').length).toBe(3) // kamer maken + 2 SPIN's
+    // kamer, start, tweede start (geweigerd), SPIN tijdens animatie (geweigerd), 2 gelijktijdige SPIN's
+    expect(env.track.calls.filter((c) => c === 'game').length).toBe(6) // kamer maken + 2 SPIN's
     expect(env.store.draws).toHaveLength(1)
     const text = env.lines.join('\n')
-    expect(text).toMatch(/client \(Edge Function\): (200:, 409:turn_not_released|409:turn_not_released, 200:)/)
+    expect(text).toMatch(/client \(Edge Function\): (200:, 409:(spin_in_progress|turn_not_released)|409:(spin_in_progress|turn_not_released), 200:)/)
     expect(text).toContain('intern (PostgREST): commit_room_state 200×1, 409 (PT409)×1')
   })
 

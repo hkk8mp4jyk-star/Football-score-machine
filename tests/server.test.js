@@ -1,430 +1,507 @@
-// Servertests (fase 3): de logica van de Edge Function met een geheugenopslag
-// die dezelfde regels afdwingt als de database. Tijd is een nep-klok.
+// Servertests: de logica van de Edge Function (online spel) met een
+// geheugenopslag die dezelfde regels afdwingt als de database. Tijd is een
+// nep-klok. Meerdere "telefoons" = verschillende gebruikers-id's.
 import { describe, expect, it } from 'vitest'
-import { DRAW_TURNS, RESULTS, TURN_ORDER } from '../src/game/config.js'
+import { ALL_RESULTS, RESULTS } from '../src/game/config.js'
 import { settle } from '../src/game/engine.js'
+import { turnOrder } from '../src/game/gameConfig.js'
 import { releaseDelay } from '../src/game/timeline.js'
 import { deriveView } from '../src/game/view.js'
-import { ActionError, CODE_RE, MAX_ROOMS_PER_USER, StoreConflict, createGameServer, generateRoomCode } from '../src/server/actions.js'
+import { introTimeline } from '../src/lobby/playRules.js'
+import { ACTIONS, ActionError, CODE_RE, MAX_ROOMS_PER_DAY, StoreConflict, createGameServer, generateRoomCode } from '../src/server/actions.js'
 import { createHttpHandler } from '../src/server/http.js'
 import { createSupabaseStore } from '../src/server/supabaseStore.js'
 import { seededRandomInt } from './helpers.js'
 import { createMemoryStore } from './memoryStore.js'
 
 const user = (i) => `00000000-0000-4000-a000-${String(i).padStart(12, '0')}`
-const ORG = user(100) // organisator, speelt zelf als deelnemer 0
-const P = Array.from({ length: 9 }, (_, i) => (i === 0 ? ORG : user(i))) // telefoon per deelnemer
+const ORG = user(100) // organisator, speelt standaard zelf mee
+const P = Array.from({ length: 12 }, (_, i) => (i === 0 ? ORG : user(i))) // telefoon per deelnemer
 const OUTSIDER = user(999)
+const NAMES = ['Lars', 'Sanne', 'Bas', 'Marieke', 'Dennis', 'Frank', 'Esther', 'Patrick', 'Jeroen', 'Noor', 'Ahmed', 'Ruud']
+const STANDARD = RESULTS.map((r) => r.id) // 26: 0-0 … 4-4 + OVERIG
+const CLUBS = { home: 'Werder Bremen II', away: 'Bremer SV' }
+const CHI2_DF10 = 35.6 // chi-kwadraat, 10 vrijheidsgraden, p = 0,0001
 
-const CHI2_DF25 = 59.7 // chi-kwadraat, 25 vrijheidsgraden, p = 0,0001
+// Geldig spel voor n deelnemers: 1 ronde en n+2 uitslagen (2 veilinguitslagen).
+function setupFor(n, extra = {}) {
+  const pool = ALL_RESULTS.map((r) => r.id).filter((id) => id !== 'OVERIG').slice(0, n + 1).concat('OVERIG')
+  return { name: 'lars', ...CLUBS, draft: { maxPlayers: n, rounds: 1, priceCents: 1000, pool, mega: [pool[0]], ...extra } }
+}
 
-function setup({ randomInt = seededRandomInt(7), store = createMemoryStore() } = {}) {
+function setup({ randomInt = seededRandomInt(7), store } = {}) {
   const clock = { t: 1_800_000_000_000 }
-  const server = createGameServer({ store, randomInt, now: () => clock.t })
+  const st = store ?? createMemoryStore({ now: () => clock.t })
+  const server = createGameServer({ store: st, randomInt, now: () => clock.t })
   const call = (uid, body) => server.handle(uid, body)
-  const fails = async (promise, code) => {
+  const fails = async (promise, code, status) => {
     const e = await promise.then(
       (r) => ({ unexpected: r }),
       (err) => err,
     )
     expect(e).toBeInstanceOf(ActionError)
     expect(e.code).toBe(code)
+    if (status) expect(e.status).toBe(status)
     return e
   }
-  return { store, clock, server, call, fails }
+  return { store: st, clock, server, call, fails }
 }
 
-// Kamer met alle 9 namen geclaimd; organisator is deelnemer 0.
-async function fullRoom(opts) {
+// Kamer met n aangemelde deelnemers (organisator = P[0]); optioneel gestart.
+async function lobby(n, { opts, setupExtra, start = false } = {}) {
   const ctx = setup(opts)
-  const created = await ctx.call(ORG, { action: 'create_room', participant: 0 })
-  const { id: roomId, code } = created.room
-  for (let p = 1; p < 9; p++) await ctx.call(P[p], { action: 'claim_seat', code, participant: p })
-  const room = () => ctx.store.rooms.get(roomId)
-  // Wacht tot de vorige draai is afgerond en de volgende beurt vrij is.
-  const waitRelease = () => {
-    const s = room().state
-    const last = s.spin ?? s.lastSpin
-    if (last) ctx.clock.t = Math.max(ctx.clock.t, last.startedAt + releaseDelay(last))
-  }
-  const whoseTurn = () => {
-    const s = settle(room().state, ctx.clock.t)
-    return s.phase === 'draw' ? TURN_ORDER[s.turn].participant : s.auctionTurn?.participant
-  }
-  return { ...ctx, roomId, code, room, waitRelease, whoseTurn }
+  const { room } = await ctx.call(ORG, { action: 'create_room', ...setupFor(n, setupExtra) })
+  for (let i = 1; i < n; i++) await ctx.call(P[i], { action: 'join_room', code: room.code, name: NAMES[i] })
+  const roomId = room.id
+  const raw = () => ctx.store.rooms.get(roomId)
+  const view = (uid) => ctx.call(uid, { action: 'get_room', roomId }).then((r) => r.room)
+  const r = { ...ctx, roomId, code: room.code, raw, view }
+  if (start) await startAndSkipIntro(r)
+  return r
 }
+async function startAndSkipIntro(r) {
+  const res = await r.call(ORG, { action: 'start_game', roomId: r.roomId })
+  r.clock.t = res.room.startedAt + introTimeline(res.room.players.length).endAt + 1
+  return res
+}
+// Wacht tot de vorige draai is afgerond en de volgende beurt vrij is.
+function waitRelease(r) {
+  const s = r.raw().state.state
+  const last = s.spin ?? s.lastSpin
+  if (last) r.clock.t = Math.max(r.clock.t, last.startedAt + releaseDelay(last) + 1)
+}
+function whoseTurn(r) {
+  const s = settle(r.raw().state.state, r.clock.t)
+  return s.phase === 'draw' ? turnOrder(s.config)[s.turn].participant : s.auctionTurn?.participant
+}
+const phoneOf = (slot) => P[slot]
 
 describe('server: toegang en invoer', () => {
-  it('weigert verzoeken zonder geldige gebruiker of met onbekende actie', async () => {
+  it('weigert verzoeken zonder geldige gebruiker of met onbekende actie; oude acties bestaan niet meer', async () => {
     const { call, fails } = setup()
-    await fails(call(null, { action: 'time' }), 'unauthorized')
-    await fails(call('niet-een-uuid', { action: 'time' }), 'unauthorized')
+    await fails(call('niet-een-uuid', { action: 'time' }), 'unauthorized', 401)
     await fails(call(ORG, null), 'invalid_input')
-    await fails(call(ORG, [1]), 'invalid_input')
-    await fails(call(ORG, { action: 'RESET' }), 'unknown_action')
-    await fails(call(ORG, { action: 'DEMO_SKIP_TO_AUCTION' }), 'unknown_action')
-    await fails(call(ORG, { action: 'SPIN_START' }), 'unknown_action')
-    await fails(call(ORG, { action: '__proto__' }), 'unknown_action')
+    for (const action of ['RESET', 'DEMO_SKIP_TO_AUCTION', 'claim_seat', 'release_seat', 'auction_prepare', 'nope']) {
+      await fails(call(ORG, { action }), 'unknown_action', 400)
+    }
+    expect(ACTIONS).toContain('advance_phase')
   })
-
-  it('geeft bij elk antwoord de servertijd mee (voor de gedeelde klok)', async () => {
+  it('geeft bij elk antwoord de servertijd mee (gedeelde klok)', async () => {
     const { call, clock } = setup()
     expect(await call(ORG, { action: 'time' })).toEqual({ ok: true, serverNow: clock.t })
   })
-
-  it('controleert kamer-id, code, deelnemer en bod', async () => {
-    const r = await fullRoom()
-    await r.fails(r.call(ORG, { action: 'get_room', roomId: 'x' }), 'invalid_input')
-    await r.fails(r.call(ORG, { action: 'lookup_room', code: 'ABC' }), 'invalid_input')
-    await r.fails(r.call(ORG, { action: 'lookup_room', code: 'ABCDE0' }), 'invalid_input') // 0 bestaat niet
-    for (const participant of [-1, 9, 1.5, '1', null]) {
-      await r.fails(r.call(OUTSIDER, { action: 'claim_seat', code: r.code, participant }), 'invalid_input')
-    }
-    for (const bidCents of [-1, 12.5, '100', null, 1_000_001]) {
-      await r.fails(r.call(ORG, { action: 'auction_prepare', roomId: r.roomId, participant: 1, bidCents }), 'invalid_input')
-    }
-    await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId, onBehalf: 'ja' }), 'invalid_input')
+  it('controleert de vorm van alle invoer', async () => {
+    const r = await lobby(2)
+    const bad = [
+      { action: 'get_room', roomId: 'x' },
+      { action: 'lookup_room', code: 'ABC' },
+      { action: 'join_room', code: 'ABCDE1', name: 'x' },
+      { action: 'create_room', name: 'x', home: 'a', away: 'b', draft: 'x' },
+      { action: 'create_room', name: 'x'.repeat(101), home: 'a', away: 'b', draft: setupFor(1).draft },
+      { action: 'set_order', roomId: r.roomId, order: 'x' },
+      { action: 'set_order', roomId: r.roomId, order: [0, 13] },
+      { action: 'remove_player', roomId: r.roomId, slot: 12 },
+      { action: 'confirm_auction', roomId: r.roomId, participant: 1, bidCents: 1.5 },
+      { action: 'confirm_auction', roomId: r.roomId, participant: 1, bidCents: 1_000_001 },
+      { action: 'advance_phase', roomId: r.roomId, step: 'eind' },
+      { action: 'spin', roomId: r.roomId, onBehalf: 'ja' },
+      { action: 'start_game', roomId: r.roomId, expectedVersion: 'x' },
+    ]
+    for (const body of bad) await r.fails(r.call(ORG, body), 'invalid_input', 400)
   })
 })
 
-describe('server: kamer en namen', () => {
-  it('kamer maken: geldige code, maker is organisator, nieuwe spelstatus', async () => {
-    const { call, store } = setup()
-    const res = await call(ORG, { action: 'create_room', participant: 0 })
-    expect(res.room.code).toMatch(CODE_RE)
-    expect(res.room.version).toBe(0)
-    expect(res.room.state).toMatchObject({ phase: 'draw', turn: 0, draws: [], spin: null })
-    expect(res.room.state.remaining).toHaveLength(26)
-    expect(res).toMatchObject({ mySeat: 0, isOrganizer: true })
-    expect(store.seats).toEqual([{ room_id: res.room.id, participant: 0, user_id: ORG, is_organizer: true }])
+describe('server: kamer aanmaken', () => {
+  it('alleen een volledig en geldig ingesteld spel; maker is organisator en speler 1', async () => {
+    const { call, fails, store } = setup()
+    await fails(call(ORG, { action: 'create_room', ...setupFor(2, { priceCents: null }) }), 'settings_invalid', 409)
+    await fails(call(ORG, { action: 'create_room', ...setupFor(2), name: ' ' }), 'name_empty', 400)
+    await fails(call(ORG, { action: 'create_room', ...setupFor(2), away: '' }), 'club_empty', 400)
+    await fails(call(ORG, { action: 'create_room', ...setupFor(2, { rounds: 4 }) }), 'settings_invalid')
+    expect(store.rooms.size).toBe(0)
+    const { room } = await call(ORG, { action: 'create_room', ...setupFor(2) })
+    expect(room).toMatchObject({ phase: 'lobby', isOrganizer: true, mySlot: 0, matchName: 'Werder Bremen II – Bremer SV', maxPlayers: 2, organizerName: 'Lars' })
+    expect(CODE_RE.test(room.code)).toBe(true)
+    expect(room.players).toEqual([{ slot: 0, name: 'Lars', isOrganizer: true, isMe: true, manual: false }])
+    expect(store.pulses.get(room.id)).toBe(0) // Realtime-signaal bestaat meteen
   })
-
   it('kamercodes: alleen toegestane tekens, nieuwe code bij een botsing', async () => {
     for (let i = 0; i < 200; i++) expect(generateRoomCode()).toMatch(CODE_RE)
-    let n = 0
-    const repeat = () => (n++ < 12 ? 0 : 5) // eerste 2 codes 'AAAAAA', daarna anders
-    const { call } = setup({ randomInt: repeat })
-    const a = await call(user(1), { action: 'create_room' })
-    const b = await call(user(2), { action: 'create_room' })
-    expect(a.room.code).toBe('AAAAAA')
-    expect(b.room.code).not.toBe('AAAAAA')
+    const store = createMemoryStore()
+    const insert = store.insertRoom
+    let collisions = 2
+    store.insertRoom = async (row) => {
+      if (collisions-- > 0) throw new StoreConflict('unique')
+      return insert(row)
+    }
+    const { call } = setup({ store })
+    expect((await call(ORG, { action: 'create_room', ...setupFor(1) })).room.code).toMatch(CODE_RE)
   })
-
-  it('maximaal aantal kamers per telefoon', async () => {
-    const { call, fails } = setup()
-    for (let i = 0; i < MAX_ROOMS_PER_USER; i++) await call(ORG, { action: 'create_room' })
-    await fails(call(ORG, { action: 'create_room' }), 'too_many_rooms')
+  it(`misbruikgrens: max. ${MAX_ROOMS_PER_DAY} nieuwe kamers per gebruiker per 24 uur`, async () => {
+    const { call, fails, clock } = setup()
+    for (let i = 0; i < MAX_ROOMS_PER_DAY; i++) await call(ORG, { action: 'create_room', ...setupFor(1) })
+    await fails(call(ORG, { action: 'create_room', ...setupFor(1) }), 'too_many_rooms', 429)
+    await call(user(55), { action: 'create_room', ...setupFor(1) }) // andere gebruiker wel
+    clock.t += 24 * 60 * 60 * 1000 + 1
+    await call(ORG, { action: 'create_room', ...setupFor(1) }) // na 24 uur weer wel
   })
+})
 
-  it('kamer opzoeken: vrije en bezette namen, zonder gebruikers-id’s', async () => {
-    const { call, fails } = setup()
-    const { room } = await call(ORG, { action: 'create_room', participant: 0 })
-    const res = await call(OUTSIDER, { action: 'lookup_room', code: room.code.toLowerCase() })
-    expect(res).toMatchObject({ roomId: room.id, phase: 'draw', mySeat: null, isOrganizer: false })
-    expect(res.seats).toEqual([{ participant: 0, isOrganizer: true, mine: false }])
-    expect(JSON.stringify(res)).not.toContain(ORG)
-    await fails(call(OUTSIDER, { action: 'lookup_room', code: 'ZZZZZZ' }), 'room_not_found')
+describe('server: deelnemen', () => {
+  it('via code (en dus link): unieke naam (hoofdletterongevoelig), aanmeldvolgorde', async () => {
+    const r = await lobby(3)
+    const look = await r.call(OUTSIDER, { action: 'lookup_room', code: r.code.toLowerCase() })
+    expect(look.summary).toMatchObject({ phase: 'lobby', matchName: 'Werder Bremen II – Bremer SV', playerCount: 3, maxPlayers: 3, full: true, mySlot: null })
+    expect(JSON.stringify(look)).not.toMatch(/userId|00000000-0000-4000-a000/)
+    const r2 = await lobby(2, { setupExtra: { maxPlayers: 4, pool: STANDARD.slice(0, 5).concat('OVERIG') } })
+    await r2.fails(r2.call(user(7), { action: 'join_room', code: r2.code, name: 'SANNE' }), 'name_taken', 409)
+    await r2.fails(r2.call(user(7), { action: 'join_room', code: r2.code, name: 'lars' }), 'name_taken')
+    const { room } = await r2.call(user(7), { action: 'join_room', code: r2.code, name: ' esther ' })
+    expect(room.players).toEqual([
+      { slot: 0, name: 'Lars' },
+      { slot: 1, name: 'Sanne' },
+      { slot: 2, name: 'Esther' },
+    ])
   })
-
-  it('naam claimen: bezet, al een naam, dubbel verzoek', async () => {
-    const { call, fails } = setup()
-    const { room } = await call(ORG, { action: 'create_room', participant: 0 })
-    await fails(call(user(1), { action: 'claim_seat', code: room.code, participant: 0 }), 'seat_taken')
-    expect(await call(user(1), { action: 'claim_seat', code: room.code, participant: 1 })).toMatchObject({ mySeat: 1, isOrganizer: false })
-    expect(await call(user(1), { action: 'claim_seat', code: room.code, participant: 1 })).toMatchObject({ mySeat: 1 }) // opnieuw: zelfde antwoord
-    await fails(call(user(1), { action: 'claim_seat', code: room.code, participant: 2 }), 'already_seated')
-    await fails(call(user(1), { action: 'claim_seat', code: 'ZZZZZZ', participant: 2 }), 'room_not_found')
+  it('maximaal het ingestelde aantal; ook bij gelijktijdige aanmeldingen', async () => {
+    const r = await lobby(1, { setupExtra: { maxPlayers: 3, pool: STANDARD.slice(0, 4).concat('OVERIG') } })
+    const res = await Promise.allSettled(Array.from({ length: 8 }, (_, i) => r.call(user(20 + i), { action: 'join_room', code: r.code, name: `Speler ${i}` })))
+    expect(res.filter((x) => x.status === 'fulfilled')).toHaveLength(2)
+    expect(res.filter((x) => x.status === 'rejected').every((x) => ['room_full', 'conflict'].includes(x.reason.code))).toBe(true)
+    expect(r.raw().state.players).toHaveLength(3)
   })
-
-  it('organisator zonder naam kan later zijn naam claimen', async () => {
-    const { call, store } = setup()
-    const { room } = await call(ORG, { action: 'create_room' })
-    expect(await call(ORG, { action: 'claim_seat', code: room.code, participant: 4 })).toMatchObject({ mySeat: 4, isOrganizer: true })
-    expect(store.seats[0]).toMatchObject({ participant: 4, is_organizer: true })
+  it('terugkeren op hetzelfde toestel: zelfde plek; ander toestel kan de naam niet overnemen', async () => {
+    const r = await lobby(2, { setupExtra: { maxPlayers: 3, pool: STANDARD.slice(0, 4).concat('OVERIG') } })
+    const again = await r.call(P[1], { action: 'join_room', code: r.code, name: '' })
+    expect(again.room.mySlot).toBe(1)
+    expect(r.raw().version).toBe(1) // geen nieuwe wijziging
+    await r.fails(r.call(user(77), { action: 'join_room', code: r.code, name: 'Sanne' }), 'name_taken')
+    await r.fails(r.call(user(77), { action: 'get_room', roomId: r.roomId }), 'room_not_found', 404)
   })
-
-  it('10 telefoons claimen tegelijk dezelfde naam: precies één krijgt hem', async () => {
-    const { call, store } = setup()
-    const { room } = await call(ORG, { action: 'create_room', participant: 0 })
-    const out = await Promise.allSettled(Array.from({ length: 10 }, (_, i) => call(user(i + 1), { action: 'claim_seat', code: room.code, participant: 5 })))
-    expect(out.filter((o) => o.status === 'fulfilled')).toHaveLength(1)
-    expect(out.filter((o) => o.reason?.code === 'seat_taken')).toHaveLength(9)
-    expect(store.seats.filter((s) => s.participant === 5)).toHaveLength(1)
+  it('deelnemer ziet alleen namen in aanmeldvolgorde; geen spelregels, volgorde of id’s', async () => {
+    const r = await lobby(3)
+    await r.call(ORG, { action: 'set_order', roomId: r.roomId, order: [2, 0, 1] })
+    const p = await r.view(P[1])
+    expect(p.draft).toBeNull()
+    expect(p.players).toEqual([
+      { slot: 0, name: 'Lars' },
+      { slot: 1, name: 'Sanne' },
+      { slot: 2, name: 'Bas' },
+    ])
+    expect(JSON.stringify(p)).not.toMatch(/userId|00000000-0000-4000-a000|"order"|"pool"|"mega"|"priceCents"/)
+    const o = await r.view(ORG)
+    expect(o.players.map((x) => x.name)).toEqual(['Bas', 'Lars', 'Sanne'])
+    expect(o.draft.maxPlayers).toBe(3)
   })
+})
 
-  it('één telefoon claimt tegelijk twee namen: hij krijgt er maar één', async () => {
-    const { call, store } = setup()
-    const { room } = await call(ORG, { action: 'create_room', participant: 0 })
-    const out = await Promise.allSettled([3, 4].map((participant) => call(user(1), { action: 'claim_seat', code: room.code, participant })))
-    expect(out.filter((o) => o.status === 'fulfilled')).toHaveLength(1)
-    expect(out.find((o) => o.status === 'rejected').reason.code).toBe('already_seated')
-    expect(store.seats.filter((s) => s.user_id === user(1))).toHaveLength(1)
+describe('server: alleen de organisator', () => {
+  it('deelnemers en buitenstaanders kunnen geen organisatoracties uitvoeren', async () => {
+    const r = await lobby(3)
+    const orgOnly = [
+      { action: 'update_settings', roomId: r.roomId, draft: setupFor(3).draft },
+      { action: 'set_order', roomId: r.roomId, order: [2, 1, 0] },
+      { action: 'shuffle_order', roomId: r.roomId },
+      { action: 'remove_player', roomId: r.roomId, slot: 2 },
+      { action: 'add_manual_player', roomId: r.roomId, name: 'Opa' },
+      { action: 'join_self', roomId: r.roomId },
+      { action: 'start_game', roomId: r.roomId },
+    ]
+    for (const body of orgOnly) {
+      await r.fails(r.call(P[1], body), 'not_organizer', 403)
+      await r.fails(r.call(OUTSIDER, body), 'room_not_found', 404)
+    }
+    expect(r.raw().version).toBe(2) // niets gewijzigd (2 aanmeldingen)
   })
-
-  it('kamer bekijken: alleen voor leden', async () => {
-    const r = await fullRoom()
-    const res = await r.call(P[3], { action: 'get_room', roomId: r.roomId })
-    expect(res).toMatchObject({ mySeat: 3, isOrganizer: false, room: { id: r.roomId, version: 0 } })
-    expect(res.seats).toHaveLength(9)
-    expect(res.seats.filter((s) => s.mine)).toEqual([{ participant: 3, isOrganizer: false, mine: true }])
-    await r.fails(r.call(OUTSIDER, { action: 'get_room', roomId: r.roomId }), 'room_not_found')
-    await r.fails(r.call(OUTSIDER, { action: 'get_room', roomId: user(5) }), 'room_not_found')
+  it('volgorde, loten (serverwillekeur), verwijderen + opnieuw aanmelden', async () => {
+    const r = await lobby(3)
+    expect((await r.call(ORG, { action: 'set_order', roomId: r.roomId, order: [1, 2, 0] })).room.players.map((p) => p.slot)).toEqual([1, 2, 0])
+    await r.fails(r.call(ORG, { action: 'set_order', roomId: r.roomId, order: [0, 1] }), 'invalid_order')
+    const shuffled = (await r.call(ORG, { action: 'shuffle_order', roomId: r.roomId })).room.players.map((p) => p.slot)
+    expect([...shuffled].sort()).toEqual([0, 1, 2])
+    await r.call(ORG, { action: 'remove_player', roomId: r.roomId, slot: 2 })
+    await r.fails(r.call(P[2], { action: 'get_room', roomId: r.roomId }), 'removed', 403)
+    expect((await r.call(P[2], { action: 'lookup_room', code: r.code })).summary.removed).toBe(true)
+    await r.call(P[2], { action: 'join_room', code: r.code, name: 'Bas' })
+    expect((await r.view(P[2])).mySlot).toBe(2)
   })
+  it('organisator kan zelf niet meespelen en houdt zijn rechten; zelf weer meedoen', async () => {
+    const r = await lobby(2)
+    await r.call(ORG, { action: 'remove_player', roomId: r.roomId, slot: 0 })
+    const o = await r.view(ORG)
+    expect(o).toMatchObject({ isOrganizer: true, mySlot: null })
+    await r.call(ORG, { action: 'set_order', roomId: r.roomId, order: [1] }) // rechten behouden
+    await r.call(user(30), { action: 'join_room', code: r.code, name: 'Frank' })
+    await r.fails(r.call(ORG, { action: 'join_self', roomId: r.roomId }), 'room_full')
+    // start zonder organisator als speler
+    const s = await startAndSkipIntro(r)
+    expect(s.room.state.config.players.map((p) => p.name)).toEqual(['Sanne', 'Frank'])
+    expect((await r.view(ORG)).controlSlots).toEqual([])
+  })
+  it('deelnemer zonder telefoon: hoort bij het toestel van de organisator', async () => {
+    const r = await lobby(1, { setupExtra: { maxPlayers: 2, pool: STANDARD.slice(0, 3).concat('OVERIG') } })
+    const { room } = await r.call(ORG, { action: 'add_manual_player', roomId: r.roomId, name: 'opa' })
+    expect(room.players.at(-1)).toMatchObject({ name: 'Opa', manual: true })
+    expect(room.controlSlots).toEqual([0, 1])
+    expect(r.raw().state.players.at(-1).userId).toBeNull()
+  })
+})
 
-  it('plek vrijgeven: alleen de organisator; daarna kan een nieuwe telefoon de naam claimen', async () => {
-    const r = await fullRoom()
-    await r.fails(r.call(P[3], { action: 'release_seat', roomId: r.roomId, participant: 4 }), 'not_organizer')
-    await r.fails(r.call(OUTSIDER, { action: 'release_seat', roomId: r.roomId, participant: 4 }), 'room_not_found')
-    expect(await r.call(ORG, { action: 'release_seat', roomId: r.roomId, participant: 4 })).toMatchObject({ participant: 4 })
-    await r.fails(r.call(ORG, { action: 'release_seat', roomId: r.roomId, participant: 4 }), 'seat_not_found')
-    await r.fails(r.call(P[4], { action: 'get_room', roomId: r.roomId }), 'room_not_found') // oude telefoon is geen lid meer
-    const newPhone = user(44)
-    await r.call(newPhone, { action: 'claim_seat', code: r.code, participant: 4 })
-    expect(r.store.seats.find((s) => s.participant === 4).user_id).toBe(newPhone)
+describe('server: starten (D8)', () => {
+  it('alleen bij precies het ingestelde aantal en geldige spelregels; starttijd = servertijd; eenmalig', async () => {
+    const r = await lobby(2, { setupExtra: { maxPlayers: 3, pool: STANDARD.slice(0, 4).concat('OVERIG') } })
+    await r.fails(r.call(ORG, { action: 'start_game', roomId: r.roomId }), 'players_incomplete', 409)
+    await r.call(user(40), { action: 'join_room', code: r.code, name: 'Noor' })
+    const v = r.raw().version
+    await r.fails(r.call(ORG, { action: 'start_game', roomId: r.roomId, expectedVersion: v - 1 }), 'room_changed')
+    const { room } = await r.call(ORG, { action: 'start_game', roomId: r.roomId, expectedVersion: v })
+    expect(room).toMatchObject({ phase: 'started', startedAt: r.clock.t })
+    expect(room.state.config.players.map((p) => p.name)).toEqual(['Lars', 'Sanne', 'Noor'])
+    await r.fails(r.call(ORG, { action: 'start_game', roomId: r.roomId }), 'registration_closed')
+    await r.fails(r.call(user(41), { action: 'join_room', code: r.code, name: 'Laat' }), 'registration_closed')
+  })
+  it('aanmelden en starten tegelijk: nooit een inconsistente stand', async () => {
+    for (let k = 0; k < 20; k++) {
+      const r = await lobby(2, { setupExtra: { maxPlayers: 2 } })
+      await r.call(ORG, { action: 'remove_player', roomId: r.roomId, slot: 1 })
+      await r.call(user(50), { action: 'join_room', code: r.code, name: 'Sanne' })
+      // tegelijk: iemand verwijderen+aanmelden kan niet meer; starten en een extra aanmelding
+      const res = await Promise.allSettled([
+        r.call(ORG, { action: 'start_game', roomId: r.roomId }),
+        r.call(user(60 + k), { action: 'join_room', code: r.code, name: 'Extra' }),
+      ])
+      const doc = r.raw().state
+      if (doc.phase === 'started') expect(doc.state.config.players.map((p) => p.id).sort()).toEqual(doc.players.map((p) => p.slot).sort())
+      expect(doc.players.length).toBeLessThanOrEqual(2)
+      expect(res[1].status).toBe('rejected')
+    }
+  })
+  it('gezamenlijke startanimatie: SPIN pas daarna', async () => {
+    const r = await lobby(2)
+    const { room } = await r.call(ORG, { action: 'start_game', roomId: r.roomId })
+    await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'intro_running')
+    r.clock.t = room.startedAt + introTimeline(2).endAt + 1
+    expect((await r.call(ORG, { action: 'spin', roomId: r.roomId })).room.state.spin).not.toBeNull()
   })
 })
 
 describe('server: SPIN en autorisatie', () => {
-  it('alleen wie aan de beurt is mag draaien; de server kiest en legt meteen vast', async () => {
-    const r = await fullRoom()
-    await r.fails(r.call(P[1], { action: 'spin', roomId: r.roomId }), 'not_your_turn')
-    await r.fails(r.call(OUTSIDER, { action: 'spin', roomId: r.roomId }), 'room_not_found')
-    expect(r.store.draws).toHaveLength(0)
-
-    const res = await r.call(ORG, { action: 'spin', roomId: r.roomId }) // organisator is deelnemer 0
-    expect(res.onBehalf).toBe(false)
-    expect(res.spin).toMatchObject({ participant: 0, round: 1, bid: null, startedAt: r.clock.t })
-    expect(res.room.version).toBe(1)
-    expect(r.room().state.spin).toEqual(res.spin)
-    expect(r.store.draws).toEqual([
-      {
-        room_id: r.roomId,
-        spin_id: res.spin.id,
-        result_id: res.spin.resultId,
-        participant: 0,
-        round: '1',
-        bid_cents: null,
-        started_at: new Date(r.clock.t).toISOString(),
-        spun_by: ORG,
-        on_behalf: false,
-      },
-    ])
-  })
-
-  it('negeert wat de telefoon over de uitslag of deelnemer meestuurt', async () => {
-    const r = await fullRoom()
-    const res = await r.call(ORG, { action: 'spin', roomId: r.roomId, resultId: '1-0', participant: 5, round: 'veiling', bid: 0, now: 0 })
-    expect(res.spin).toMatchObject({ participant: 0, round: 1, startedAt: r.clock.t })
-  })
-
-  it('dubbele SPIN van dezelfde telefoon: de tweede wordt geweigerd, één trekking', async () => {
-    const r = await fullRoom()
-    await r.call(ORG, { action: 'spin', roomId: r.roomId })
-    r.clock.t += 500
-    await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'turn_not_released')
-    // De volgende deelnemer moet wachten tot de beurt is vrijgegeven.
-    await r.fails(r.call(P[1], { action: 'spin', roomId: r.roomId }), 'turn_not_released')
+  it('alleen wie aan de beurt is; anderen niet; de server kiest en legt meteen vast', async () => {
+    const r = await lobby(3, { start: true })
+    expect(whoseTurn(r)).toBe(0)
+    await r.fails(r.call(P[1], { action: 'spin', roomId: r.roomId }), 'not_your_turn', 403)
+    await r.fails(r.call(OUTSIDER, { action: 'spin', roomId: r.roomId }), 'room_not_found', 404)
+    const { room } = await r.call(ORG, { action: 'spin', roomId: r.roomId, resultId: '0-0', participant: 2 })
+    expect(room.state.spin.participant).toBe(0) // meegestuurde uitslag/deelnemer genegeerd
     expect(r.store.draws).toHaveLength(1)
-    r.waitRelease()
+    expect(r.store.draws[0]).toMatchObject({ participant: 0, round: '1', spun_by: ORG, on_behalf: false, bid_cents: null })
+    expect(r.store.draws[0].result_id).toBe(room.state.spin.resultId)
+  })
+  it('organisator: alleen expliciet namens; vastgelegd als on_behalf', async () => {
+    const r = await lobby(3, { start: true })
+    await r.call(ORG, { action: 'spin', roomId: r.roomId })
+    waitRelease(r)
     await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'not_your_turn')
-    expect((await r.call(P[1], { action: 'spin', roomId: r.roomId })).spin.participant).toBe(1)
-  })
-
-  it('10 gelijktijdige SPIN-verzoeken: precies één trekking', async () => {
-    const r = await fullRoom()
-    const out = await Promise.allSettled(Array.from({ length: 10 }, () => r.call(ORG, { action: 'spin', roomId: r.roomId })))
-    expect(out.filter((o) => o.status === 'fulfilled')).toHaveLength(1)
-    for (const o of out.filter((o) => o.status === 'rejected')) expect(['turn_not_released', 'conflict']).toContain(o.reason.code)
-    expect(r.store.draws).toHaveLength(1)
-    expect(r.room().version).toBe(1)
-  })
-
-  it('deelnemer en organisator (namens) tegelijk: precies één trekking', async () => {
-    const r = await fullRoom()
-    r.waitRelease()
-    // Beurt 0 is van de organisator zelf; ga naar beurt 1 (deelnemer 1).
-    await r.call(ORG, { action: 'spin', roomId: r.roomId })
-    r.waitRelease()
-    const out = await Promise.allSettled([
-      r.call(P[1], { action: 'spin', roomId: r.roomId }),
-      r.call(ORG, { action: 'spin', roomId: r.roomId, onBehalf: true }),
-      r.call(P[1], { action: 'spin', roomId: r.roomId }),
-    ])
-    expect(out.filter((o) => o.status === 'fulfilled')).toHaveLength(1)
-    expect(r.store.draws.filter((d) => d.round === '1' && d.participant === 1)).toHaveLength(1)
-  })
-
-  it('noodfunctie: alleen de organisator, alleen expliciet, vastgelegd als on_behalf', async () => {
-    const r = await fullRoom()
-    await r.call(ORG, { action: 'spin', roomId: r.roomId })
-    r.waitRelease() // deelnemer 1 is aan de beurt
-    await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'not_your_turn') // zonder onBehalf: nee
-    await r.fails(r.call(P[2], { action: 'spin', roomId: r.roomId, onBehalf: true }), 'not_your_turn') // geen organisator
-    await r.fails(r.call(OUTSIDER, { action: 'spin', roomId: r.roomId, onBehalf: true }), 'room_not_found')
-    const res = await r.call(ORG, { action: 'spin', roomId: r.roomId, onBehalf: true })
-    expect(res).toMatchObject({ onBehalf: true, spin: { participant: 1 } })
+    await r.call(ORG, { action: 'spin', roomId: r.roomId, onBehalf: true })
     expect(r.store.draws[1]).toMatchObject({ participant: 1, spun_by: ORG, on_behalf: true })
+    waitRelease(r)
+    await r.fails(r.call(P[1], { action: 'spin', roomId: r.roomId, onBehalf: true }), 'not_your_turn') // deelnemer niet namens een ander
   })
-
-  it('namens draaien kan ook voor een (nog) lege plek', async () => {
-    const r = await fullRoom()
+  it('deelnemer zonder telefoon: organisator drukt SPIN (niet als namens)', async () => {
+    const r = await lobby(1, { setupExtra: { maxPlayers: 2, pool: STANDARD.slice(0, 3).concat('OVERIG') } })
+    await r.call(ORG, { action: 'add_manual_player', roomId: r.roomId, name: 'Opa' })
+    await startAndSkipIntro(r)
     await r.call(ORG, { action: 'spin', roomId: r.roomId })
-    await r.call(ORG, { action: 'release_seat', roomId: r.roomId, participant: 1 })
-    r.waitRelease()
-    expect((await r.call(ORG, { action: 'spin', roomId: r.roomId, onBehalf: true })).spin.participant).toBe(1)
+    waitRelease(r)
+    await r.call(ORG, { action: 'spin', roomId: r.roomId })
+    expect(r.store.draws[1]).toMatchObject({ participant: 1, on_behalf: false, spun_by: ORG })
   })
-
-  it('wie zelf aan de beurt is en onBehalf meestuurt, draait gewoon zelf', async () => {
-    const r = await fullRoom()
-    const res = await r.call(ORG, { action: 'spin', roomId: r.roomId, onBehalf: true })
-    expect(res.onBehalf).toBe(false)
-    expect(r.store.draws[0].on_behalf).toBe(false)
+  it('10 gelijktijdige SPIN-verzoeken: precies één trekking', async () => {
+    const r = await lobby(2, { start: true })
+    const res = await Promise.allSettled(Array.from({ length: 10 }, () => r.call(ORG, { action: 'spin', roomId: r.roomId })))
+    expect(res.filter((x) => x.status === 'fulfilled')).toHaveLength(1)
+    expect(res.filter((x) => x.status === 'rejected').every((x) => ['spin_in_progress', 'turn_not_released', 'conflict'].includes(x.reason.code))).toBe(true)
+    expect(r.store.draws).toHaveLength(1)
+  })
+  it('deelnemer en organisator (namens) tegelijk: precies één trekking', async () => {
+    for (let k = 0; k < 10; k++) {
+      const r = await lobby(2, { start: true })
+      await r.call(ORG, { action: 'spin', roomId: r.roomId })
+      waitRelease(r)
+      const res = await Promise.allSettled([
+        r.call(P[1], { action: 'spin', roomId: r.roomId }),
+        r.call(ORG, { action: 'spin', roomId: r.roomId, onBehalf: true }),
+      ])
+      expect(res.filter((x) => x.status === 'fulfilled')).toHaveLength(1)
+      expect(r.store.draws).toHaveLength(2)
+    }
   })
 })
 
-describe('server: veiling', () => {
+describe('server: veiling en faseovergangen', () => {
   async function toAuction() {
-    const r = await fullRoom()
-    for (let i = 0; i < DRAW_TURNS; i++) {
-      r.waitRelease()
-      await r.call(P[r.whoseTurn()], { action: 'spin', roomId: r.roomId })
+    const r = await lobby(2, { start: true }) // 2 deelnemers, 1 ronde, 4 uitslagen → 2 veilingen
+    for (let i = 0; i < 2; i++) {
+      waitRelease(r)
+      await r.call(phoneOf(whoseTurn(r)), { action: 'spin', roomId: r.roomId })
     }
-    r.waitRelease()
+    waitRelease(r)
     return r
   }
-
-  it('alleen in de veiling, alleen de organisator, niet tijdens een draai', async () => {
-    const r = await fullRoom()
-    await r.fails(r.call(ORG, { action: 'auction_prepare', roomId: r.roomId, participant: 1, bidCents: 500 }), 'not_auction')
-
-    const a = await toAuction()
-    expect(settle(a.room().state, a.clock.t).phase).toBe('auction')
-    await a.fails(a.call(P[2], { action: 'spin', roomId: a.roomId }), 'no_auction_turn')
-    await a.fails(a.call(P[2], { action: 'auction_prepare', roomId: a.roomId, participant: 2, bidCents: 1 }), 'not_organizer')
-    await a.fails(a.call(OUTSIDER, { action: 'auction_prepare', roomId: a.roomId, participant: 2, bidCents: 1 }), 'room_not_found')
-
-    const prep = await a.call(ORG, { action: 'auction_prepare', roomId: a.roomId, participant: 2, bidCents: 1250 })
-    expect(prep.auctionTurn).toEqual({ participant: 2, bid: 12.5 })
-    await a.fails(a.call(P[3], { action: 'spin', roomId: a.roomId }), 'not_your_turn')
-    const res = await a.call(P[2], { action: 'spin', roomId: a.roomId })
-    expect(res.spin).toMatchObject({ participant: 2, round: 'veiling', bid: 12.5 })
-    expect(a.store.draws.at(-1)).toMatchObject({ round: 'veiling', bid_cents: 1250, participant: 2, on_behalf: false })
-    await a.fails(a.call(ORG, { action: 'auction_prepare', roomId: a.roomId, participant: 3, bidCents: 100 }), 'spin_in_progress')
-    a.waitRelease()
-    await a.fails(a.call(P[2], { action: 'spin', roomId: a.roomId }), 'no_auction_turn') // vrijgave is per kavel
+  it('Start de veiling: alleen organisator, eenmalig, iedereen ziet het', async () => {
+    const r = await toAuction()
+    await r.fails(r.call(ORG, { action: 'confirm_auction', roomId: r.roomId, participant: 1, bidCents: 3500 }), 'auction_not_open')
+    await r.fails(r.call(P[1], { action: 'advance_phase', roomId: r.roomId, step: 'auction' }), 'not_organizer', 403)
+    await r.fails(r.call(ORG, { action: 'advance_phase', roomId: r.roomId, step: 'final' }), 'nothing_to_advance')
+    const res = await Promise.allSettled([1, 2, 3].map(() => r.call(ORG, { action: 'advance_phase', roomId: r.roomId, step: 'auction' })))
+    expect(res.filter((x) => x.status === 'fulfilled')).toHaveLength(1)
+    const p = await r.view(P[1])
+    expect(p.ack.auctionStart).toBeTruthy()
+    expect(deriveView(p.state, r.clock.t, p.ack).reveal).toBeNull() // deelnemer: veilingscherm
   })
-
-  it('organisator kan een klaargezette beurt nog corrigeren vóór de SPIN', async () => {
-    const a = await toAuction()
-    await a.call(ORG, { action: 'auction_prepare', roomId: a.roomId, participant: 2, bidCents: 500 })
-    await a.call(ORG, { action: 'auction_prepare', roomId: a.roomId, participant: 6, bidCents: 700 })
-    await a.fails(a.call(P[2], { action: 'spin', roomId: a.roomId }), 'not_your_turn')
-    expect((await a.call(P[6], { action: 'spin', roomId: a.roomId })).spin).toMatchObject({ participant: 6, bid: 7 })
+  it('Bevestig veiling: alleen organisator, eenmalig, oplopend nummer, start geen trekking; alleen winnaar SPIN', async () => {
+    const r = await toAuction()
+    await r.call(ORG, { action: 'advance_phase', roomId: r.roomId, step: 'auction' })
+    await r.fails(r.call(P[1], { action: 'confirm_auction', roomId: r.roomId, participant: 1, bidCents: 3500 }), 'not_organizer')
+    await r.fails(r.call(ORG, { action: 'confirm_auction', roomId: r.roomId, participant: 9, bidCents: 3500 }), 'player_not_found')
+    const both = await Promise.allSettled([
+      r.call(ORG, { action: 'confirm_auction', roomId: r.roomId, participant: 1, bidCents: 3500 }),
+      r.call(ORG, { action: 'confirm_auction', roomId: r.roomId, participant: 0, bidCents: 100 }),
+    ])
+    expect(both.filter((x) => x.status === 'fulfilled')).toHaveLength(1)
+    const a1 = (await r.view(P[1])).announce
+    expect(a1.lot).toBe(1)
+    expect(r.store.draws).toHaveLength(2) // nog geen trekking
+    const winner = a1.participant
+    const loser = 1 - winner
+    await r.fails(r.call(phoneOf(loser), { action: 'spin', roomId: r.roomId }), 'not_your_turn')
+    await r.call(phoneOf(winner), { action: 'spin', roomId: r.roomId })
+    expect(r.store.draws.at(-1)).toMatchObject({ round: 'veiling', participant: winner, bid_cents: a1.bidCents })
+    waitRelease(r)
+    await r.call(ORG, { action: 'confirm_auction', roomId: r.roomId, participant: loser, bidCents: 0 })
+    expect((await r.view(ORG)).announce).toMatchObject({ lot: 2, participant: loser, bidCents: 0 })
+    await r.call(ORG, { action: 'spin', roomId: r.roomId, onBehalf: loser !== 0 }) // namens de winnaar (of eigen beurt)
+    waitRelease(r)
+    // eindstand: alleen organisator, eenmalig
+    await r.fails(r.call(P[1], { action: 'advance_phase', roomId: r.roomId, step: 'final' }), 'not_organizer')
+    await r.call(ORG, { action: 'advance_phase', roomId: r.roomId, step: 'final' })
+    await r.fails(r.call(ORG, { action: 'advance_phase', roomId: r.roomId, step: 'final' }), 'nothing_to_advance')
+    const end = await r.view(P[1])
+    const s = settle(end.state, r.clock.t)
+    expect(s.phase).toBe('finished')
+    expect(deriveView(end.state, r.clock.t, end.ack).reveal).toBeNull()
+    expect(new Set(r.store.draws.map((d) => d.result_id)).size).toBe(4)
+    expect(s.config.players.map((p) => p.name)).toEqual(['Lars', 'Sanne']) // definitieve volgorde
   })
-
-  it('volledig spel: 26 unieke uitslagen, administratie klopt, daarna klaar', async () => {
-    const a = await toAuction()
-    for (let lot = 0; lot < 8; lot++) {
-      a.waitRelease()
-      const buyer = (lot * 4) % 9
-      await a.call(ORG, { action: 'auction_prepare', roomId: a.roomId, participant: buyer, bidCents: 100 * (lot + 1) + 50 })
-      // Kavel 3: de koper heeft geen telefoon meer → organisator draait namens.
-      if (lot === 3 && buyer !== 0) await a.call(ORG, { action: 'spin', roomId: a.roomId, onBehalf: true })
-      else await a.call(P[buyer], { action: 'spin', roomId: a.roomId })
+  it('volledig spel met 12 deelnemers, 4 rondes, 50 uitslagen: alles uniek, administratie klopt', async () => {
+    const all = ALL_RESULTS.map((r) => r.id)
+    const r = await lobby(12, { setupExtra: { maxPlayers: 12, rounds: 4, pool: all, mega: ['0-0'] } })
+    await r.call(ORG, { action: 'shuffle_order', roomId: r.roomId })
+    await startAndSkipIntro(r)
+    for (let i = 0; i < 48; i++) {
+      waitRelease(r)
+      await r.call(phoneOf(whoseTurn(r)), { action: 'spin', roomId: r.roomId })
     }
-    a.waitRelease()
-    const state = settle(a.room().state, a.clock.t)
-    expect(state.phase).toBe('finished')
-    expect(state.draws).toHaveLength(26)
-    expect(new Set(state.draws.map((d) => d.resultId)).size).toBe(26)
-    expect(new Set(a.store.draws.map((d) => d.result_id))).toEqual(new Set(RESULTS.map((r) => r.id)))
-    // Database en spelstatus vertellen hetzelfde verhaal.
-    expect(a.store.draws.map((d) => [d.result_id, d.participant, d.round])).toEqual(state.draws.map((d) => [d.resultId, d.participant, String(d.round)]))
-    expect(a.store.draws.filter((d) => d.on_behalf)).toHaveLength(1)
-    expect(a.store.draws.filter((d) => d.round === 'veiling').map((d) => d.bid_cents)).toEqual([150, 250, 350, 450, 550, 650, 750, 850])
-    await a.fails(a.call(P[0], { action: 'spin', roomId: a.roomId }), 'game_finished')
-    await a.fails(a.call(ORG, { action: 'auction_prepare', roomId: a.roomId, participant: 1, bidCents: 1 }), 'not_auction')
+    waitRelease(r)
+    await r.call(ORG, { action: 'advance_phase', roomId: r.roomId, step: 'auction' })
+    for (const [who, bid] of [[3, 2500], [7, 1250]]) {
+      await r.call(ORG, { action: 'confirm_auction', roomId: r.roomId, participant: who, bidCents: bid })
+      await r.call(phoneOf(who), { action: 'spin', roomId: r.roomId })
+      waitRelease(r)
+    }
+    await r.call(ORG, { action: 'advance_phase', roomId: r.roomId, step: 'final' })
+    const s = settle(r.raw().state.state, r.clock.t)
+    expect(s.phase).toBe('finished')
+    expect(r.store.draws).toHaveLength(50)
+    expect(new Set(r.store.draws.map((d) => d.result_id)).size).toBe(50)
+    expect(r.store.draws.filter((d) => d.round === '4')).toHaveLength(12)
+    expect(r.store.draws.filter((d) => d.round === 'veiling').map((d) => [d.participant, d.bid_cents])).toEqual([[3, 2500], [7, 1250]])
+    expect(JSON.stringify(r.raw().state).length).toBeLessThan(200_000) // past in rooms.state
   })
 })
 
 describe('server: cryptografische trekking', () => {
   it('10.000 proeftrekkingen via de server: elke uitslag even vaak (chi-kwadraat)', async () => {
-    const store = createMemoryStore()
-    const server = createGameServer({ store }) // standaard: secureRandomInt
-    const counts = Object.fromEntries(RESULTS.map((r) => [r.id, 0]))
+    const clock = { t: 1_800_000_000_000 }
+    const store = createMemoryStore({ now: () => clock.t })
+    const server = createGameServer({ store, now: () => clock.t }) // standaard: secureRandomInt
+    const pool = setupFor(9).draft.pool // 11 uitslagen
+    const counts = Object.fromEntries(pool.map((id) => [id, 0]))
     const N = 10_000
     for (let i = 0; i < N; i++) {
       const uid = `00000000-0000-4000-b000-${String(i).padStart(12, '0')}`
-      const { room } = await server.handle(uid, { action: 'create_room', participant: 0 })
-      const { spin } = await server.handle(uid, { action: 'spin', roomId: room.id })
-      counts[spin.resultId]++
+      const { room } = await server.handle(uid, { action: 'create_room', name: 'Lars', ...CLUBS, draft: { maxPlayers: 1, rounds: 1, priceCents: 0, pool, mega: [] } })
+      await server.handle(uid, { action: 'start_game', roomId: room.id })
+      clock.t += introTimeline(1).endAt + 1
+      const res = await server.handle(uid, { action: 'spin', roomId: room.id })
+      counts[res.room.state.spin.resultId]++
     }
-    const expected = N / RESULTS.length
+    const expected = N / pool.length
     const chi2 = Object.values(counts).reduce((s, c) => s + (c - expected) ** 2 / expected, 0)
     expect(Object.values(counts).every((c) => c > 0)).toBe(true)
-    expect(chi2).toBeLessThan(CHI2_DF25)
-    expect(new Set(store.draws.map((d) => d.spin_id)).size).toBe(N) // unieke draai-id’s
-  }, 60_000)
+    expect(chi2).toBeLessThan(CHI2_DF10)
+    expect(new Set(store.draws.map((d) => d.spin_id)).size).toBe(N)
+  }, 120_000)
 })
 
 describe('server: foutafhandeling en herstel', () => {
   it('antwoord kwijt (verbinding weg): opnieuw versturen geeft geen tweede trekking', async () => {
-    const r = await fullRoom()
+    const r = await lobby(3, { start: true })
     const first = await r.call(ORG, { action: 'spin', roomId: r.roomId })
     r.clock.t += 1200 // telefoon was even weg en verstuurt het verzoek opnieuw
-    await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'turn_not_released')
-    // Status opnieuw ophalen: de lopende draai loopt verder op de juiste plek.
+    await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'spin_in_progress')
     const { room, serverNow } = await r.call(ORG, { action: 'get_room', roomId: r.roomId })
-    const view = deriveView(room.state, serverNow)
-    expect(view.reelSpin).toEqual(first.spin)
+    expect(deriveView(room.state, serverNow, room.ack).reelSpin).toEqual(first.room.state.spin)
     expect(r.store.draws).toHaveLength(1)
-    // Veel later terug: uitslag ongewijzigd en de volgende beurt is vrij.
     r.clock.t += 60_000
-    const later = deriveView((await r.call(P[5], { action: 'get_room', roomId: r.roomId })).room.state, r.clock.t)
-    expect(later.state.draws.map((d) => d.resultId)).toEqual([first.spin.resultId])
-    expect(later.state.turn).toBe(1)
+    const later = deriveView((await r.view(P[2])).state, r.clock.t)
+    expect(later.state.draws.map((d) => d.resultId)).toEqual([first.room.state.spin.resultId])
     expect(later.locked).toBe(false)
   })
-
   it('versieconflict door een gelijktijdige wijziging: opnieuw controleren en vastleggen', async () => {
-    const store = createMemoryStore()
-    const commit = store.commitState
+    const r = await lobby(2, { start: true })
+    const commit = r.store.commitState
     let failures = 1
-    store.commitState = async (...args) => {
+    r.store.commitState = async (...args) => {
       if (failures-- > 0) throw new StoreConflict('version')
       return commit(...args)
     }
-    const r = await fullRoom({ store })
-    const res = await r.call(ORG, { action: 'spin', roomId: r.roomId })
-    expect(res.spin.participant).toBe(0)
-    expect(store.draws).toHaveLength(1)
+    await r.call(ORG, { action: 'spin', roomId: r.roomId })
+    expect(r.store.draws).toHaveLength(1)
   })
-
   it('blijvend conflict: nette fout, niets gewijzigd, begrensd aantal pogingen', async () => {
-    const store = createMemoryStore()
-    const r = await fullRoom({ store })
+    const r = await lobby(2, { start: true })
+    const before = r.raw().version
     let attempts = 0
-    store.commitState = async () => {
+    r.store.commitState = async () => {
       attempts++
       throw new StoreConflict('version')
     }
     const e = await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'conflict')
     expect(e.status).toBe(409)
     expect(attempts).toBe(3) // nooit onbeperkt opnieuw
-    expect(store.draws).toHaveLength(0)
-    expect(r.room().version).toBe(0)
-    expect(r.room().state.spin).toBeNull()
+    expect(r.store.draws).toHaveLength(0)
+    expect(r.raw().version).toBe(before)
   })
-
   it('databasefout tijdens vastleggen: geen half vastgelegde trekking', async () => {
-    const store = createMemoryStore()
-    const r = await fullRoom({ store })
-    store.commitState = async () => {
+    const r = await lobby(2, { start: true })
+    r.store.commitState = async () => {
       throw new Error('verbinding met database verbroken')
     }
     await expect(r.call(ORG, { action: 'spin', roomId: r.roomId })).rejects.toThrow('verbroken')
-    expect(store.draws).toHaveLength(0)
-    expect(r.room().state.spin).toBeNull()
+    expect(r.store.draws).toHaveLength(0)
+    expect(r.raw().state.state.spin).toBeNull()
+  })
+  it('Realtime-signaal volgt elke wijziging (versie), zonder spelgegevens', async () => {
+    const r = await lobby(2)
+    const seen = []
+    r.store.onPulse((id, v) => seen.push([id, v]))
+    await r.call(ORG, { action: 'shuffle_order', roomId: r.roomId })
+    await r.call(ORG, { action: 'start_game', roomId: r.roomId })
+    expect(seen).toEqual([
+      [r.roomId, 2],
+      [r.roomId, 3],
+    ])
   })
 })
 
@@ -455,11 +532,11 @@ describe('server: foutcodes uit Supabase (PT409)', () => {
   it('versieconflict via HTTP: 409 conflict, geen 500', async () => {
     const store = createMemoryStore()
     const server = createGameServer({ store })
-    const { room } = await server.handle(ORG, { action: 'create_room', participant: 0 })
+    const { room } = await server.handle(ORG, { action: 'create_room', ...setupFor(2) })
     store.commitState = () => createSupabaseStore(failingDb({ code: 'PT409', message: 'version_conflict' })).commitState()
     const http = createHttpHandler({ server, authenticate: async () => ORG, log: () => {} })
     const res = await http(
-      new Request('https://x', { method: 'POST', headers: { Authorization: 'Bearer t' }, body: JSON.stringify({ action: 'spin', roomId: room.id }) }),
+      new Request('https://x', { method: 'POST', headers: { Authorization: 'Bearer t' }, body: JSON.stringify({ action: 'shuffle_order', roomId: room.id }) }),
     )
     expect(res.status).toBe(409)
     expect(await res.json()).toMatchObject({ ok: false, error: 'conflict' })

@@ -1,5 +1,7 @@
 // Opslag via supabase-js met de service_role-sleutel (alleen in de Edge
-// Function). De spelstatus wordt uitsluitend via commit_room_state gewijzigd.
+// Function). De kamer is één document in rooms.state; wijzigen gebeurt
+// uitsluitend via commit_room_state (versiecontrole, trekking in dezelfde
+// transactie). Een trigger werkt daarbij room_pulses bij (Realtime-signaal).
 
 import { StoreConflict } from './actions.js'
 
@@ -21,23 +23,14 @@ export function createSupabaseStore(db) {
     async findRoomByCode(code) {
       return check(await db.from('rooms').select(ROOM_COLUMNS).eq('code', code).maybeSingle())
     },
-    async countRoomsByOrganizer(userId) {
-      const res = await db.from('rooms').select('id', { count: 'exact', head: true }).eq('organizer_id', userId)
+    // Kamers die deze gebruiker sinds `sinceIso` heeft aangemaakt (misbruikgrens).
+    async countRoomsByOrganizerSince(userId, sinceIso) {
+      const res = await db.from('rooms').select('id', { count: 'exact', head: true }).eq('organizer_id', userId).gte('created_at', sinceIso)
       check(res)
       return res.count ?? 0
     },
     async insertRoom(room) {
       return check(await db.from('rooms').insert(room).select(ROOM_COLUMNS).single())
-    },
-    async listSeats(roomId) {
-      return check(await db.from('seats').select('participant, user_id, is_organizer').eq('room_id', roomId))
-    },
-    async insertSeat(seat) {
-      check(await db.from('seats').insert(seat))
-    },
-    async deleteSeat(roomId, participant) {
-      const rows = check(await db.from('seats').delete().eq('room_id', roomId).eq('participant', participant).select('participant'))
-      return rows.length > 0
     },
     async commitState(roomId, expectedVersion, state, draw) {
       return check(

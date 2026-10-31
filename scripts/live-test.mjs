@@ -29,6 +29,7 @@ import { pathToFileURL } from 'node:url'
 import { estimateOffset } from '../src/game/clock.js'
 import { releaseDelay } from '../src/game/timeline.js'
 import { deriveView } from '../src/game/view.js'
+import { introTimeline } from '../src/lobby/playRules.js'
 
 export const EXPECTED_REF = 'twzjsmxydnfmowrmffsl'
 export const HELPER = 'fsm-testlogin'
@@ -48,6 +49,7 @@ export const LIMITS = {
   logPollIntervalMs: 5_000,
   loopCheckDelayMs: 10_000, // daarna mag het aantal conflicten niet meer stijgen
   maxReleaseWaitMs: 15_000,
+  maxIntroWaitMs: 20_000, // gezamenlijke startanimatie (max. ~16 s bij 12 deelnemers)
   maxExtraRollbacks: 50,
 }
 
@@ -326,7 +328,13 @@ function assert(cond, message) {
 
 const show = (r) => `${r.status}:${r.body?.error ?? ''}`
 
-async function setupRoom({ client, step, ctx, users: count }) {
+// Testspel: `players` deelnemers, 1 ronde, players + 1 uitslagen (1 veiling).
+function testSetup(players) {
+  const pool = ['0-0', '0-1', '1-0', '1-1', '2-0', '0-2', '2-1', '1-2', '2-2', '3-0', '0-3', '3-1'].slice(0, players).concat('OVERIG')
+  return { name: 'Organisator', home: 'Testclub', away: 'Tegenstander', draft: { maxPlayers: players, rounds: 1, priceCents: 0, pool, mega: [] } }
+}
+
+async function setupRoom({ client, step, ctx, users: count, players }) {
   await step('hulpfunctie voor anonieme login uitrollen', () => client.deployHelper())
   await step(`anoniem aanmelden via Supabase Auth (${count}×, na elkaar)`, async () => {
     ctx.phones = []
@@ -335,11 +343,27 @@ async function setupRoom({ client, step, ctx, users: count }) {
     const r = await ctx.db.anonUsers(ctx.phones.map((p) => p.id))
     assert(r.n === count && r.anon === true, `auth.users: ${JSON.stringify(r)}`)
   })
-  await step('kamer aanmaken (organisator = deelnemer 0)', async () => {
-    const c = await client.game(ctx.phones[0].token, { action: 'create_room', participant: 0 })
-    assert(c.status === 200 && /^[A-HJ-NP-Z2-9]{6}$/.test(c.body?.room?.code ?? ''), `${show(c)} ${JSON.stringify(c.body)}`)
+  await step(`kamer aanmaken met volledig ingesteld spel (${players} deelnemer${players === 1 ? '' : 's'}, organisator speelt mee)`, async () => {
+    const c = await client.game(ctx.phones[0].token, { action: 'create_room', ...testSetup(players) })
+    assert(c.status === 200 && /^[A-HJ-NP-Z2-9]{6}$/.test(c.body?.room?.code ?? '') && c.body.room.mySlot === 0, `${show(c)} ${JSON.stringify(c.body)}`)
     ctx.roomId = c.body.room.id
     ctx.code = c.body.room.code
+  })
+}
+
+// Starten (organisator) en wachten tot de gezamenlijke startanimatie voorbij is.
+async function startGame({ client, step, ctx, sleep, now, limits }) {
+  await step('spel starten: één gezamenlijke starttijd (servertijd)', async () => {
+    const r = await client.game(ctx.phones[0].token, { action: 'start_game', roomId: ctx.roomId })
+    assert(r.status === 200 && r.body.room.phase === 'started' && Number.isFinite(r.body.room.startedAt), show(r))
+    ctx.startedAt = r.body.room.startedAt
+    ctx.introEnd = ctx.startedAt + introTimeline(r.body.room.state.config.players.length).endAt
+    const offset = r.body.serverNow - now()
+    const again = await client.game(ctx.phones[0].token, { action: 'start_game', roomId: ctx.roomId })
+    assert(again.status === 409 && again.body?.error === 'registration_closed', `tweede start: ${show(again)}`)
+    const early = await client.game(ctx.phones[0].token, { action: 'spin', roomId: ctx.roomId })
+    assert(early.status === 409 && early.body?.error === 'intro_running', `SPIN tijdens de animatie: ${show(early)}`)
+    await sleep(Math.min(Math.max(ctx.introEnd - (now() + offset) + 500, 0), limits.maxIntroWaitMs))
   })
 }
 
@@ -348,9 +372,11 @@ async function setupRoom({ client, step, ctx, users: count }) {
 async function concurrentSpins({ client, step, ctx, limits, sleep, log, n }) {
   const since = new Date(Date.now() - 5_000).toISOString()
   let base
-  await step('uitgangssituatie: kamer op versie 0, geen trekkingen', async () => {
+  let baseVersion
+  await step('uitgangssituatie: gestart, nog geen trekkingen', async () => {
     const s = await ctx.db.roomStats(ctx.roomId)
-    assert(s?.version === 0 && s.draws === 0, JSON.stringify(s))
+    assert(s && s.draws === 0, JSON.stringify(s))
+    baseVersion = s.version
     base = await ctx.db.activity()
   })
   await step(`${n} gelijktijdige SPIN-verzoeken: precies één HTTP 200, de rest HTTP 409`, async () => {
@@ -358,12 +384,15 @@ async function concurrentSpins({ client, step, ctx, limits, sleep, log, n }) {
     const r = await Promise.all(Array.from({ length: n }, () => client.game(org.token, { action: 'spin', roomId: ctx.roomId })))
     const summary = r.map(show).join(', ')
     assert(r.filter((x) => x.status === 200).length === 1, summary)
-    assert(r.every((x) => x.status === 200 || (x.status === 409 && ['turn_not_released', 'conflict'].includes(x.body?.error))), `onverwacht antwoord: ${summary}`)
+    assert(
+      r.every((x) => x.status === 200 || (x.status === 409 && ['spin_in_progress', 'turn_not_released', 'conflict'].includes(x.body?.error))),
+      `onverwacht antwoord: ${summary}`,
+    )
     log(`      client (Edge Function): ${summary}`)
   })
-  await step('database: precies één definitieve trekking, versie 1', async () => {
+  await step('database: precies één definitieve trekking, versie +1', async () => {
     const s = await ctx.db.roomStats(ctx.roomId)
-    assert(s?.version === 1 && s.draws === 1 && s.unique_results === 1, JSON.stringify(s))
+    assert(s?.version === baseVersion + 1 && s.draws === 1 && s.unique_results === 1, JSON.stringify(s))
   })
   let stats
   await step('PostgREST: RPC één keer 200, conflicten als 409, nooit 5xx', async () => {
@@ -402,8 +431,9 @@ async function concurrentSpins({ client, step, ctx, limits, sleep, log, n }) {
 export const PHASES = {
   '5a': {
     title: 'Fase 5A — basisfunctionaliteit (geen gelijktijdige verzoeken)',
-    async run({ client, step, ctx, limits, sleep, now, log }) {
-      await setupRoom({ client, step, ctx, users: 3 })
+    async run(env) {
+      const { client, step, ctx, limits, sleep, now, log } = env
+      await setupRoom({ ...env, users: 3, players: 2 })
       const [org, p1, outsider] = ctx.phones
 
       await step('zonder, met ongeldig of met vervalst token: 401', async () => {
@@ -423,77 +453,94 @@ export const PHASES = {
         assert(Math.abs(ctx.offset) < 60_000, `afwijking ${ctx.offset} ms`)
         log(`      afwijking t.o.v. server ${Math.round(ctx.offset)} ms, rondreis ${received - sent} ms`)
       })
-      await step('kamer opzoeken met code: vrije en bezette namen, geen gebruikers-id’s', async () => {
+      await step('kamer opzoeken met code: wedstrijd en plaatsen, geen gebruikers-id’s', async () => {
         const l = await client.game(outsider.token, { action: 'lookup_room', code: ctx.code })
-        assert(l.status === 200 && l.body.seats.length === 1 && !JSON.stringify(l.body).includes(org.id), JSON.stringify(l.body))
+        assert(l.status === 200 && l.body.summary?.playerCount === 1 && l.body.summary.maxPlayers === 2 && !JSON.stringify(l.body).includes(org.id), JSON.stringify(l.body))
       })
-      await step('deelnemer sluit aan en claimt een naam', async () => {
-        const r = await client.game(p1.token, { action: 'claim_seat', code: ctx.code, participant: 1 })
-        assert(r.status === 200 && r.body.mySeat === 1, show(r))
+      await step('dubbele naam (hoofdletterongevoelig) geweigerd; deelnemer meldt zich aan', async () => {
+        const a = await client.game(outsider.token, { action: 'join_room', code: ctx.code, name: 'ORGANISATOR' })
+        assert(a.status === 409 && a.body?.error === 'name_taken', show(a))
+        const r = await client.game(p1.token, { action: 'join_room', code: ctx.code, name: 'Deelnemer' })
+        assert(r.status === 200 && r.body.room?.mySlot === 1 && r.body.room.draft === null, show(r))
       })
-      await step('bezette naam claimen en kamer bekijken als buitenstaander: geweigerd', async () => {
-        const a = await client.game(outsider.token, { action: 'claim_seat', code: ctx.code, participant: 1 })
-        assert(a.status === 409 && a.body?.error === 'seat_taken', show(a))
+      await step('vol: buitenstaander kan niet meer aansluiten en de kamer niet bekijken', async () => {
+        const a = await client.game(outsider.token, { action: 'join_room', code: ctx.code, name: 'Derde' })
+        assert(a.status === 409 && a.body?.error === 'room_full', show(a))
         const b = await client.game(outsider.token, { action: 'get_room', roomId: ctx.roomId })
         assert(b.status === 404, show(b))
       })
-      await step('deelnemer kan geen organisatoracties of andermans SPIN uitvoeren (na elkaar)', async () => {
+      await step('deelnemer kan geen organisatoracties uitvoeren (na elkaar)', async () => {
         const got = []
         for (const body of [
-          { action: 'spin', roomId: ctx.roomId },
-          { action: 'spin', roomId: ctx.roomId, onBehalf: true },
-          { action: 'release_seat', roomId: ctx.roomId, participant: 0 },
-          { action: 'auction_prepare', roomId: ctx.roomId, participant: 1, bidCents: 100 },
+          { action: 'start_game', roomId: ctx.roomId },
+          { action: 'set_order', roomId: ctx.roomId, order: [1, 0] },
+          { action: 'shuffle_order', roomId: ctx.roomId },
+          { action: 'remove_player', roomId: ctx.roomId, slot: 0 },
+          { action: 'advance_phase', roomId: ctx.roomId, step: 'auction' },
+          { action: 'confirm_auction', roomId: ctx.roomId, participant: 1, bidCents: 100 },
           { action: 'RESET', roomId: ctx.roomId },
         ]) {
           got.push(show(await client.game(p1.token, body)))
         }
-        const want = ['403:not_your_turn', '403:not_your_turn', '403:not_organizer', '403:not_organizer', '400:unknown_action']
+        const want = ['403:not_organizer', '403:not_organizer', '403:not_organizer', '403:not_organizer', '403:not_organizer', '403:not_organizer', '400:unknown_action']
         assert(JSON.stringify(got) === JSON.stringify(want), got.join(', '))
         const s = await ctx.db.roomStats(ctx.roomId)
-        assert(s.version === 0 && s.draws === 0, JSON.stringify(s))
+        assert(s.draws === 0, JSON.stringify(s))
       })
-      await step('één gewone SPIN door wie aan de beurt is', async () => {
+      await startGame(env)
+      await step('één gewone SPIN door wie aan de beurt is (deelnemer niet)', async () => {
+        const no = await client.game(p1.token, { action: 'spin', roomId: ctx.roomId })
+        assert(no.status === 403 && no.body?.error === 'not_your_turn', show(no))
         const r = await client.game(org.token, { action: 'spin', roomId: ctx.roomId })
-        assert(r.status === 200 && r.body.spin?.participant === 0 && r.body.onBehalf === false, show(r))
-        ctx.spin = r.body.spin
+        assert(r.status === 200 && r.body.room?.state?.spin?.participant === 0, show(r))
+        ctx.spin = r.body.room.state.spin
         const s = await ctx.db.roomStats(ctx.roomId)
-        assert(s.version === 1 && s.draws === 1 && s.rows[0].spun_by === org.id && s.rows[0].on_behalf === false, JSON.stringify(s))
+        assert(s.draws === 1 && s.rows[0].spun_by === org.id && s.rows[0].on_behalf === false, JSON.stringify(s))
       })
       await step('spelstatus ophalen: lopende draai zichtbaar en synchroon', async () => {
         const r = await client.game(p1.token, { action: 'get_room', roomId: ctx.roomId })
         assert(r.status === 200 && r.body.room.state.spin?.id === ctx.spin.id, show(r))
-        const view = deriveView(r.body.room.state, r.body.serverNow)
+        const view = deriveView(r.body.room.state, r.body.serverNow, r.body.room.ack)
         assert(view.reelSpin?.id === ctx.spin.id, 'lopende draai ontbreekt in de weergave')
       })
       await step('herstel: verzoek opnieuw versturen (antwoord kwijt) geeft geen tweede trekking', async () => {
         const r = await client.game(org.token, { action: 'spin', roomId: ctx.roomId })
-        assert(r.status === 409 && r.body?.error === 'turn_not_released', show(r))
+        assert(r.status === 409 && ['spin_in_progress', 'turn_not_released'].includes(r.body?.error), show(r))
         const s = await ctx.db.roomStats(ctx.roomId)
-        assert(s.version === 1 && s.draws === 1, JSON.stringify(s))
+        assert(s.draws === 1, JSON.stringify(s))
       })
       await step('herstel: later opnieuw ophalen → uitslag vastgelegd, volgende beurt vrij', async () => {
         const wait = ctx.spin.startedAt + releaseDelay(ctx.spin) - (now() + (ctx.offset ?? 0)) + 500
         await sleep(Math.min(Math.max(wait, 0), limits.maxReleaseWaitMs))
         const r = await client.game(p1.token, { action: 'get_room', roomId: ctx.roomId })
         assert(r.status === 200, show(r))
-        const view = deriveView(r.body.room.state, r.body.serverNow)
+        const view = deriveView(r.body.room.state, r.body.serverNow, r.body.room.ack)
         assert(view.state.draws.length === 1 && view.state.draws[0].resultId === ctx.spin.resultId, 'uitslag niet vastgelegd')
         assert(view.state.turn === 1 && view.locked === false, `beurt ${view.state.turn}, locked ${view.locked}`)
+      })
+      await step('organisator draait expliciet namens de deelnemer: vastgelegd als on_behalf', async () => {
+        const no = await client.game(org.token, { action: 'spin', roomId: ctx.roomId })
+        assert(no.status === 403 && no.body?.error === 'not_your_turn', show(no))
+        const r = await client.game(org.token, { action: 'spin', roomId: ctx.roomId, onBehalf: true })
+        assert(r.status === 200 && r.body.room.state.spin?.participant === 1, show(r))
+        const s = await ctx.db.roomStats(ctx.roomId)
+        assert(s.draws === 2 && s.rows.some((x) => x.participant === 1 && x.spun_by === org.id && x.on_behalf === true), JSON.stringify(s))
       })
     },
   },
   '5b': {
     title: 'Fase 5B — beperkte gelijktijdigheid (2 gelijktijdige SPIN-verzoeken)',
     async run(env) {
-      await setupRoom({ ...env, users: 1 })
+      await setupRoom({ ...env, users: 1, players: 1 })
+      await startGame(env)
       await concurrentSpins({ ...env, n: 2 })
     },
   },
   '5c': {
     title: 'Fase 5C — uitgebreide gelijktijdigheid (10 gelijktijdige SPIN-verzoeken)',
     async run(env) {
-      await setupRoom({ ...env, users: 1 })
+      await setupRoom({ ...env, users: 1, players: 1 })
+      await startGame(env)
       await concurrentSpins({ ...env, n: 10 })
     },
   },

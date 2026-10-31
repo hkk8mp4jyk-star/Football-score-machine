@@ -13,6 +13,7 @@
 
 import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { fileURLToPath } from 'node:url'
 import { serverIntegrationTests } from './server-integration.mjs'
 
@@ -154,25 +155,31 @@ const extraTests = [
 // gedeelde spelregels uit src/; die bestanden gaan mee met hun eigen pad.
 // verify_jwt staat uit: de functie controleert het token zelf bij Supabase
 // Auth (werkt ook met de nieuwe JWT-sleutels) en weigert alles zonder token.
-const FUNCTION = {
-  slug: 'game',
-  entrypoint: 'supabase/functions/game/index.ts',
-  files: [
-    'supabase/functions/game/index.ts',
-    'src/server/actions.js',
-    'src/server/http.js',
-    'src/server/supabaseStore.js',
-    'src/game/config.js',
-    'src/game/engine.js',
-    'src/game/random.js',
-    'src/game/timeline.js',
-  ],
+const FUNCTION = { slug: 'game', entrypoint: 'supabase/functions/game/index.ts' }
+
+// Alle bestanden die de functie nodig heeft: het ingangspunt plus alle
+// relatieve imports (recursief). Zo gaan de gedeelde spelregels uit src/
+// (game, lobby, server) altijd volledig mee.
+export function functionFiles(entry = FUNCTION.entrypoint) {
+  const seen = new Set()
+  const visit = (file) => {
+    if (seen.has(file)) return
+    seen.add(file)
+    const code = readFileSync(path.join(ROOT, file), 'utf8')
+    for (const m of code.matchAll(/(?:import|export)\s[^'"]*?from\s+['"](\.{1,2}\/[^'"]+)['"]/g)) {
+      visit(path.relative(ROOT, path.resolve(path.dirname(path.join(ROOT, file)), m[1])))
+    }
+  }
+  visit(entry)
+  return [...seen].sort()
 }
 
 async function deploy() {
   const form = new FormData()
   form.append('metadata', JSON.stringify({ name: FUNCTION.slug, entrypoint_path: FUNCTION.entrypoint, verify_jwt: false }))
-  for (const f of FUNCTION.files) form.append('file', new Blob([readFileSync(path.join(ROOT, f))]), f)
+  const files = functionFiles()
+  for (const f of files) form.append('file', new Blob([readFileSync(path.join(ROOT, f))]), f)
+  console.log(`Bestanden (${files.length}): ${files.join(', ')}`)
   const headers = {}
   if (process.env.SUPABASE_ACCESS_TOKEN) headers.Authorization = `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`
   const res = await fetch(`${API}/functions/deploy?slug=${FUNCTION.slug}`, { method: 'POST', headers, body: form })
@@ -181,13 +188,16 @@ async function deploy() {
   console.log(`Edge Function '${data.slug}' versie ${data.version}: ${data.status} (verify_jwt ${data.verify_jwt})`)
 }
 
-const command = process.argv[2]
-const commands = { status, migrate, test, deploy }
-if (!commands[command]) {
-  console.error('Gebruik: node scripts/supabase.mjs status|migrate|test|deploy')
-  process.exit(2)
+// Alleen als script gestart (niet bij importeren in de tests).
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  const command = process.argv[2]
+  const commands = { status, migrate, test, deploy }
+  if (!commands[command]) {
+    console.error('Gebruik: node scripts/supabase.mjs status|migrate|test|deploy')
+    process.exit(2)
+  }
+  commands[command]().catch((e) => {
+    console.error(`\nFout: ${e.message}`)
+    process.exit(1)
+  })
 }
-commands[command]().catch((e) => {
-  console.error(`\nFout: ${e.message}`)
-  process.exit(1)
-})

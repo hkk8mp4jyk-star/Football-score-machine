@@ -29,7 +29,9 @@ export class ApiError extends Error {
   }
 }
 
-export const USE_MOCK = import.meta.env.DEV || import.meta.env.VITE_USE_MOCK === '1'
+// Mock: in `npm run dev` (tenzij VITE_USE_MOCK=0, dan de echte server) of in
+// een testbuild met VITE_USE_MOCK=1. In `npm run build` nooit.
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK === '1' || (import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !== '0')
 
 let apiPromise = null
 export function getApi() {

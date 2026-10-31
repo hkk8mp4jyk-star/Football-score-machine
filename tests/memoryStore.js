@@ -1,22 +1,32 @@
 // Geheugenopslag voor de servertests met dezelfde regels als de database:
-// unieke kamercode, één telefoon per naam en één naam per telefoon, één
-// organisator per kamer, versiecontrole en unieke uitslag per kamer.
+// unieke kamercode, versiecontrole, unieke uitslag en draai per kamer, één
+// trekking per deelnemer per vaste ronde, bod alleen bij de veiling, en het
+// Realtime-signaal (room_pulses) dat bij elke wijziging de versie volgt.
 // Elke aanroep wacht een macrotaak, zodat gelijktijdige verzoeken door elkaar lopen.
 import { StoreConflict } from '../src/server/actions.js'
 
 const tick = () => new Promise((r) => (globalThis.setImmediate ?? setTimeout)(r))
 const clone = (x) => (x == null ? x : structuredClone(x))
 
-export function createMemoryStore() {
+export function createMemoryStore({ now = () => Date.now() } = {}) {
   const rooms = new Map()
-  const seats = []
   const draws = []
-  let nextId = 1
+  const pulses = new Map()
+  const listeners = new Set()
+  const pulse = (room) => {
+    pulses.set(room.id, room.version)
+    listeners.forEach((l) => l(room.id, room.version))
+  }
 
   return {
     rooms,
-    seats,
     draws,
+    pulses,
+    // Realtime nabootsen: luisteraar krijgt (roomId, versie) bij elke wijziging.
+    onPulse(listener) {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
     async findRoomById(id) {
       await tick()
       return clone(rooms.get(id) ?? null)
@@ -25,36 +35,18 @@ export function createMemoryStore() {
       await tick()
       return clone([...rooms.values()].find((r) => r.code === code) ?? null)
     },
-    async countRoomsByOrganizer(userId) {
+    async countRoomsByOrganizerSince(userId, sinceIso) {
       await tick()
-      return [...rooms.values()].filter((r) => r.organizer_id === userId).length
+      const since = Date.parse(sinceIso)
+      return [...rooms.values()].filter((r) => r.organizer_id === userId && r.created_at >= since).length
     },
-    async insertRoom({ code, organizer_id, state }) {
+    async insertRoom({ id, code, organizer_id, state }) {
       await tick()
-      if ([...rooms.values()].some((r) => r.code === code)) throw new StoreConflict('unique')
-      const id = `00000000-0000-4000-8000-${String(nextId++).padStart(12, '0')}`
-      const room = { id, code, organizer_id, state: clone(state), version: 0 }
+      if (rooms.has(id) || [...rooms.values()].some((r) => r.code === code)) throw new StoreConflict('unique')
+      const room = { id, code, organizer_id, state: clone(state), version: 0, created_at: now() }
       rooms.set(id, room)
+      pulse(room)
       return clone(room)
-    },
-    async listSeats(roomId) {
-      await tick()
-      return clone(seats.filter((s) => s.room_id === roomId))
-    },
-    async insertSeat(seat) {
-      await tick()
-      const same = seats.filter((s) => s.room_id === seat.room_id)
-      if (same.some((s) => s.participant === seat.participant || s.user_id === seat.user_id || (seat.is_organizer && s.is_organizer))) {
-        throw new StoreConflict('unique')
-      }
-      seats.push({ ...seat })
-    },
-    async deleteSeat(roomId, participant) {
-      await tick()
-      const i = seats.findIndex((s) => s.room_id === roomId && s.participant === participant)
-      if (i < 0) return false
-      seats.splice(i, 1)
-      return true
     },
     async commitState(roomId, expectedVersion, state, draw) {
       await tick()
@@ -67,10 +59,14 @@ export function createMemoryStore() {
           throw new StoreConflict('unique')
         }
         if ((draw.round === 'veiling') !== (draw.bid_cents != null)) throw new Error('check: bid_cents')
+        if (!(draw.result_id === 'OVERIG' || /^[0-6]-[0-6]$/.test(draw.result_id))) throw new Error('check: result_id')
+        if (!(draw.participant >= 0 && draw.participant <= 11)) throw new Error('check: participant')
+        if (!['1', '2', '3', '4', 'veiling'].includes(draw.round)) throw new Error('check: round')
         draws.push({ room_id: roomId, ...draw })
       }
       room.state = clone(state)
       room.version += 1
+      pulse(room)
       return room.version
     },
   }

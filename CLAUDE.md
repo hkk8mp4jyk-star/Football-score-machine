@@ -9,10 +9,10 @@ Supabase V2 (1–12 spelers, 1–4 vaste rondes, eigen pool, optionele veiling).
 Backend (database, Edge Function `game`, live tests 5A/5B) staat op V2 met de
 oude, vaste spelregels. **Huidige stand: plan F1–F12 (§10); F1 (engine)
 en F2 (machine-UI instelbaar) klaar en goedgekeurd; F7 (multiplayer-schermen)
-plus het online spelverloop (startanimatie, SPIN-regels, veiling met
-aankondiging; §4 "Online spel – definitief", 31-10-2026) lokaal gebouwd met
-de nagebootste server, wacht op beoordeling (niet gecommit). Nog niets aan de
-echte server/Supabase gekoppeld.** Elke fase pas na expliciet akkoord van de
+plus het online spelverloop goedgekeurd en vastgelegd (commit **054320c**).
+Echte Supabase-koppeling (migratie 3, Edge Function `game` v2, frontend
+`realApi`) **lokaal gebouwd en getest (01-11-2026), nog NIET op Supabase V2
+toegepast, niet gecommit** — wacht op expliciete toestemming (§6b).** Elke fase pas na expliciet akkoord van de
 gebruiker. **Commit/push alleen na expliciete toestemming per keer.**
 
 ---
@@ -589,6 +589,92 @@ leest `configOf(state)` uit de spelstatus die het al kreeg.
   `twzjsmxydnfmowrmffsl.supabase.co` zijn toegestaan (door de gebruiker in de
   omgevingsinstellingen; nodig voor `fn:test:*`).
 
+## 6b. Echte multiplayer (lokaal klaar, 01-11-2026; nog niet uitgerold)
+
+Eén systeem: dezelfde spelregels (`src/lobby/lobbyRules.js`,
+`src/lobby/playRules.js`, `src/game/engine.js`) draaien in de nagebootste
+server (mock, lokaal testen) én in de Edge Function (echt). Geen tweede,
+concurrerend systeem.
+
+```
+telefoon (React)                      Supabase V2
+ ├─ OnlineApp / schermen               ├─ Auth: anonieme login (sessie in localStorage 'fsm-auth')
+ ├─ getApi(): mock of realApi          ├─ Edge Function 'game' (service_role, alle wijzigingen)
+ └─ realApi.js ── POST /functions/v1/game ─┤   src/server/actions.js → lobbyRules/playRules/engine
+        │        (Bearer token, nooit automatisch herhaald)   → commit_room_state (versie + trekking, atomair)
+        └── Realtime: room_pulses (kamer + versie) ──┘   trigger op rooms → room_pulses
+            + terugval: elke 2,5 s ophalen, en bij online/focus/zichtbaar
+```
+
+- **Kamer = één document** in `rooms.state` (deelnemers met user-id's,
+  `organizerName`, `match`, `order`, `draft`, `removedUserIds`, engine-`state`,
+  `startedAt`, `announce{participant, bidCents, lot, at}`, `ack{auctionStart,
+  finish}`, `spinLog`). Alleen de server leest en schrijft het (rol
+  service_role). Telefoons krijgen alleen `roomView` (per rol gefilterd:
+  deelnemers in de wachtkamer alleen `{slot, name}` in aanmeldvolgorde, geen
+  spelregels, volgorde of user-id's; organisator alles behalve user-id's).
+- **Serverautorisatie** (altijd op de server, user-id alleen uit het token):
+  organisatoracties (`update_settings`, `set_order`, `shuffle_order`,
+  `remove_player`, `add_manual_player`, `join_self`, `start_game`,
+  `confirm_auction`, `advance_phase`) → `not_organizer`; SPIN alleen voor wie
+  aan de beurt is, de organisator voor een deelnemer zonder telefoon of
+  expliciet `onBehalf` → anders `not_your_turn`; niet-leden → `room_not_found`,
+  verwijderd → `removed`. De uitslag kiest de server (`secureRandomInt`) pas
+  bij `spin`; de telefoon stuurt geen uitslag (wordt genegeerd).
+- **Atomair en eenmalig**: elke wijziging = `commit_room_state(versie)`;
+  bij een versieconflict (PT409) laadt de server opnieuw en controleert alles
+  opnieuw (max. 3 pogingen). Daardoor nooit dubbele SPIN, veilingbevestiging,
+  faseovergang of start, en aanmelden vs. starten (D8) is geserialiseerd op
+  dezelfde kamerrij. `draws` blijft het onveranderlijke vangnet (unieke
+  uitslag en draai per kamer).
+- **Sessiebeheer**: anonieme Supabase-login, sessie bewaard in de browser
+  (`fsm-auth`, supabase-js ververst het token zelf). Zelfde toestel/browser =
+  zelfde identiteit: deelnemer houdt zijn plek, organisator zijn rechten,
+  ook na sluiten van de browser (laatste kamer in `fsm-online-session` →
+  gouden knop op het beginscherm). Ander toestel/gewiste gegevens = nieuwe
+  identiteit, kan een bestaande naam niet overnemen (`name_taken`) en heeft
+  geen toegang tot de kamer (D6: geen herstel van organisatorrechten).
+- **Spelstatus en faseovergangen**: tijdgestuurd (`deriveView` met de
+  servertijd: `serverNow` in elk antwoord → klokafwijking, kortste rondreis
+  wint). Startanimatie op `startedAt`; veilingaankondiging op `announce.at`;
+  "Start de veiling"/"Bekijk de eindstand" alleen via `advance_phase`
+  (organisator) → `room.ack`. Herladen/opnieuw verbinden = status ophalen en
+  op de huidige tijd tonen (geen herhaling van afgelopen animaties).
+- **Definitieve spelersvolgorde**: bij de start vastgelegd in
+  `state.config.players` (uit `room.order`); leidend voor beurten,
+  startanimatie, scoremachine, overzicht per deelnemer en eindstand (en
+  straks de deelafbeelding). Nooit alfabetisch, op aanmelding, uitslagen of
+  bedragen. Regressietest in `tests/online-ui.test.jsx`.
+- **Mock vs. echt**: `src/online/api.js` → `USE_MOCK` = `VITE_USE_MOCK=1`, of
+  `npm run dev` tenzij `VITE_USE_MOCK=0`. Productiebuild: altijd `realApi`
+  (mock zit er niet in, gecontroleerd). Zonder `VITE_SUPABASE_PUBLISHABLE_KEY`
+  meldt `realApi` "nog niet beschikbaar". supabase-js (2.118.0, zelfde
+  versie als de Edge Function) zit in een aparte chunk die alleen wordt
+  geladen als het online spel verbinding maakt; de DEMO laadt niets van
+  Supabase (gecontroleerd: 0 verzoeken).
+- **Misbruikgrens**: max. 5 nieuwe kamers per anonieme gebruiker per 24 uur
+  (was: 5 in totaal, wat een vaste organisator na 5 spellen zou blokkeren).
+- **Testafspraken**: `npm test` (unit, mock, server met geheugenopslag,
+  realApi end-to-end), PGlite lokaal (migraties + `security.sql` +
+  integratietests), browser: mock-build én productiebuild met `realApi` tegen
+  een lokale nagebootste Supabase (scratchpad, niet in repo) in
+  onafhankelijke browserprofielen op 320/390/430 px, DEMO-pixelregressie.
+  Op V2 pas na toestemming: `db:migrate`, `db:test`, `fn:deploy`,
+  `fn:test:5a/5b` (elk apart).
+
+### Uitrolplan V2 (elke stap apart akkoord; nog niets uitgevoerd)
+1. `npm run db:migrate` → migratie 3 `online_spel`. Veilig vóór de nieuwe
+   functie: de huidige functie v1 blijft werken op het nieuwe schema
+   (lokaal getest met de oude code).
+2. `npm run db:test` → `security.sql` (62) + concurrency + 9 integratietests.
+3. `npm run fn:deploy` → `game` v2 (13 bestanden, automatisch verzameld).
+4. `npm run fn:test:5a`, daarna apart `fn:test:5b`.
+5. Publieke sleutel: lokaal `.env.local` (niet in Git) voor telefoontest;
+   GitHub-variabele pas in F11. Daarna test op echte telefoons.
+- **Terugval**: functie terug naar v1 (code commit 054320c), daarna
+  `supabase/rollback/20261101120000_online_spel_down.sql` (lokaal getest:
+  daarna slagen de oude 55 beveiligingstests weer).
+
 ## 7. Database en beveiliging (fase 2, uitgevoerd)
 
 Migratie `supabase/migrations/20261029120000_multiplayer_schema.sql`
@@ -620,18 +706,20 @@ het script vergelijkt op **naam**).
   versie; PT409 wordt niet herhaald en geeft HTTP 409. **Nooit 40001/40P01
   gebruiken voor eigen fouten.**
 - Realtime-publicatie: `rooms` en `seats`.
-- **Gepland: migratie 3 (F4, nog niet gemaakt of uitgevoerd)** voor het
-  instelbare spel: `draws.result_id` check → 0-0 t/m 6-6 + OVERIG (50);
-  `draws.round` → `'1'`–`'4'` of `'veiling'`; `seats.participant` → 0–11
-  (vast speler-id; speelvolgorde staat in `state.config`); nieuwe kolom
-  `seats.name` (1–20) met unieke index `(room_id, lower(name))`; index
-  `seats(user_id)` (Geschiedenis). **D8 (aanmelden vs. starten)**: voorstel
-  twee triggers die dezelfde `rooms`-rij vergrendelen: een `seats`-insert
-  wordt geweigerd als de kamer niet meer in de wachtkamer staat, en de
-  overgang wachtkamer → gestart wordt geweigerd als de plaatsen niet precies
-  overeenkomen met `config.players`. Zo serialiseert Postgres beide acties;
-  `commit_room_state`, RLS en publicatie blijven ongewijzigd. Uitwerking en
-  akkoord in F3/F4.
+- **Migratie 3** `supabase/migrations/20261101120000_online_spel.sql` (naam
+  `online_spel`; **lokaal klaar, nog NIET op V2**): (1) geen directe
+  leesrechten meer voor deelnemers op `rooms`/`seats`/`draws` (policies weg,
+  `rooms`/`seats` uit de Realtime-publicatie); (2) `draws`: uitslagen 0-0 t/m
+  6-6 + OVERIG, deelnemer 0–11, rondes 1–4 of veiling; (3)
+  `private.is_room_member` = organisator of deelnemer in `rooms.state ->
+  'players'` (user-id); (4) nieuwe tabel `room_pulses` (kamer, versie, tijd),
+  RLS: alleen leden lezen, door trigger `rooms_pulse` bijgehouden, in de
+  Realtime-publicatie. `seats` wordt niet meer gebruikt (blijft leeg).
+  `commit_room_state` ongewijzigd. Het vroegere voorstel (seats-naamkolom +
+  D8-triggers) is vervangen: D8 volgt nu uit de versiecontrole op één rij.
+  Supabase heeft zelf een event-trigger `public.rls_auto_enable` (RLS op
+  nieuwe tabellen) — niet van ons, ongemoeid laten.
+- `security.sql` (na migratie 3): **62 controles**, lokaal in PGlite 62/62.
 - Tests: `supabase/tests/security.sql` (51 checks, in een rollback-transactie)
   + echte concurrency-test (10 gelijktijdige commits → precies 1 slaagt,
   testkamer `ZZTEST` wordt opgeruimd). Laatste run: **52/52 geslaagd**,
@@ -642,6 +730,27 @@ het script vergelijkt op **naam**).
 Eén functie, uitgerold als `game` (`npm run fn:deploy`), URL
 `https://twzjsmxydnfmowrmffsl.supabase.co/functions/v1/game` (V2: versie 1,
 ACTIVE, verify_jwt uit, uitgerold 30-10-2026). Schemawijziging na fase 3: alleen migratie 2 (PT409).
+
+**Versie 2 (lokaal klaar, nog niet uitgerold)**: acties van het instelbare
+spel (vervangt de tabel hieronder, die v1 beschrijft): `time`, `create_room
+{name, home, away, draft}`, `lookup_room {code}`, `join_room {code, name}`,
+`get_room`, `update_settings {draft}`, `set_order {order}`, `shuffle_order`,
+`remove_player {slot}`, `add_manual_player {name}`, `join_self`,
+`start_game {expectedVersion?}`, `spin {onBehalf?}`, `confirm_auction
+{participant, bidCents}`, `advance_phase {step: auction|final}` (alle met
+`roomId` behalve de eerste vier). Antwoord `{ok, room: roomView | summary,
+serverNow}`. Foutcodes uit de spelregels (o.a. `not_organizer`/
+`not_your_turn`/`removed` 403, `room_not_found`/`player_not_found` 404,
+`name_*`/`club_*`/`invalid_*` 400, `room_full`/`name_taken`/
+`registration_closed`/`players_incomplete`/`room_changed`/`intro_running`/
+`spin_in_progress`/`turn_not_released`/`no_auction_turn`/`auction_confirmed`/
+`auction_not_open`/`nothing_to_advance`/`conflict` 409, `too_many_rooms` 429).
+De verliezer van een gelijktijdige SPIN krijgt nu `spin_in_progress`.
+Uitrol verzamelt de bestanden automatisch (`functionFiles()` in
+`scripts/supabase.mjs`, 13 bestanden). `deno check` geslaagd. Live tests
+5A/5B/5C zijn aangepast aan wachtkamer → start → startanimatie → SPIN (5A
+nu ook: dubbele naam, vol, alle organisatoracties door deelnemer geweigerd,
+SPIN tijdens animatie geweigerd, tweede start geweigerd, namens draaien).
 
 ```
 supabase/functions/game/index.ts  Deno-ingang: token controleren, service_role-client
@@ -854,6 +963,26 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   1280 px), geen horizontaal scrollen, geen consolefouten; bevinding 4 rondes
   overlapten de knop "Uitslagen bekijken" → opgelost met `rounds-many`
   (gemeten ruimte bij 320 px 14 px, bij 390 px 46 px).
+- **Echte koppeling lokaal (01-11-2026, niet gecommit)**: `npm test` →
+  **286 tests** (+ eindstand-volgorde regressie; `server.test.js` herschreven
+  voor de nieuwe acties: 39 tests incl. 10.000 proeftrekkingen chi-kwadraat,
+  gelijktijdige SPIN/aanmelden/start/bevestigen/overgangen, autorisatie,
+  12 × 4 met 50 uitslagen; `realApi.test.js` 6 tests: echte frontendkoppeling
+  → HTTP → server met meerdere toestellen, sessieherstel, geen herhaling,
+  401, klok). PGlite: migraties 1–3 + `security.sql` **62/62**,
+  integratietests **9/9**, terugdraaien → oude tests 55/55, oude functiecode
+  op nieuw schema 6/6. `deno check` + Deno-rooktest geslaagd. **Browser met
+  productiebuild + `realApi`** tegen lokale nagebootste Supabase (echte
+  servercode, geen Realtime → terugval), 3 onafhankelijke browserprofielen:
+  **26/26** op 320, 390 en 430 px (aanmaken, link, code, dubbele naam,
+  deelnemer zonder telefoon, API-poging deelnemer → 403, browser dicht en
+  terug → zelfde rechten, startanimatie op alle toestellen, herladen tijdens
+  animatie → geen herhaling, alleen actieve deelnemer SPIN, gelijktijdig
+  SPIN + Draai namens → 1 trekking, overgangen alleen organisator,
+  aankondiging #1/#2 bij deelnemers, eindstand in definitieve volgorde,
+  geen dubbele bevestigingen/overgangen). DEMO 16/16 pixel-identiek, geen
+  Supabase-verzoeken. Read-only V2-inventarisatie: alleen migraties 1–2,
+  database leeg, functie `game` v1.
 - **Correcties na beoordeling F8 (31-10-2026, lokaal, niet gecommit)**:
   `npm test` → **277 tests** (+4: faseovergangen alleen organisator,
   eenmalig, pas na de laatste trekking, veiling pas bevestigen na "Start de
@@ -982,10 +1111,10 @@ voorlopig overgeslagen.
 |---|---|---|---|
 | **F1** | Engine instelbaar (§5): 1–12 spelers, 1–4 rondes, slang, pool 0-0…6-6 + OVERIG, MEGA per uitslag, prijs (ook €0), veiling 0–10, namen/volgorde; DEMO = standaard | L | **klaar en goedgekeurd** (commit a9e5b88) |
 | **F2** | Machine-UI instelbaar: namen/volgorde uit `config`, rondebadges R, "Trekking x van N×R", "Bekijk de eindstand" bij A = 0, tegelindeling 1–10 (max. tegelgrootte), rollen tot 6 alleen bij pool > 4, raster tot 6-6, prijs per trekking; DEMO pixel-identiek | L | **klaar en goedgekeurd** (30-10-2026) |
-| F3 | Server: wachtkamer, `join_room(code, naam)`, `update_settings`, `set_order`/`shuffle_order` (server-crypto), `remove_player`, `start_game` (volledige validatie, `validateConfig`), SPIN/veiling pas na start, terugkeer via `lookup_room`; migratie 3 + D8-triggers + `security.sql` in PGlite; unittests | L | |
-| F4 | Migratie 3 + `db:test` | V2 | |
-| F5 | Uitrol `game` + live tests 5A/5B aangepast aan wachtkamer/start | V2 | |
-| F6 | Online fundament frontend: supabase-js, publieke sleutel (env), `callGame` (tijdslimiet, nooit automatisch herhaald), kloksync, statusopslag (hoogste versie wint), sessie/terugkeer | L | |
+| F3 | Server: wachtkamer, `join_room(code, naam)`, `update_settings`, `set_order`/`shuffle_order` (server-crypto), `remove_player`, `start_game` (volledige validatie, `validateConfig`), SPIN/veiling pas na start, terugkeer via `lookup_room`; migratie 3 + D8-triggers + `security.sql` in PGlite; unittests | L | **lokaal klaar** (01-11-2026; D8 via versiecontrole i.p.v. triggers) |
+| F4 | Migratie 3 + `db:test` | V2 | wacht op toestemming |
+| F5 | Uitrol `game` + live tests 5A/5B aangepast aan wachtkamer/start | V2 | scripts klaar; uitrol wacht op toestemming |
+| F6 | Online fundament frontend: supabase-js, publieke sleutel (env), `callGame` (tijdslimiet, nooit automatisch herhaald), kloksync, statusopslag (hoogste versie wint), sessie/terugkeer | L | **lokaal klaar** (`realApi`, 01-11-2026) |
 | F7 | Schermen Begin (+ "Verder met huidig spel"), Nieuw spel, Meedoen, Wachtkamer, Instellingen, Volgorde; router met `?demo` en `?kamer=`; Playwright tegen nagebootste server | L | **gebouwd, wacht op beoordeling** (31-10-2026, vóór F3 uitgevoerd op verzoek; B1–B10) |
 | F8 | Online spel: synchrone animaties (servertijd), herstel, online menu ("draai namens", "plek vrijgeven"), verbindingsbalkje; daarna korte live test | L → V2 | **lokaal met mock gebouwd** (startanimatie, SPIN-regels, Draai namens, veiling + aankondiging), wacht op beoordeling; nog niet op de echte server |
 | F9 | Veiling online (0–10, tegelindeling) | L → V2 | |
@@ -1005,6 +1134,12 @@ voorlopig overgeslagen.
   eventueel zachte drempel naar standalone-modus.
 
 ### Openstaande punten
+- **Echte multiplayer nog niet op V2**: migratie 3, `db:test`, uitrol `game`
+  v2, live tests 5A/5B en test op echte telefoons wachten op toestemming
+  (§6b). Niet lokaal te testen zonder V2: echte Supabase Auth (anonieme
+  login + tokenverversing), echte Realtime op `room_pulses` (lokaal alleen de
+  terugval), echte gelijktijdige transacties in Postgres (lokaal PGlite =
+  één verbinding), netwerkvertraging tussen telefoons.
 - **Voor F3/F4 (echte server/database)**: `playRules.js` en `lobbyRules.js`
   overnemen in de Edge Function; database uitbreiden met wedstrijd
   (`home`/`away`), `organizer_name`, `max_players`, deelnemers zonder
