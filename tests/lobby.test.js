@@ -575,7 +575,7 @@ describe('nagebootste server (mock)', () => {
 
 describe('echte server (nog niet beschikbaar) en meldingen', () => {
   it('realApi: elke actie meldt "nog niet beschikbaar", geen mock-functies', async () => {
-    const api = createRealApi()
+    const api = createRealApi({ key: '' }) // zonder publieke sleutel (ook als .env.local er een heeft)
     expect(api.isMock).toBe(false)
     expect(api.addFakePlayer).toBeUndefined()
     expect(await asyncCode(api.createRoom({ name: 'Lars', ...CLUBS, draft: DRAFT12 }))).toBe('not_available')

@@ -4,7 +4,8 @@
 import { describe, expect, it } from 'vitest'
 import { createGameServer } from '../src/server/actions.js'
 import { createHttpHandler } from '../src/server/http.js'
-import { EXIT, EXPECTED_REF, LIMITS, LOG_PATTERNS, UsageError, countLogLines, createLiveClient, fetchWithTimeout, logStatsSql, parseArgs, runPhase } from '../scripts/live-test.mjs'
+import { BIDS_5D, EXIT, EXPECTED_REF, LIMITS, LOG_PATTERNS, SETUP_5D, UsageError, countLogLines, createLiveClient, fetchWithTimeout, logStatsSql, parseArgs, runPhase } from '../scripts/live-test.mjs'
+import { StoreConflict } from '../src/server/actions.js'
 import { createMemoryStore } from './memoryStore.js'
 
 const OLD_REF = 'nptulnnuejivwcgcltuy'
@@ -17,7 +18,7 @@ const FAST = {
   max429Retries: 2,
   maxSignInAttempts: 3,
   signInRetryDelayMs: 0,
-  phaseDeadlineMs: { '5a': 2_000, '5b': 2_000, '5c': 2_000 },
+  phaseDeadlineMs: { '5a': 2_000, '5b': 2_000, '5c': 2_000, '5d': 5_000 },
   cleanupStepTimeoutMs: 200,
   cleanupDeadlineMs: 1_000,
   logPolls: 2,
@@ -29,7 +30,8 @@ describe('live test: fase kiezen en project bewaken', () => {
   it('start alleen precies één bekende fase', () => {
     expect(parseArgs(['5a'])).toEqual({ phase: '5a', ref: EXPECTED_REF })
     expect(parseArgs(['5b'])).toEqual({ phase: '5b', ref: EXPECTED_REF })
-    for (const argv of [[], ['5d'], ['5a', '5b'], ['alles'], ['--bevestig']]) {
+    expect(parseArgs(['5d'])).toEqual({ phase: '5d', ref: EXPECTED_REF })
+    for (const argv of [[], ['5e'], ['5a', '5b'], ['5a', '5d'], ['alles'], ['--bevestig']]) {
       expect(() => parseArgs(argv)).toThrow(UsageError)
     }
   })
@@ -139,9 +141,22 @@ describe('live test: verbindingen (tijdslimieten en begrensde herhalingen)', () 
 
 // Nagebootste omgeving: echte serverlogica, geheugenopslag, en een teller die
 // bijhoudt hoeveel verzoeken (client + database) tegelijk lopen.
-function fakeEnv({ hangGame = false, hangCleanup = false, failCleanup = false, unhealthy = false, logStats } = {}) {
+function fakeEnv({ hangGame = false, hangCleanup = false, failCleanup = false, unhealthy = false, logStats, liveStats = false, realtime = {}, tamper } = {}) {
   const clock = { t: 1_800_000_000_000 }
   const store = createMemoryStore()
+  // Wat PostgREST zou loggen: geslaagde commits (200) en versieconflicten (PT409).
+  const rpc = { ok: 0, conflict: 0 }
+  const commitState = store.commitState
+  store.commitState = async (...args) => {
+    try {
+      const v = await commitState(...args)
+      rpc.ok++
+      return v
+    } catch (e) {
+      if (e instanceof StoreConflict && e.message === 'version') rpc.conflict++
+      throw e
+    }
+  }
   const tokens = new Map()
   const server = createGameServer({ store, now: () => clock.t })
   const http = createHttpHandler({ server, authenticate: async (t) => tokens.get(t) ?? null, log: () => {} })
@@ -161,7 +176,44 @@ function fakeEnv({ hangGame = false, hangCleanup = false, failCleanup = false, u
   const deletedUsers = new Set()
   const users = []
   const state = { helperDeployAttempted: false }
-  const stats = logStats ?? (() => ({ rpcAll: 2, rpc200: 1, rpc409: 1, rpc5xx: 0, versionConflicts: 1 }))
+  const stats =
+    logStats ??
+    (liveStats
+      ? () => ({ rpcAll: rpc.ok + rpc.conflict, rpc200: rpc.ok, rpc409: rpc.conflict, rpc5xx: 0, versionConflicts: rpc.conflict })
+      : () => ({ rpcAll: 2, rpc200: 1, rpc409: 1, rpc5xx: 0, versionConflicts: 1 }))
+  // Realtime nabootsen zoals de database het doorlaat: alleen leden van de
+  // kamer (organisator of deelnemer in de status) krijgen het signaal (RLS).
+  const listens = []
+  const listenOne = (token, roomId, { untilVersion, waitMs }) => {
+    const userId = tokens.get(token)
+    const out = { pulses: [], statuses: ['SUBSCRIBED'], readyVia: 'system', reason: null, errors: [] }
+    listens.push({ userId, roomId, waitMs, out })
+    let resolve
+    const done = new Promise((r) => (resolve = r))
+    const finish = (reason) => {
+      if (out.reason) return
+      out.reason = reason
+      off()
+      resolve(out)
+    }
+    const off = store.onPulse((id, version) => {
+      if (id !== roomId || realtime.drop) return
+      const room = store.rooms.get(id)
+      const member = room.organizer_id === userId || room.state.players?.some((p) => p.userId === userId)
+      if (!member && !realtime.leak) return
+      out.pulses.push(version)
+      if (realtime.double) out.pulses.push(version)
+      if (untilVersion != null && version >= untilVersion) finish('version')
+    })
+    setTimeout(() => finish('timeout'), 30)
+    return done
+  }
+  // Zoals de hulpfunctie: één verzoek, per luisteraar een eigen verbinding.
+  const listen = (roomId, listeners, { untilVersion }) => {
+    const all = listeners.map((l) => listenOne(l.token, roomId, { untilVersion, waitMs: l.waitMs }))
+    const done = Promise.all(all).then((outs) => Object.fromEntries(listeners.map((l, i) => [l.id, outs[i]])))
+    return { ready: Promise.resolve(['system']), done }
+  }
 
   const client = {
     ref: EXPECTED_REF,
@@ -189,8 +241,13 @@ function fakeEnv({ hangGame = false, hangCleanup = false, failCleanup = false, u
       if (hangGame) return never()
       const authorization = auth === undefined ? `Bearer ${token}` : auth
       const res = await http(new Request('https://x/functions/v1/game', { method: 'POST', headers: authorization ? { Authorization: authorization } : {}, body: JSON.stringify(body) }))
-      return { status: res.status, body: await res.json() }
+      const out = { status: res.status, body: await res.json() }
+      return tamper ? tamper(body, out, tokens.get(token)) : out
     }),
+    listen: (...args) => {
+      track.calls.push('listen')
+      return listen(...args)
+    },
     logStats: wrap('logStats', async () => stats()),
     abortAll: () => {
       track.aborted = true
@@ -205,6 +262,11 @@ function fakeEnv({ hangGame = false, hangCleanup = false, failCleanup = false, u
       const d = store.draws.filter((x) => x.room_id === roomId)
       return { version: room.version, draws: d.length, unique_results: new Set(d.map((x) => x.result_id)).size, rows: d.map(({ participant, spun_by, on_behalf }) => ({ participant, spun_by, on_behalf })) }
     }),
+    drawRows: wrap('db.drawRows', async (roomId) =>
+      store.draws
+        .filter((x) => x.room_id === roomId)
+        .map(({ participant, round, result_id, bid_cents, spun_by, on_behalf, spin_id }) => ({ participant, round, result_id, bid_cents, spun_by, on_behalf, spin_id })),
+    ),
     deleteRooms: wrap('db.deleteRooms', async (ids) => {
       if (hangCleanup) return never()
       if (failCleanup) throw new Error('database niet bereikbaar')
@@ -219,7 +281,7 @@ function fakeEnv({ hangGame = false, hangCleanup = false, failCleanup = false, u
   const lines = []
   const run = (phase, limits = FAST) =>
     runPhase({ phase, client, db, limits, log: (l) => lines.push(l), now: () => clock.t, sleep: async (ms) => void (clock.t += ms) })
-  return { run, track, store, lines, client }
+  return { run, track, store, lines, client, listens, rpc }
 }
 
 describe('live test: fase 5A (basis)', () => {
@@ -343,6 +405,180 @@ describe('live test: fase 5B en 5C (gelijktijdigheid)', () => {
     expect(out.exitCode).toBe(EXIT.ok)
     expect(env.track.spinBatchMax).toBe(10)
     expect(env.store.draws).toHaveLength(1)
+  })
+})
+
+describe('live test: fase 5D (volledig spel, 3 toestellen)', () => {
+  it('slaagt: gelijktijdig deelnemer + organisator, Realtime, veilingen, bedragen, eindstand', async () => {
+    const env = fakeEnv({ liveStats: true })
+    const out = await env.run('5d')
+    expect(out.results.filter((r) => !r.ok)).toEqual([])
+    expect(out.exitCode).toBe(EXIT.ok)
+    expect(out.cleanup.every((c) => c.ok)).toBe(true)
+    expect(env.store.rooms.size).toBe(0)
+    const text = env.lines.join('\n')
+    expect(text).toContain('Fase 5D')
+    // 4 onafhankelijke identiteiten: organisator, A, B, buitenstaander
+    expect(new Set(env.listens.map((l) => l.userId)).size).toBe(4)
+    expect(text).toMatch(/anonieme testgebruikers verwijderen \(4\)/)
+    // twee keer deelnemer en organisator tegelijk → telkens precies één
+    expect(text.match(/gewonnen door/g)).toHaveLength(2)
+    expect(env.rpc.conflict).toBeGreaterThan(0) // de gelijktijdige verzoeken botsten echt
+    expect(text).toMatch(/versieconflicten \(bedoeld, gelijktijdige SPIN\): PT409×[1-6]/)
+    expect(text).toMatch(/Realtime \(start\): organisator: versie \d+, A: versie \d+, B: versie \d+, buitenstaander: niets/)
+    expect(text).toContain('totaal: Organisator 500, Deelnemer A 1734, Deelnemer B 4000 · pot 6234 cent')
+  })
+
+  it('database na afloop van het spel (vóór opruimen): 6 vaste trekkingen, 2 veilingen, biedingen bij de juiste winnaar', async () => {
+    let snapshot
+    const env = fakeEnv({ liveStats: true })
+    const origDelete = env.store.rooms.delete.bind(env.store.rooms)
+    env.store.rooms.delete = (id) => {
+      snapshot ??= env.store.draws.filter((d) => d.room_id === id).map((d) => ({ ...d }))
+      return origDelete(id)
+    }
+    expect((await env.run('5d')).exitCode).toBe(EXIT.ok)
+    expect(snapshot).toHaveLength(8)
+    expect(snapshot.filter((d) => d.round !== 'veiling').every((d) => d.bid_cents === null)).toBe(true)
+    expect(snapshot.filter((d) => d.round === 'veiling').map((d) => d.bid_cents)).toEqual(BIDS_5D.map((b) => b.bidCents))
+    expect(snapshot.filter((d) => d.round === 'veiling').map((d) => d.on_behalf)).toEqual([false, true])
+    expect(SETUP_5D.draft.priceCents).toBeGreaterThan(0)
+    expect(SETUP_5D.draft.rounds).toBeGreaterThanOrEqual(2)
+  })
+
+  it('herhaalbaar: twee runs na elkaar slagen, telkens alles opgeruimd', async () => {
+    for (let i = 0; i < 2; i++) {
+      const env = fakeEnv({ liveStats: true })
+      expect((await env.run('5d')).exitCode).toBe(EXIT.ok)
+      expect(env.store.rooms.size).toBe(0)
+    }
+  })
+
+  it('mislukt als een lid het Realtime-signaal niet ontvangt', async () => {
+    const env = fakeEnv({ liveStats: true, realtime: { drop: true } })
+    const out = await env.run('5d')
+    expect(out.exitCode).toBe(EXIT.failed)
+    expect(out.results.find((r) => !r.ok).error).toMatch(/Realtime organisator ontving niet precies versie/)
+    expect(out.cleanup.every((c) => c.ok)).toBe(true)
+  })
+
+  it('mislukt als een lid een signaal dubbel ontvangt', async () => {
+    const env = fakeEnv({ liveStats: true, realtime: { double: true } })
+    const out = await env.run('5d')
+    expect(out.exitCode).toBe(EXIT.failed)
+    expect(out.results.find((r) => !r.ok).error).toMatch(/ontving niet precies versie/)
+  })
+
+  it('mislukt als een buitenstaander een Realtime-signaal ontvangt (RLS-lek)', async () => {
+    const env = fakeEnv({ liveStats: true, realtime: { leak: true } })
+    const out = await env.run('5d')
+    expect(out.exitCode).toBe(EXIT.failed)
+    expect(out.results.find((r) => !r.ok).error).toMatch(/buitenstaander ontving een signaal/)
+  })
+
+  it('mislukt als een toestel een andere stand ziet', async () => {
+    // Toestel B (derde identiteit) krijgt één keer een stand zonder trekkingen.
+    let done = false
+    const env = fakeEnv({
+      liveStats: true,
+      tamper: (body, out, userId) => {
+        if (!done && userId === uuid(3) && body.action === 'get_room' && out.body?.room?.state?.draws.length) {
+          done = true
+          out.body.room.state.draws = []
+          out.body.room.state.lastSpin = null
+        }
+        return out
+      },
+    })
+    const out = await env.run('5d')
+    expect(out.exitCode).toBe(EXIT.failed)
+    expect(out.results.find((r) => !r.ok).error).toMatch(/ziet iets anders dan/)
+  })
+
+  it('mislukt als beide gelijktijdige SPIN-verzoeken slagen (dubbele trekking)', async () => {
+    const env = fakeEnv({
+      liveStats: true,
+      tamper: (body, out) => (body.action === 'spin' && body.onBehalf && out.status === 409 ? { status: 200, body: out.body } : out),
+    })
+    const out = await env.run('5d')
+    expect(out.exitCode).toBe(EXIT.failed)
+    expect(out.results.find((r) => !r.ok).error).toMatch(/organisator: 200/)
+  })
+
+  it('mislukt bij een 5xx op de RPC in de logs', async () => {
+    const env = fakeEnv({ logStats: () => ({ rpcAll: 99, rpc200: 98, rpc409: 0, rpc5xx: 1, versionConflicts: 0 }) })
+    const out = await env.run('5d')
+    expect(out.exitCode).toBe(EXIT.failed)
+    expect(out.results.find((r) => !r.ok).name).toMatch(/^logs:/)
+  })
+})
+
+describe('live test: Realtime-luisteraar (antwoord van de hulpfunctie)', () => {
+  const stream = (lines, { delayMs = 0 } = {}) =>
+    new ReadableStream({
+      async start(c) {
+        for (const l of lines) {
+          c.enqueue(new TextEncoder().encode(JSON.stringify(l) + '\n'))
+          if (delayMs) await new Promise((r) => setTimeout(r, delayMs))
+        }
+        c.close()
+      },
+    })
+  const L = [
+    { id: 'organisator', token: 't1', waitMs: 1_000 },
+    { id: 'buitenstaander', token: 't2', waitMs: 1_000 },
+  ]
+
+  it('één verzoek voor alle luisteraars; ready pas als iedereen actief is; signalen per luisteraar', async () => {
+    const lines = [
+      { type: 'status', id: 'organisator', status: 'SUBSCRIBED' },
+      { type: 'ready', id: 'organisator', via: 'system' },
+      { type: 'status', id: 'buitenstaander', status: 'SUBSCRIBED' },
+      { type: 'ready', id: 'buitenstaander', via: 'system' },
+      { type: 'pulse', id: 'organisator', version: 7 },
+      { type: 'end', id: 'organisator', reason: 'version' },
+      { type: 'end', id: 'buitenstaander', reason: 'timeout' },
+    ]
+    const { calls, fetchImpl } = recordingFetch(() => Promise.resolve(new Response(stream(lines, { delayMs: 5 }), { status: 200 })))
+    const client = createLiveClient({ fetchImpl, limits: { ...FAST, functionTimeoutMs: 1_000 } })
+    const l = client.listen('kamer', L, { untilVersion: 7 })
+    expect(await l.ready).toEqual(['system'])
+    const outs = await l.done
+    expect(outs.organisator).toEqual({ pulses: [7], statuses: ['SUBSCRIBED'], readyVia: 'system', reason: 'version', errors: [] })
+    expect(outs.buitenstaander).toMatchObject({ pulses: [], reason: 'timeout' })
+    expect(calls).toHaveLength(1)
+    expect(calls[0].url).toBe(`https://${EXPECTED_REF}.supabase.co/functions/v1/fsm-testlogin?mode=listen`)
+  })
+
+  it('503 bij het starten: begrensd opnieuw geprobeerd, met de foutmelding van het platform', async () => {
+    const { calls, fetchImpl } = recordingFetch(() => respond(503, { code: 'WORKER_LIMIT', message: 'No more workers' }))
+    const client = createLiveClient({ fetchImpl, limits: FAST, sleep: async () => {} })
+    const l = client.listen('kamer', L, {})
+    await expect(l.done).rejects.toThrow(/HTTP 503 .*WORKER_LIMIT/)
+    expect(calls).toHaveLength(FAST.listenRetries)
+    expect(client.retries).toHaveLength(FAST.listenRetries - 1)
+    const ok = recordingFetch((url, init, n) => (n === 1 ? respond(503, 'bezet') : Promise.resolve(new Response(stream([{ type: 'ready', id: 'organisator', via: 'system' }, { type: 'end', id: 'organisator', reason: 'timeout' }]), { status: 200 }))))
+    const c2 = createLiveClient({ fetchImpl: ok.fetchImpl, limits: FAST, sleep: async () => {} })
+    const l2 = c2.listen('kamer', [L[0]], {})
+    expect(await l2.ready).toEqual(['system'])
+    expect(ok.calls).toHaveLength(2)
+  })
+
+  it('geen abonnement voor een luisteraar: ready wordt geweigerd', async () => {
+    const lines = [{ type: 'ready', id: 'organisator', via: 'system' }, { type: 'status', id: 'buitenstaander', status: 'CHANNEL_ERROR' }, { type: 'end', id: 'buitenstaander', reason: 'CHANNEL_ERROR' }, { type: 'end', id: 'organisator', reason: 'timeout' }]
+    const client = createLiveClient({ fetchImpl: () => Promise.resolve(new Response(stream(lines), { status: 200 })), limits: FAST })
+    const l = client.listen('kamer', L, {})
+    await expect(l.ready).rejects.toThrow(/niet alle abonnementen actief/)
+    expect((await l.done).buitenstaander.reason).toBe('CHANNEL_ERROR')
+    const c2 = createLiveClient({ fetchImpl: () => Promise.resolve(new Response('nee', { status: 404 })), limits: FAST })
+    await expect(c2.listen('kamer', L, {}).ready).rejects.toThrow(/HTTP 404/)
+  })
+
+  it('luisteraar die blijft hangen: afgebroken na de tijdslimiet', async () => {
+    const hang = (url, init) => new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(new Error('abort'))))
+    const client = createLiveClient({ fetchImpl: hang, limits: { ...FAST, functionTimeoutMs: 50, signInRetryDelayMs: 0 } })
+    const l = client.listen('kamer', [{ id: 'x', token: 't', waitMs: 50 }], {})
+    await expect(l.done).rejects.toThrow(/tijdslimiet/)
   })
 })
 

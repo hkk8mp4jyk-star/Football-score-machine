@@ -11,8 +11,15 @@ oude, vaste spelregels. **Huidige stand: plan F1–F12 (§10); F1 (engine)
 en F2 (machine-UI instelbaar) klaar en goedgekeurd; F7 (multiplayer-schermen)
 plus het online spelverloop goedgekeurd en vastgelegd (commit **054320c**).
 Echte Supabase-koppeling (migratie 3, Edge Function `game` v2, frontend
-`realApi`) **lokaal gebouwd en getest (01-11-2026), nog NIET op Supabase V2
-toegepast, niet gecommit** — wacht op expliciete toestemming (§6b).** Elke fase pas na expliciet akkoord van de
+`realApi`) vastgelegd in commit **3f3f740**; op V2 (31-10-2026, elk apart
+akkoord): migratie 3 toegepast, `db:test` 72/72, `game` **v2 uitgerold**
+(ACTIVE), live tests 5A 15/15, 5B 9/9 en **5D 24/24** geslaagd.
+**01-11-2026: volledige spelcyclus werkt tegen de echte V2** (productiebuild
++ echte publieke sleutel, 3 onafhankelijke browsers, 320/390/430 px: 45/45,
+44/45, 45/45; enige afwijking: 4 trage leesverzoeken + 1 platform-504, zie
+Openstaande punten). DEMO 16/16 pixel-identiek, 0 Supabase-verzoeken.
+**Klaar voor publicatie**; nog nodig: akkoord commit/push, GitHub-variabele,
+merge naar `main` (zie §6b "Publiceren"). Daarna telefoontest.** Elke fase pas na expliciet akkoord van de
 gebruiker. **Commit/push alleen na expliciete toestemming per keer.**
 
 ---
@@ -43,8 +50,11 @@ gebruiker. **Commit/push alleen na expliciete toestemming per keer.**
   door de proxy als Network secret voor `api.supabase.com` toegevoegd; er is
   geen env-variabele nodig.
 - **Haal geen API-keys of geheimen op** (bijv. `/v1/projects/{ref}/api-keys`);
-  dat is geblokkeerd en niet de bedoeling. Hoe de publieke (anon/publishable)
-  key in de frontend komt, beslissen we samen in fase 4.
+  dat is geblokkeerd (token mist `api_gateway_keys_read`) en niet de
+  bedoeling. **Uitzondering 01-11-2026, met expliciet akkoord**: alleen de
+  publieke `sb_publishable_…`-sleutel is via een tijdelijke functie
+  (`fsm-pubkey`, direct verwijderd) in `.env.local` gezet (niet in Git, alleen
+  in die container). Nooit secret-/service_role-sleutels.
 - Autorisatie gebeurt **altijd server-side**. Een deelnemer mag nooit
   organisatoracties kunnen uitvoeren door zelf API-verzoeken te sturen.
 - Voor elke push: `npm test` en `npm run build` moeten slagen.
@@ -589,7 +599,7 @@ leest `configOf(state)` uit de spelstatus die het al kreeg.
   `twzjsmxydnfmowrmffsl.supabase.co` zijn toegestaan (door de gebruiker in de
   omgevingsinstellingen; nodig voor `fn:test:*`).
 
-## 6b. Echte multiplayer (lokaal klaar, 01-11-2026; nog niet uitgerold)
+## 6b. Echte multiplayer (uitgerold op V2, 31-10-2026; telefoontest volgt)
 
 Eén systeem: dezelfde spelregels (`src/lobby/lobbyRules.js`,
 `src/lobby/playRules.js`, `src/game/engine.js`) draaien in de nagebootste
@@ -662,16 +672,51 @@ telefoon (React)                      Supabase V2
   Op V2 pas na toestemming: `db:migrate`, `db:test`, `fn:deploy`,
   `fn:test:5a/5b` (elk apart).
 
-### Uitrolplan V2 (elke stap apart akkoord; nog niets uitgevoerd)
-1. `npm run db:migrate` → migratie 3 `online_spel`. Veilig vóór de nieuwe
-   functie: de huidige functie v1 blijft werken op het nieuwe schema
-   (lokaal getest met de oude code).
-2. `npm run db:test` → `security.sql` (62) + concurrency + 9 integratietests.
-3. `npm run fn:deploy` → `game` v2 (13 bestanden, automatisch verzameld).
-4. `npm run fn:test:5a`, daarna apart `fn:test:5b`.
-5. Publieke sleutel: lokaal `.env.local` (niet in Git) voor telefoontest;
-   GitHub-variabele pas in F11. Daarna test op echte telefoons.
-- **Terugval**: functie terug naar v1 (code commit 054320c), daarna
+### Uitrolplan V2 (elke stap apart akkoord)
+1. **Gedaan 31-10-2026 21:44 UTC**: `npm run db:migrate` → migratie 3
+   `online_spel` (remote versie 20261031214442). Nacontrole: 4 tabellen met
+   RLS, enige policy `room_pulses_select_members`, publicatie alleen
+   `room_pulses`, rechten zoals ontworpen, database leeg, v1 bleef werken.
+2. **Gedaan 21:47–21:51 UTC**: `npm run db:test` → **72/72** (security.sql 62
+   + 10 gelijktijdigheids-/integratietests). 37 bedoelde `version_conflict`,
+   0 fouten, alles opgeruimd.
+3. **Gedaan 21:59:58 UTC**: `npm run fn:deploy` → `game` **versie 2**, ACTIVE,
+   13 bestanden (code = commit 3f3f740). 401 zonder/ongeldig/vervalst token.
+   Eén controleverzoek kreeg binnen 25 s geen antwoord en kwam niet in de
+   gatewaylog voor (onderweg blijven hangen, niet bij Supabase); niet
+   herhaalbaar.
+4. **5A gedaan 22:09 UTC**: 15/15 (prijs €0, geen veiling). **5B gedaan
+   22:47 UTC**: 9/9, 1× PT409/`version_conflict`, 0 fouten. 5B test één
+   toestel; deelnemer + organisator tegelijk, meerdere toestellen,
+   Realtime en bedragen → **5D** (§7b, nog niet live).
+5. **5D gedaan 01-11-2026 23:16 UTC** (na herbouw van de Realtime-luisteraar:
+   eerste poging faalde op een 503 van het platform bij 3 gelijktijdige
+   streams naar één functie): **24/24**, 2× deelnemer + organisator
+   tegelijk → telkens precies één, echte Realtime bij elk lid (exact de
+   nieuwe versie), buitenstaander niets, bedragen/pot klopt, 2 bedoelde
+   PT409, 0 fouten.
+6. **Browser tegen echte V2 gedaan 01-11-2026** (productiebuild met
+   `.env.local`, script in scratchpad `e2e/flow-v2.mjs`, controles in de
+   V2-database, opruimen eigen gebruikers/kamers): 4 deelnemers (1 zonder
+   telefoon), 2 rondes, €2,50, 2 veilingen (€12,34 / €35), geloot. Op 320,
+   390, 430 px: 45/45, 44/45 (4× `get_room` 5,2–5,7 s), 45/45. Realtime in de
+   app echt actief (WebSocket, "Subscribed to PostgreSQL", ~20 signalen per
+   deelnemer per spel). Deelnemer leest met echte sleutel + eigen token
+   `rooms`/`draws` niet (403 42501), alleen het eigen signaal.
+
+### Publiceren (nog te doen, elk met akkoord)
+1. Commit + push naar de werkbranch.
+2. Gebruiker: GitHub → Settings → Secrets and variables → Actions →
+   **Variables** → `VITE_SUPABASE_PUBLISHABLE_KEY` = publishable key uit
+   Supabase (Project Settings → API Keys). `pages.yml` stopt als hij ontbreekt.
+3. Settings → Pages → Source: **GitHub Actions**.
+4. Merge naar `main` → workflow: test, build, deploy →
+   `https://hkk8mp4jyk-star.github.io/football-score-machine/` (DEMO:
+   `…/?demo`). Daarna test op echte telefoons.
+- **Terugval**: functie terug naar v1 = code van commit **90e0265** (de 8
+  functiebestanden daar zijn identiek aan de uitgerolde v1; 054320c niet!):
+  `git worktree add --detach <map> 90e0265` en daar `node scripts/supabase.mjs
+  deploy` (met `NODE_USE_ENV_PROXY=1`). Daarna eventueel
   `supabase/rollback/20261101120000_online_spel_down.sql` (lokaal getest:
   daarna slagen de oude 55 beveiligingstests weer).
 
@@ -707,7 +752,7 @@ het script vergelijkt op **naam**).
   gebruiken voor eigen fouten.**
 - Realtime-publicatie: `rooms` en `seats`.
 - **Migratie 3** `supabase/migrations/20261101120000_online_spel.sql` (naam
-  `online_spel`; **lokaal klaar, nog NIET op V2**): (1) geen directe
+  `online_spel`; **op V2 toegepast 31-10-2026**): (1) geen directe
   leesrechten meer voor deelnemers op `rooms`/`seats`/`draws` (policies weg,
   `rooms`/`seats` uit de Realtime-publicatie); (2) `draws`: uitslagen 0-0 t/m
   6-6 + OVERIG, deelnemer 0–11, rondes 1–4 of veiling; (3)
@@ -731,7 +776,7 @@ Eén functie, uitgerold als `game` (`npm run fn:deploy`), URL
 `https://twzjsmxydnfmowrmffsl.supabase.co/functions/v1/game` (V2: versie 1,
 ACTIVE, verify_jwt uit, uitgerold 30-10-2026). Schemawijziging na fase 3: alleen migratie 2 (PT409).
 
-**Versie 2 (lokaal klaar, nog niet uitgerold)**: acties van het instelbare
+**Versie 2 (uitgerold 31-10-2026, ACTIVE)**: acties van het instelbare
 spel (vervangt de tabel hieronder, die v1 beschrijft): `time`, `create_room
 {name, home, away, draft}`, `lookup_room {code}`, `join_room {code, name}`,
 `get_room`, `update_settings {draft}`, `set_order {order}`, `shuffle_order`,
@@ -801,7 +846,7 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   `turn_not_released`/`no_auction_turn`/`game_finished`/`not_auction`/
   `spin_in_progress`/`conflict` 409, `too_large` 413 (>4 kB),
   `too_many_rooms` 429, `server_error` 500 (zonder interne details).
-- **Live test** (`scripts/live-test.mjs`), drie afzonderlijke fasen; één
+- **Live test** (`scripts/live-test.mjs`), vier afzonderlijke fasen; één
   fase per run, nooit automatisch een volgende:
 
 | Commando | Fase | Inhoud |
@@ -809,6 +854,16 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
 | `npm run fn:test:5a` | 5A basis | 3 anonieme logins (na elkaar), 401-controles, servertijd, kamer, opzoeken, naam claimen, weigeringen, **één** SPIN, status ophalen, herstel (opnieuw versturen → geen 2e trekking; later ophalen → beurt vrij). **Geen** gelijktijdige verzoeken (lokaal getoetst: max. 1 verzoek tegelijk) |
 | `npm run fn:test:5b` | 5B beperkt | 1 login, kamer, **2** gelijktijdige SPIN's |
 | `npm run fn:test:5c -- --bevestig` | 5C uitgebreid | idem met **10**; zonder `--bevestig` weigert het script |
+| `npm run fn:test:5d` | 5D volledig spel | 4 logins (organisator, A, B, buitenstaander); 3 deelnemers × 2 rondes, €2,50 per trekking, 2 veilingen (A €12,34 zelf, B €35,00 namens); volgorde geloot (≠ aanmelding); per eerste beurt van A en B **deelnemer + organisator (namens) tegelijk** → precies één; na elke stap `get_room` op 3 toestellen vergeleken (deelnemers, volgorde, trekkingen, fase, `ack`, `announce`); **echte Realtime** bij aanmelden, start, gelijktijdige SPIN's, veilingen en overgangen (leden ontvangen de nieuwe versie, buitenstaander niets); bedragen/pot op alle toestellen + database; database: 8 unieke trekkingen/draaien, bod alleen bij de veiling, `spun_by`/`on_behalf`; logs: RPC alleen 200/409, 200 = aantal geslaagde wijzigingen, geen 5xx/herhaallus; reactietijden (> 5 s = waarschuwing). Tijdslimiet 420 s |
+
+  **Realtime in 5D**: de hulpfunctie `fsm-testlogin` heeft een tweede modus
+  (`?mode=listen`): ze abonneert zich in Supabase met het token van de
+  testgebruiker op `postgres_changes` van `room_pulses` (zoals `realApi`,
+  dus met RLS van die gebruiker) en stuurt `status`/`ready`/`pulse`/`end`
+  als NDJSON terug (max. 30 s, stopt bij de verwachte versie). Lokaal
+  nagebootst met membership-controle (`tests/live-test.test.js`); de modus
+  zelf is in Deno gestart en stopt bij geen verbinding netjes
+  (`CHANNEL_ERROR`). Echte Realtime-aflevering kan alleen live.
 
   - 5B/5C controleren apart: (1) **client**: precies één 200, de rest 409
     (`turn_not_released`/`conflict`), nooit 5xx; (2) **database**: precies
@@ -1112,9 +1167,9 @@ voorlopig overgeslagen.
 | **F1** | Engine instelbaar (§5): 1–12 spelers, 1–4 rondes, slang, pool 0-0…6-6 + OVERIG, MEGA per uitslag, prijs (ook €0), veiling 0–10, namen/volgorde; DEMO = standaard | L | **klaar en goedgekeurd** (commit a9e5b88) |
 | **F2** | Machine-UI instelbaar: namen/volgorde uit `config`, rondebadges R, "Trekking x van N×R", "Bekijk de eindstand" bij A = 0, tegelindeling 1–10 (max. tegelgrootte), rollen tot 6 alleen bij pool > 4, raster tot 6-6, prijs per trekking; DEMO pixel-identiek | L | **klaar en goedgekeurd** (30-10-2026) |
 | F3 | Server: wachtkamer, `join_room(code, naam)`, `update_settings`, `set_order`/`shuffle_order` (server-crypto), `remove_player`, `start_game` (volledige validatie, `validateConfig`), SPIN/veiling pas na start, terugkeer via `lookup_room`; migratie 3 + D8-triggers + `security.sql` in PGlite; unittests | L | **lokaal klaar** (01-11-2026; D8 via versiecontrole i.p.v. triggers) |
-| F4 | Migratie 3 + `db:test` | V2 | wacht op toestemming |
-| F5 | Uitrol `game` + live tests 5A/5B aangepast aan wachtkamer/start | V2 | scripts klaar; uitrol wacht op toestemming |
-| F6 | Online fundament frontend: supabase-js, publieke sleutel (env), `callGame` (tijdslimiet, nooit automatisch herhaald), kloksync, statusopslag (hoogste versie wint), sessie/terugkeer | L | **lokaal klaar** (`realApi`, 01-11-2026) |
+| F4 | Migratie 3 + `db:test` | V2 | **gedaan** (31-10-2026, 72/72) |
+| F5 | Uitrol `game` + live tests 5A/5B aangepast aan wachtkamer/start | V2 | **gedaan** (v2 ACTIVE, 5A 15/15, 5B 9/9, 5D 24/24) |
+| F6 | Online fundament frontend: supabase-js, publieke sleutel (env), `callGame` (tijdslimiet, nooit automatisch herhaald), kloksync, statusopslag (hoogste versie wint), sessie/terugkeer | L | **klaar, getest tegen echte V2** (01-11-2026) |
 | F7 | Schermen Begin (+ "Verder met huidig spel"), Nieuw spel, Meedoen, Wachtkamer, Instellingen, Volgorde; router met `?demo` en `?kamer=`; Playwright tegen nagebootste server | L | **gebouwd, wacht op beoordeling** (31-10-2026, vóór F3 uitgevoerd op verzoek; B1–B10) |
 | F8 | Online spel: synchrone animaties (servertijd), herstel, online menu ("draai namens", "plek vrijgeven"), verbindingsbalkje; daarna korte live test | L → V2 | **lokaal met mock gebouwd** (startanimatie, SPIN-regels, Draai namens, veiling + aankondiging), wacht op beoordeling; nog niet op de echte server |
 | F9 | Veiling online (0–10, tegelindeling) | L → V2 | |
@@ -1134,12 +1189,23 @@ voorlopig overgeslagen.
   eventueel zachte drempel naar standalone-modus.
 
 ### Openstaande punten
-- **Echte multiplayer nog niet op V2**: migratie 3, `db:test`, uitrol `game`
-  v2, live tests 5A/5B en test op echte telefoons wachten op toestemming
-  (§6b). Niet lokaal te testen zonder V2: echte Supabase Auth (anonieme
-  login + tokenverversing), echte Realtime op `room_pulses` (lokaal alleen de
-  terugval), echte gelijktijdige transacties in Postgres (lokaal PGlite =
-  één verbinding), netwerkvertraging tussen telefoons.
+- **Nog niet getest**: echte telefoons (iOS/Android, mobiel netwerk),
+  tokenverversing na > 1 uur spelen, 12 deelnemers in de browser (wel in
+  `db:test` en unittests).
+- **Eindscherm zonder totale pot** (en zonder "Deel einduitslag"): hoort bij
+  F10, bewust niet gebouwd. Totalen per deelnemer kloppen; terug via menu
+  "Naar beginscherm".
+- **Edge Runtime (Free plan)**: start voor bijna elk verzoek een nieuwe
+  worker (~280 boots per ~550 verzoeken). Eén keer een 504 op `game` precies
+  bij een worker-`shutdown` en 4 trage `get_room` (~5,5 s) in één
+  browserrun; geen gevolgen (leesverzoek, volgende poll/Realtime herstelt;
+  een mislukte SPIN toont "Geen verbinding. Probeer het opnieuw.", server
+  voorkomt dubbel). Drie gelijktijdige langlopende streams naar één functie
+  gaven een 503 (alleen relevant voor de testhulpfunctie).
+- Anonieme aanmeldingen: Supabase-limiet per IP-adres (standaard 30 per uur);
+  12 spelers op één wifi is ruim binnen de grens.
+- Unittest `lobby.test.js` "nog niet beschikbaar" gebruikt nu expliciet
+  `key: ''` (anders probeerde hij met `.env.local` echt in te loggen).
 - **Voor F3/F4 (echte server/database)**: `playRules.js` en `lobbyRules.js`
   overnemen in de Edge Function; database uitbreiden met wedstrijd
   (`home`/`away`), `organizer_name`, `max_players`, deelnemers zonder

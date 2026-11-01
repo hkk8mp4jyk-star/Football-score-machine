@@ -26,9 +26,16 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Controle publieke sleutel
+        run: test -n "${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}" || (echo "Repository-variabele VITE_SUPABASE_PUBLISHABLE_KEY ontbreekt" && exit 1)
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          # Publieke (publishable) sleutel van Supabase V2, als repository-
+          # variabele (Settings → Secrets and variables → Actions → Variables).
+          # Nooit een service_role-sleutel.
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
