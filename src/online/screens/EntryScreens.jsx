@@ -8,7 +8,7 @@ import { missingText } from '../lobbyText.js'
 // Beginscherm: "Nieuw spel", "Meedoen"; bij een lopend spel bovenaan een
 // gouden knop met de wedstrijdnaam (verder met dat spel). Geschiedenis blijft
 // voorlopig weg (B7). Geen verdere toelichtingen.
-export function Home({ resume, onNew, onJoin, onResume }) {
+export function Home({ resume, onNew, onJoin, onResume, hasHistory = false, onHistory }) {
   return (
     <OnlineScreen className="ol-home">
       <div className="ol-home-body">
@@ -23,6 +23,11 @@ export function Home({ resume, onNew, onJoin, onResume }) {
         <button type="button" className="ol-big-btn" onClick={onJoin}>
           Meedoen
         </button>
+        {hasHistory && (
+          <button type="button" className="ol-big-btn" onClick={onHistory}>
+            Geschiedenis
+          </button>
+        )}
       </div>
     </OnlineScreen>
   )

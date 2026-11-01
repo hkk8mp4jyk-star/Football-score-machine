@@ -83,8 +83,13 @@ function PerParticipant({ state }) {
   )
 }
 
-export default function Overview({ state, onClose, inline = false, initialTab = 'remaining' }) {
-  const [tab, setTab] = useState(initialTab)
+export default function Overview({ state, onClose, inline = false, initialTab = 'remaining', onTabChange }) {
+  const [tab, setTabState] = useState(initialTab)
+  // Optioneel (online eindscherm): het actieve tabblad doorgeven.
+  const setTab = (t) => {
+    setTabState(t)
+    onTabChange?.(t)
+  }
   return (
     <div className={inline ? 'overview overview-inline' : 'sheet-backdrop'} onClick={inline ? undefined : onClose}>
       <div className={inline ? '' : 'sheet sheet-tall'} onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Uitslagen">

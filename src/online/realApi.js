@@ -19,6 +19,7 @@
 
 import { ApiError, isValidCode, normalizeCode } from './api.js'
 import { clock as sharedClock, estimateOffset } from '../game/clock.js'
+import { createHistoryStore } from './history.js'
 
 const SESSION_KEY = 'fsm-online-session'
 export const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || 'https://twzjsmxydnfmowrmffsl.supabase.co'
@@ -39,6 +40,7 @@ function unavailableApi(storage) {
   return {
     isMock: false,
     session: sessionStore(storage),
+    history: createHistoryStore(storage),
     now: () => sharedClock.now(),
     createRoom: unavailable,
     lookupRoom: unavailable,
@@ -169,6 +171,7 @@ export function createRealApi({
   return {
     isMock: false,
     session: sessionStore(storage),
+    history: createHistoryStore(storage),
     now: () => clock.now(),
 
     async createRoom(setup) {

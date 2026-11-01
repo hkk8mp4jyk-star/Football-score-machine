@@ -18,8 +18,10 @@ akkoord): migratie 3 toegepast, `db:test` 72/72, `game` **v2 uitgerold**
 + echte publieke sleutel, 3 onafhankelijke browsers, 320/390/430 px: 45/45,
 44/45, 45/45; enige afwijking: 4 trage leesverzoeken + 1 platform-504, zie
 Openstaande punten). DEMO 16/16 pixel-identiek, 0 Supabase-verzoeken.
-**Klaar voor publicatie**; nog nodig: akkoord commit/push, GitHub-variabele,
-merge naar `main` (zie §6b "Publiceren"). Daarna telefoontest.** Elke fase pas na expliciet akkoord van de
+Commit **b0916b1** (5D + publicatieworkflow). **F10 (eindscherm + deelbare
+PNG per tabblad) en F12 (geschiedenis, localStorage) goedgekeurd en
+gecommit (01-11-2026).** Nog te doen: GitHub-variabele, Pages-bron, merge
+naar `main` (§6b "Publiceren"), telefoontest.** Elke fase pas na expliciet akkoord van de
 gebruiker. **Commit/push alleen na expliciete toestemming per keer.**
 
 ---
@@ -339,7 +341,40 @@ oudere afspraken hieronder):**
   Vegas-bord (formaat, vormgeving, verlichting) en de namenanimatie
   (snelheid, door elkaar draaien, vertragen, één voor één vastzetten,
   timing en effecten).
-- Geschiedenis blijft verborgen. Een deelbare PNG bestaat nog niet (F10).
+- **F10 eindscherm (goedgekeurd 01-11-2026)**: wedstrijdnaam, "Totale
+  pot" in goud, de bestaande tabbladen (standaard "Per deelnemer", gelote
+  volgorde), onderaan voor iedereen "Deel einduitslag" (goud) en "Terug naar
+  beginscherm"; geen winnaar. Alleen online; DEMO ongewijzigd.
+- **F10 "Deel einduitslag" deelt het actieve tabblad** (goedgekeurd
+  01-11-2026; ook in Geschiedenis): "Uitslagen" → **raster-PNG**
+  (`gridModel`, `uitslagen-<wedstrijd>-<datum>.png`, 1080 × ~1412 px): zelfde
+  kop, daaronder het raster in de app-indeling (gouden as-cijfers, getrokken
+  vak donkerblauw met naam, vrij vak goud "VRIJ", buiten de pool gedimd met
+  stippelrand, "OVERIGE UITSLAGEN" + naam eronder); geen markeringen, geen
+  deelnemersoverzicht. "Per deelnemer" (standaard) → de deelnemers-PNG
+  hieronder. Eén knop; beide PNG's worden vooraf gemaakt. `Overview` kreeg
+  alleen de optionele prop `onTabChange` (DEMO-markup ongewijzigd).
+- **F10 deelnemers-PNG (vereenvoudigd en goedgekeurd 01-11-2026)**: 1080 px
+  breed, hoogte volgt de inhoud (4 spelers ~1244 px, 12 × 4 met 50 uitslagen
+  ~2884 px). Kop: "Football / Score Machine", wedstrijd, speeldatum (nl),
+  één regel "TOTALE POT €…" in gouden kader. Daaronder direct per deelnemer
+  (gelote volgorde) een donkerblauwe kaart: positie + naam, totaal rechts in
+  goud, alle uitslagen als **identieke gouden blokjes** "uitslag | bedrag"
+  ("Overig" als gewone tekst). **Geen uitslagenraster, geen MEGA-, veiling- of
+  OVERIG-markering, geen legenda, geen winnaar.** Delen via
+  `navigator.share({files})` (WhatsApp e.d.), anders downloaden; bestandsnaam
+  `einduitslag-<wedstrijd>-<jjjj-mm-dd>.png`; vooraf gemaakt bij het openen
+  van het eindscherm.
+- **MEGA WIN alleen** bij het instellen (groen in "Nieuw spel"/"Wijzig") en
+  in de MEGA WIN-animatie; overzichten, eindscherm, geschiedenis en PNG tonen
+  MEGA- en veilinguitslagen als gewone uitslagen (in de app-overzichten was
+  dat al zo; `Overview` ongewijzigd, DEMO ongewijzigd).
+- **F12 geschiedenis (goedgekeurd 01-11-2026; vervangt B7; definitief
+  alleen lokaal in localStorage, geen centrale opslag/overzetcodes/accounts)**: knop
+  "Geschiedenis" op het beginscherm zodra er minstens één afgeronde wedstrijd
+  is; lijst (max. 10, nieuwste eerst op speeldatum) met wedstrijd, datum en
+  pot; openen = eindscherm (alleen lezen, "Terug naar geschiedenis", PNG
+  opnieuw). "Verder met huidig spel" alleen voor een niet-afgerond spel.
 
 **Besluiten wachtkamer B1–B10 (31-10-2026; B1, B4, B6, B9 aangepast, zie
 hierboven):**
@@ -434,6 +469,14 @@ src/lobby/playRules.js      pure spelregels online: spinTurn (wie mag SPIN, onBe
                             advancePhase (faseovergangen, alleen organisator →
                             room.ack), turnInfo, introTimeline/
                             introPhase/INTRO (startanimatie), ANNOUNCE_MS
+src/online/history.js       F12: isRoomFinished, historyEntry (alleen-lezen kopie),
+                            addEntry (max 10, nieuwste eerst), createHistoryStore
+                            (localStorage 'fsm-history' + lopende spellen
+                            'fsm-my-rooms'; mock: per tabblad), collectFinished
+src/online/share/resultImage.js  F10: shareModel (puur), shareFileName, canvas-
+                            tekening (renderResultCanvas/-File), shareOrDownload
+src/online/screens/FinalScreen.jsx  eindscherm (live en geschiedenis)
+src/online/screens/History.jsx  HistoryList, HistoryMatch
 src/online/intro/*          slotMath (tijdgestuurde rolpositie), MiniReels (WARMING UP,
                             BONUS TRIGGER), StartIntro (BonusTrigger, NamesReveal,
                             VegasWelcome), VegasSign (SVG-bord), AuctionAnnounce
@@ -1018,6 +1061,22 @@ tests/server.test.js, tests/memoryStore.js   unittests (geheugenopslag met DB-re
   1280 px), geen horizontaal scrollen, geen consolefouten; bevinding 4 rondes
   overlapten de knop "Uitslagen bekijken" → opgelost met `rounds-many`
   (gemeten ruimte bij 320 px 14 px, bij 390 px 46 px).
+- **F10 + F12 (01-11-2026, lokaal, niet gecommit)**: `npm test` → **314**
+  (+15 in `tests/history.test.jsx`: afgerond pas na "Bekijk de eindstand";
+  opslag max 10, elfde verdringt oudste, geen dubbele, sortering; herstart
+  (nieuwe store, zelfde opslag); kapotte/ontbrekende opslag; lopend spel niet
+  opgeslagen; `collectFinished`; PNG-gegevens bij 1, 4 en 12 × 4 met 50
+  uitslagen (volgorde, kosten, veilingen, pot, MEGA/OVERIG); bestandsnaam;
+  delen/annuleren/terugval downloaden; schermen eindscherm, beginscherm,
+  geschiedenis, terugkijken zonder SPIN/beheer). **Browser mock** (dev,
+  scratchpad `f10/shots.mjs`): 24/24 (eindscherm 320/390/430, gelote volgorde,
+  pot, knoppen, geen horizontaal scrollen; download + nagebootst deelmenu
+  met PNG-bestand; PNG 1/4/12 spelers; geschiedenis 11 → 10, nieuwste boven;
+  terugkijken + PNG opnieuw). **Echte V2** (`e2e/f12-v2.mjs`): 13/13 (echt spel
+  tot het einde, PNG, server weigert elke wijziging na afloop (409), browser
+  dicht/open → geschiedenis + PNG opnieuw, lopend spel intact), opgeruimd.
+  Volledige spelcyclus V2 opnieuw 45/45 (390 px). DEMO 16/16 pixel-identiek,
+  0 Supabase-verzoeken. Geen database- of Edge Function-wijziging nodig.
 - **Echte koppeling lokaal (01-11-2026, niet gecommit)**: `npm test` →
   **286 tests** (+ eindstand-volgorde regressie; `server.test.js` herschreven
   voor de nieuwe acties: 39 tests incl. 10.000 proeftrekkingen chi-kwadraat,
@@ -1173,9 +1232,9 @@ voorlopig overgeslagen.
 | F7 | Schermen Begin (+ "Verder met huidig spel"), Nieuw spel, Meedoen, Wachtkamer, Instellingen, Volgorde; router met `?demo` en `?kamer=`; Playwright tegen nagebootste server | L | **gebouwd, wacht op beoordeling** (31-10-2026, vóór F3 uitgevoerd op verzoek; B1–B10) |
 | F8 | Online spel: synchrone animaties (servertijd), herstel, online menu ("draai namens", "plek vrijgeven"), verbindingsbalkje; daarna korte live test | L → V2 | **lokaal met mock gebouwd** (startanimatie, SPIN-regels, Draai namens, veiling + aankondiging), wacht op beoordeling; nog niet op de echte server |
 | F9 | Veiling online (0–10, tegelindeling) | L → V2 | |
-| F10 | Eindscherm (pot, terug), deelafbeelding (canvas → PNG, deelmenu/opslaan) | L | |
+| F10 | Eindscherm (pot, terug), deelafbeelding (canvas → PNG, deelmenu/opslaan) | L | **klaar en goedgekeurd** (01-11-2026; PNG per actief tabblad) |
 | F11 | Publieke sleutel als GitHub-variabele (begeleid), test op telefoons; daarna pas voorstel voor `main`/Pages (toestemming) | V2/Pages | |
-| F12 | Geschiedenis (afgeronde spellen, laatste 10, opnieuw delen) — uitstelbaar | L → V2 | |
+| F12 | Geschiedenis (afgeronde spellen, laatste 10, opnieuw delen) | L | **klaar en goedgekeurd** (01-11-2026; localStorage, geen V2-wijziging) |
 
 - **Risico's**: DEMO (statusversie, engine) → referentietest + pixelvergelijking;
   goedgekeurde machine (rollen, tegels) → alleen anders bij afwijkende pool/A,
@@ -1192,9 +1251,10 @@ voorlopig overgeslagen.
 - **Nog niet getest**: echte telefoons (iOS/Android, mobiel netwerk),
   tokenverversing na > 1 uur spelen, 12 deelnemers in de browser (wel in
   `db:test` en unittests).
-- **Eindscherm zonder totale pot** (en zonder "Deel einduitslag"): hoort bij
-  F10, bewust niet gebouwd. Totalen per deelnemer kloppen; terug via menu
-  "Naar beginscherm".
+- **Geschiedenis staat per toestel/browser** (zoals de identiteit, D6):
+  ander toestel of gewiste browsergegevens = lege geschiedenis. Een spel komt
+  erin zodra dit toestel de eindstand ziet, of bij het volgende beginscherm
+  (lopende spellen van dit toestel worden dan nagelopen).
 - **Edge Runtime (Free plan)**: start voor bijna elk verzoek een nieuwe
   worker (~280 boots per ~550 verzoeken). Eén keer een 504 op `game` precies
   bij een worker-`shutdown` en 4 trage `get_room` (~5,5 s) in één

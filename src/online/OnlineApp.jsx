@@ -5,6 +5,8 @@ import { OnlineScreen, Toast, useToast } from './screens/common.jsx'
 import { CodeScreen, Home, JoinScreen, NewGame, Notice } from './screens/EntryScreens.jsx'
 import { LobbyOrganizer, LobbyParticipant, inviteText } from './screens/Lobby.jsx'
 import { OnlineGame } from './screens/OnlineGame.jsx'
+import { HistoryList, HistoryMatch } from './screens/History.jsx'
+import { collectFinished, isRoomFinished } from './history.js'
 
 // Online spel: beginscherm, nieuw spel, meedoen (code of uitnodigingslink
 // `?kamer=CODE`), wachtkamer en start. Alle wijzigingen gaan via de server
@@ -46,6 +48,8 @@ function Loading() {
 
 function RoomRoute({ api, roomId, code, onHome, onRejoin, notify }) {
   const { room, error, accept } = useRoom(api, roomId)
+  // Afgerond spel → geschiedenis van dit toestel (alleen-lezen kopie).
+  const onFinished = useCallback((r) => api.history.save(r, api.now()), [api])
 
   const actions = useMemo(() => {
     const call = (fn) => async (...args) => accept(await fn(roomId, ...args))
@@ -72,7 +76,7 @@ function RoomRoute({ api, roomId, code, onHome, onRejoin, notify }) {
   }
   if (error?.code === 'removed') return <Notice kind="removed" matchName={room.matchName} onHome={onHome} onRejoin={() => onRejoin(code)} />
   if (!room) return <Loading />
-  if (room.phase === 'started') return <OnlineGame room={room} actions={actions} onHome={onHome} notify={notify} />
+  if (room.phase === 'started') return <OnlineGame room={room} actions={actions} onHome={onHome} notify={notify} onFinished={onFinished} />
   if (!room.isOrganizer) return <LobbyParticipant room={room} onHome={onHome} />
 
   const url = inviteUrl(room.code)
@@ -116,6 +120,7 @@ export default function OnlineApp() {
   const enterRoom = useCallback(
     (roomId, code) => {
       api.session.set({ roomId, code })
+      api.history.remember(roomId, code)
       setUrl(code)
       setView({ name: 'room', roomId, code })
     },
@@ -129,13 +134,25 @@ export default function OnlineApp() {
     if (session?.roomId) {
       try {
         const room = await a.getRoom(session.roomId)
-        const me = room.players.find((p) => p.isMe)
-        resume = { matchName: room.matchName, phase: room.phase, myName: me?.name ?? '', isOrganizer: room.isOrganizer, ...session }
+        if (isRoomFinished(room, a.now())) {
+          // Afgerond: niet meer "Verder met huidig spel", wel in de geschiedenis.
+          a.history.save(room, a.now())
+          a.session.clear()
+        } else {
+          const me = room.players.find((p) => p.isMe)
+          resume = { matchName: room.matchName, phase: room.phase, myName: me?.name ?? '', isOrganizer: room.isOrganizer, ...session }
+        }
       } catch (e) {
         if (e.code !== 'network') a.session.clear()
       }
     }
-    setView({ name: 'home', resume })
+    setView({ name: 'home', resume, hasHistory: a.history.list().length > 0 })
+    // Andere spellen van dit toestel die intussen zijn afgerond (op de achtergrond).
+    if (a.history.myRooms().some((r) => r.roomId !== session?.roomId)) {
+      await collectFinished(a)
+      const hasHistory = a.history.list().length > 0
+      setView((v) => (v.name === 'home' && v.hasHistory !== hasHistory ? { ...v, hasHistory } : v))
+    }
   }, [api])
 
   // Kamer openen via code of link. `inline`: fouten terug naar het formulier.
@@ -151,6 +168,7 @@ export default function OnlineApp() {
       }
       if (summary.mySlot != null) {
         a.session.set({ roomId: summary.id, code: summary.code })
+        a.history.remember(summary.id, summary.code)
         setUrl(summary.code)
         return setView({ name: 'room', roomId: summary.id, code: summary.code })
       }
@@ -186,6 +204,8 @@ export default function OnlineApp() {
           onNew={() => setView({ name: 'new' })}
           onJoin={() => setView({ name: 'code' })}
           onResume={() => enterRoom(view.resume.roomId, view.resume.code)}
+          hasHistory={view.hasHistory}
+          onHistory={() => setView({ name: 'history' })}
         />
       )
       break
@@ -216,6 +236,18 @@ export default function OnlineApp() {
         />
       )
       break
+    case 'history':
+      screen = <HistoryList entries={api.history.list()} onBack={() => goHome()} onOpen={(entry) => setView({ name: 'historyMatch', roomId: entry.roomId })} />
+      break
+    case 'historyMatch': {
+      const entry = api.history.get(view.roomId)
+      screen = entry ? (
+        <HistoryMatch entry={entry} notify={notify} onBack={() => setView({ name: 'history' })} />
+      ) : (
+        <HistoryList entries={api.history.list()} onBack={() => goHome()} onOpen={(e) => setView({ name: 'historyMatch', roomId: e.roomId })} />
+      )
+      break
+    }
     case 'room':
       screen = (
         <RoomRoute

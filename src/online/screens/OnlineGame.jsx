@@ -4,7 +4,7 @@ import AuctionScreen from '../../components/AuctionScreen.jsx'
 import Overview from '../../components/Overview.jsx'
 import MegaWin from '../../components/MegaWin.jsx'
 import AuctionSetup from '../../components/AuctionSetup.jsx'
-import { Logo, MenuButton } from '../../components/Header.jsx'
+import { MenuButton } from '../../components/Header.jsx'
 import { RESULT_BY_ID, TIMING } from '../../game/config.js'
 import { configOf, playerName, turnOrder } from '../../game/gameConfig.js'
 import { deriveView } from '../../game/view.js'
@@ -16,12 +16,13 @@ import { errorText } from '../api.js'
 import { StartIntro } from '../intro/StartIntro.jsx'
 import { AuctionAnnounce } from '../intro/AuctionAnnounce.jsx'
 import { ConfirmSheet } from './common.jsx'
+import { FinalScreen } from './FinalScreen.jsx'
 
 // Online spel: eerst de gezamenlijke startanimatie, daarna de bestaande
 // scoremachine. SPIN alleen voor wie aan de beurt is (op eigen telefoon), of
 // voor de organisator bij een deelnemer zonder telefoon; daarnaast kan de
 // organisator expliciet "Draai namens …".
-export function OnlineGame({ room, actions, onHome, notify, now: fixedNow }) {
+export function OnlineGame({ room, actions, onHome, notify, onFinished, now: fixedNow }) {
   const [, refresh] = useReducer((n) => n + 1, 0)
   const [sheet, setSheet] = useState(null) // 'overview' | 'menu' | 'setup' | { onBehalf }
   const [pending, setPending] = useState(false)
@@ -64,6 +65,12 @@ export function OnlineGame({ room, actions, onHome, notify, now: fixedNow }) {
     if (tileStage?.stage === 'green') sfx.highlight()
     if (tileStage?.stage === 'fade') sfx.remove()
   }, [tileStage?.stage, tileStage?.resultId])
+
+  // Afgerond: de eindstand in de geschiedenis van dit toestel bewaren.
+  const done = game.phase === 'finished' && !reveal
+  useEffect(() => {
+    if (done && fixedNow == null) onFinished?.(room)
+  }, [done, room, onFinished, fixedNow])
 
   if (intro) return <StartIntro room={room} now={now} />
 
@@ -146,18 +153,7 @@ export function OnlineGame({ room, actions, onHome, notify, now: fixedNow }) {
       />
     )
   } else if (finished) {
-    screen = (
-      <div className="screen screen-finished">
-        <header className="top top-compact">
-          <div className="top-row">
-            <Logo compact />
-            <MenuButton onClick={() => setSheet('menu')} />
-          </div>
-          <h1 className="finished-title">{room.matchName}</h1>
-        </header>
-        <Overview state={game} inline initialTab="people" />
-      </div>
-    )
+    screen = <FinalScreen room={room} state={game} onBack={onHome} notify={notify} menu={<MenuButton onClick={() => setSheet('menu')} />} />
   } else {
     screen = (
       <AuctionScreen

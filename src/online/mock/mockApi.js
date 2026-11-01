@@ -10,6 +10,7 @@
 // Voor de tests zijn opslag, kanaal, willekeur en vertraging in te stellen.
 
 import { ApiError, CODE_ALPHABET, isValidCode, normalizeCode } from '../api.js'
+import { createHistoryStore } from '../history.js'
 import {
   LobbyError,
   addManualPlayer,
@@ -135,6 +136,7 @@ export function createMockApi({
     isMock: true,
     userId,
     now,
+    history: createHistoryStore(local), // per tabblad, net als de testidentiteit
     session: {
       get() {
         try {

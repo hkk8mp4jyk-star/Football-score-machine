@@ -3566,3 +3566,110 @@ input:focus-visible {
 .ol-player .ol-name {
   min-width: 3.4em;
 }
+
+/* ==========================================================================
+   Eindscherm en geschiedenis (F10/F12) — alleen nieuwe ol-klassen
+   ========================================================================== */
+.ol-final .finished-title {
+  margin-bottom: 4px;
+}
+.ol-final-pot {
+  margin: 0 0 10px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+}
+.ol-final-pot span {
+  font-family: var(--font-cond);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-mist);
+}
+.ol-final-pot b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(28px, 8.5vw, 36px);
+  line-height: 1;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.ol-final-actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+}
+.ol-final-actions .gold-btn.ol-btn-wide,
+.ol-final-actions .ol-big-btn {
+  height: 54px;
+  font-size: 21px;
+}
+@media (max-height: 640px) {
+  .ol-final-actions .gold-btn.ol-btn-wide,
+  .ol-final-actions .ol-big-btn {
+    height: 46px;
+    font-size: 18px;
+  }
+  .ol-final-pot {
+    margin-bottom: 6px;
+  }
+}
+
+/* Geschiedenis */
+.ol-history {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ol-history-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid rgb(229 191 99 / 0.35);
+  background: rgb(6 20 51 / 0.65);
+  color: var(--color-ivory);
+  text-align: left;
+}
+.ol-history-item:active {
+  background: rgb(22 50 118 / 0.55);
+}
+.ol-history-name {
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--color-gold-300);
+  overflow-wrap: anywhere;
+}
+.ol-history-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.ol-history-date {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--color-mist);
+}
+.ol-history-pot {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 20px;
+  color: var(--color-gold-400);
+  white-space: nowrap;
+}
