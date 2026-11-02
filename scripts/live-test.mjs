@@ -699,6 +699,8 @@ async function phase5d(env) {
       startedAt: room.startedAt,
       announce: room.announce,
       ack: room.ack,
+      awaitPlay: room.awaitPlay ?? null,
+      playAt: room.playAt ?? null,
     }))
     for (let i = 1; i < proj.length; i++) {
       assert(JSON.stringify(proj[i]) === JSON.stringify(proj[0]), `${what}: ${views[i].name} ziet iets anders dan ${views[0].name}\n${JSON.stringify(proj[i])}\n${JSON.stringify(proj[0])}`)
@@ -758,10 +760,16 @@ async function phase5d(env) {
     if (r.room.awaitPlay) {
       // game v3: Las Vegas-scherm blijft staan; alleen de organisator gaat verder.
       await sleep(Math.min(Math.max(ctx.startedAt + tl.vegasAt - r.serverNow + 300, 0), limits.maxIntroWaitMs))
+      // Las Vegas-wachtfase (ook na herladen): overal wachten, nog geen vertrekmoment.
+      const wait = (await sameEverywhere('Las Vegas-wachtfase')).proj
+      assert(wait.awaitPlay === true && wait.playAt === null, `wachtfase: ${JSON.stringify(wait)}`)
       await refused(A, { action: 'start_play' }, 403, 'not_organizer')
       await refused(A, { action: 'spin' }, 409, 'intro_running')
       const play = await realtime('START SPEL', [org, A, B], [], () => ok(org, { action: 'start_play' }))
       await refused(org, { action: 'start_play' }, 409, 'nothing_to_advance')
+      // Alle toestellen: hetzelfde vertrekmoment (synchrone overgang).
+      const go = (await sameEverywhere('na START SPEL')).proj
+      assert(go.playAt === play.room.playAt, `vertrekmoment ${go.playAt} ≠ ${play.room.playAt}`)
       ctx.introEnd = play.room.playAt
       await sleep(Math.min(Math.max(ctx.introEnd - play.serverNow + 300, 0), limits.maxIntroWaitMs))
     } else await sleep(Math.min(Math.max(ctx.introEnd - r.serverNow + 500, 0), limits.maxIntroWaitMs))

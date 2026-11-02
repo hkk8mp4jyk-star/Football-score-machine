@@ -22,8 +22,9 @@ Commit **b0916b1** (5D + publicatieworkflow). **F10 (eindscherm + deelbare
 PNG per tabblad) en F12 (geschiedenis, localStorage) goedgekeurd en
 gecommit (01-11-2026).** Gepubliceerd op `main` (41932a8, GitHub Pages:
 `https://hkk8mp4jyk-star.github.io/Football-score-machine/`). **F13
-(openingsbeleving + START SPEL + `game` v3) lokaal klaar, niet gecommit, niet
-uitgerold (02-11-2026), zie §4b.** Elke fase pas na expliciet akkoord van de
+(openingsbeleving + START SPEL + `game` v3) live (02-11-2026)**: commit
+`571db27` op `main` (Pages-run 41427900678), `game` **v3 ACTIVE** op V2, live
+5A 15/15 en 5D 24/24 geslaagd, zie §4b. Nog: telefoontest, eigen Viva-fragment. Elke fase pas na expliciet akkoord van de
 gebruiker. **Commit/push alleen na expliciete toestemming per keer.**
 
 ---
@@ -439,7 +440,7 @@ hierboven):**
   openen → eindoverzicht, opnieuw delen. Herkenning via de browseridentiteit
   (andere telefoon/gewiste gegevens = niet zichtbaar).
 
-## 4b. F13 Openingsbeleving (02-11-2026, lokaal klaar, wacht op akkoord)
+## 4b. F13 Openingsbeleving (02-11-2026, live: `571db27` + `game` v3)
 
 - **Wachtkamer**: zacht mechanisch rolgeluid (gegenereerde lus, 1 tegelijk,
   refcount) zolang WARMING UP draait; stopt bij verlaten/start/verborgen tabblad.
@@ -484,6 +485,14 @@ hierboven):**
   320×568/390/430 3/3, BONUSSPEL-titel past op 320/390/430; DEMO 16/16
   pixel-identiek, 0 Supabase-verzoeken; mock niet in `dist/`.
   Niet getest: echte iPhone/Safari, echt ingesproken fragment.
+- **Live (02-11-2026)**: frontend `571db27` eerst gepubliceerd (vooraf getoetst
+  tegen de v2-servercode: oude opening, geen START SPEL, volledig spel); daarna
+  `game` **v3** uitgerold (ACTIVE; v2-terugval = code `41932a8`). Live 5A
+  **15/15**, 5D **24/24** (5D uitgebreid: wachtfase `awaitPlay`/`playAt = null`
+  op alle 3 toestellen, deelnemer `start_play` → `not_organizer`, SPIN in de
+  wachtfase → `intro_running`, Realtime bij START SPEL op alle toestellen, tweede
+  START SPEL → `nothing_to_advance`, overal hetzelfde `playAt`; verder volledig
+  spel met veilingen en eindstand). Alles opgeruimd, database leeg.
 
 ## 5. React-architectuur en spelengine
 
@@ -1283,7 +1292,7 @@ voorlopig overgeslagen.
 | F10 | Eindscherm (pot, terug), deelafbeelding (canvas → PNG, deelmenu/opslaan) | L | **klaar en goedgekeurd** (01-11-2026; PNG per actief tabblad) |
 | F11 | Publieke sleutel als GitHub-variabele (begeleid), test op telefoons; daarna pas voorstel voor `main`/Pages (toestemming) | V2/Pages | |
 | F12 | Geschiedenis (afgeronde spellen, laatste 10, opnieuw delen) | L | **klaar en goedgekeurd** (01-11-2026; localStorage, geen V2-wijziging) |
-| F13 | Openingsbeleving: wachtkamergeluid, BONUSSPEL 6 s, Las Vegas wacht op START SPEL (`start_play`, `game` v3), Viva-fragment, geluidsknop | L → V2 | **lokaal klaar** (02-11-2026, §4b), wacht op akkoord commit/uitrol |
+| F13 | Openingsbeleving: wachtkamergeluid, BONUSSPEL 6 s, Las Vegas wacht op START SPEL (`start_play`, `game` v3), Viva-fragment, geluidsknop | L → V2 | **live** (02-11-2026, §4b): `571db27` op Pages, `game` v3, 5A 15/15, 5D 24/24 |
 
 - **Risico's**: DEMO (statusversie, engine) → referentietest + pixelvergelijking;
   goedgekeurde machine (rollen, tegels) → alleen anders bij afwijkende pool/A,
