@@ -48,16 +48,39 @@ function ChaseLights({ party, rings = 1, per = 14, className = '' }) {
   ))
 }
 
+// Opbouw van BONUSSPEL in stappen (tijdlijn v2; v1 zonder `reelsAt`: alleen
+// bonus/fanfare zoals voorheen). 0 = lampjes gaan aan, 1–2 = munten,
+// 4 = derde munt + BONUSSPEL!, 5–6 = steeds intenser, 7 = fanfare, 8 = finale.
+export function bonusStage(t, tl) {
+  if (tl.reelsAt == null) return null
+  if (t >= tl.finaleAt) return 8
+  if (t >= tl.fanfareAt) return 7
+  const build = tl.buildSteps.filter((s) => t >= s).length
+  if (t >= tl.bonusAt) return 4 + build
+  return tl.coinStops.filter((s) => t >= s).length
+}
+
 export function BonusTrigger({ t, tl, matchName }) {
   const bonus = t >= tl.bonusAt
   const fanfare = t >= tl.fanfareAt
+  const stage = bonusStage(t, tl)
+  const cls = [
+    'intro intro-bonus',
+    bonus && 'is-bonus',
+    fanfare && 'is-fanfare',
+    stage != null && `bonus-v2 bonus-stage-${stage}`,
+    stage === 0 && 'is-lights-on',
+  ]
+    .filter(Boolean)
+    .join(' ')
   return (
-    <div className={`intro intro-bonus ${bonus ? 'is-bonus' : ''} ${fanfare ? 'is-fanfare' : ''}`.replace(/\s+/g, ' ').trim()}>
+    <div className={cls}>
       <ChaseLights party={bonus} rings={2} per={18} className="chase-bonus" />
       <p className="intro-match">{matchName}</p>
       <div className="bonus-stage">
         {bonus && <div className="bonus-rays" aria-hidden="true" />}
-        <MiniReels positions={bonusPositions(t, tl.coinStops)} landed={tl.coinStops.map((s) => t >= s)} size="large" lit={bonus} />
+        {stage >= 5 && <div className="bonus-rays bonus-rays-2" aria-hidden="true" />}
+        <MiniReels positions={bonusPositions(t, tl.coinStops, tl.reelsAt ?? 0)} landed={tl.coinStops.map((s) => t >= s)} size="large" lit={bonus} />
         {bonus ? (
           <h1 className="bonus-title" data-text="BONUSSPEL!" aria-label="BONUSSPEL!">
             <span>BONUS</span>
@@ -71,6 +94,8 @@ export function BonusTrigger({ t, tl, matchName }) {
       {bonus && <Confetti />}
       {fanfare && <div key="fanfare" className="bonus-flash bonus-flash-2" aria-hidden="true" />}
       {fanfare && <Confetti key="fanfare-confetti" count={46} />}
+      {stage === 8 && <div key="finale" className="bonus-flash bonus-flash-3" aria-hidden="true" />}
+      {stage === 8 && <Confetti key="finale-confetti" count={60} />}
     </div>
   )
 }

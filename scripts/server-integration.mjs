@@ -83,7 +83,7 @@ export function serverIntegrationTests(sql) {
   async function start(r) {
     const { room } = await call(r.phones[0], { action: 'start_game', roomId: r.roomId })
     // Opening tot het Las Vegas-scherm, dan "START SPEL" (organisator) en het vertrekmoment.
-    clock.t = Math.max(clock.t, room.startedAt + introTimeline(room.players.length).vegasAt + 1)
+    clock.t = Math.max(clock.t, room.startedAt + introTimeline(room.players.length, room.intro ?? 1).vegasAt + 1)
     const { room: played } = await call(r.phones[0], { action: 'start_play', roomId: r.roomId })
     clock.t = Math.max(clock.t, played.playAt)
     return room

@@ -56,7 +56,7 @@ export const LIMITS = {
   logPollIntervalMs: 5_000,
   loopCheckDelayMs: 10_000, // daarna mag het aantal conflicten niet meer stijgen
   maxReleaseWaitMs: 15_000,
-  maxIntroWaitMs: 20_000, // gezamenlijke startanimatie (max. ~16 s bij 12 deelnemers)
+  maxIntroWaitMs: 30_000, // gezamenlijke startanimatie (tijdlijn v2: ~19–23 s tot het Las Vegas-scherm)
   maxExtraRollbacks: 50,
   realtimeWaitMs: 15_000, // lid wacht hoogstens zo lang op het Realtime-signaal
   outsiderWaitMs: 6_000, // buitenstaander luistert zo lang (mag niets ontvangen)
@@ -521,7 +521,7 @@ async function startGame({ client, step, ctx, sleep, now, limits }) {
     const r = await client.game(ctx.phones[0].token, { action: 'start_game', roomId: ctx.roomId })
     assert(r.status === 200 && r.body.room.phase === 'started' && Number.isFinite(r.body.room.startedAt), show(r))
     ctx.startedAt = r.body.room.startedAt
-    const tl = introTimeline(r.body.room.state.config.players.length)
+    const tl = introTimeline(r.body.room.state.config.players.length, r.body.room.intro ?? 1) // tijdlijnversie van de kamer
     ctx.introEnd = ctx.startedAt + tl.endAt
     const offset = r.body.serverNow - now()
     const again = await client.game(ctx.phones[0].token, { action: 'start_game', roomId: ctx.roomId })
@@ -753,7 +753,7 @@ async function phase5d(env) {
   await step('spel starten: Realtime op alle toestellen, buitenstaander niets; tweede start en vroege SPIN geweigerd', async () => {
     const r = await realtime('start', [org, A, B], [outsider], () => ok(org, { action: 'start_game' }))
     ctx.startedAt = r.room.startedAt
-    const tl = introTimeline(3)
+    const tl = introTimeline(3, r.room.intro ?? 1) // tijdlijnversie van de kamer
     ctx.introEnd = ctx.startedAt + tl.endAt
     await refused(org, { action: 'start_game' }, 409, 'registration_closed')
     await refused(A, { action: 'spin' }, 409, 'intro_running')

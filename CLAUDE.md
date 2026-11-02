@@ -494,6 +494,57 @@ hierboven):**
   START SPEL → `nothing_to_advance`, overal hetzelfde `playAt`; verder volledig
   spel met veilingen en eindstand). Alles opgeruimd, database leeg.
 
+### 4c. F13b Langere opening + casinogeluid (02-11-2026, lokaal klaar, niet gecommit/uitgerold)
+
+- **Tijdlijnversie per kamer** (`room.intro`, door de server gezet bij
+  `start_game`; `INTRO_VERSION = 2` in `lobbyRules.js`; `roomView` stuurt
+  `intro`). `introTimeline(n, versie)`, `roomTimeline(room)`; zonder
+  `room.intro` = **versie 1** (F13, ongewijzigd). Een lopend spel houdt zo
+  altijd zijn eigen tempo, ook tijdens een update; `start_play` (alleen na
+  `vegasAt` van díe versie) en SPIN (pas na `playAt`) volgen dezelfde tijdlijn.
+- **Versie 2**: BONUSSPEL **~10 s** (`namesAt` 10000): 0–1,4 s lampjes gaan
+  één voor één aan (`reelsAt` 1400), munten op 3,4/4,5/5,6 s, BONUSSPEL! op
+  de derde munt, opbouw in stappen (6,4 en 7,2 s: snellere lampjes, tweede
+  stralenkrans, gloed/strobe), fanfare 8,2 s, finale 9,0 s (extra flits +
+  confetti). Klassen `bonus-v2 bonus-stage-0…8` (`bonusStage(t, tl)`), CSS-blok
+  "BONUSSPEL ~10 s (F13b)". Namenfase **precies 5 s langer** voor elk aantal
+  (spin 2,0 s, rem 1,0 s, per naam 380 ms + 2,4 s/(n−1), max. 1,5 s; rest
+  naar de volledige volgorde, ≥ 3,45 s). Volgorde zelf ongewijzigd. Las Vegas
+  ongewijzigd. Bord bij 2 spelers op 19,2 s, bij 12 op 23,0 s.
+- **Wachtkamergeluid** (`slotLoopChannels`, 4,8 s stereo, 24 kHz, in stapjes
+  opgewekt via `prepareSlot`, langste blokkade ~22 ms): drie rollen (zoem +
+  ratelende nokken met naklik van de pal, 8,75/10/11,25 per s), motorbrom,
+  casinolaag (geroezemoes + verre klokjes met galm); alles periodiek/rond
+  gefilterd → naadloos. Luidheid ~2× de oude lus, geen oversturing.
+- **Geluid BONUSSPEL v2** (`bonusEventsV2`): opstart + lampjesklikjes,
+  draaiende rollen (zelfde rolgeluid zonder casinolaag, één rol minder per
+  munt; valt na herladen in op het juiste punt), munt = klonk + ding,
+  inslag bij BONUSSPEL!, opbouw (stijgende tonen, versnellende arpeggio,
+  tromgeroffel, muntenregen), fanfare + finale. Reeks op niveau 1,8.
+  Gemeten uitvoer: wachtkamer ~0,02 → opbouw 0,02 → 0,034 → fanfare ~0,05.
+- **Geluid uit = direct stil**: al het openingsgeluid loopt via een eigen bus;
+  uitzetten sluit die (ook al ingeplande tonen; gemeten 0,00000).
+- **Edge Function**: wijziging nodig (`start_game` zet `intro: 2`;
+  `start_play`/SPIN rekenen met de tijdlijn van de kamer) → **game v4**,
+  lokaal klaar. **Uitrolvolgorde**: eerst frontend (getoetst tegen de
+  v3-servercode: kamers zonder `intro` → v1-opening, START SPEL en SPIN
+  werken), daarna `game` v4. Andersom zou een oude frontend START SPEL ~9 s te
+  vroeg tonen (server weigert met `intro_running`). Terugval v4 → v3: code
+  `571db27`/`228d779` (functiebestanden gelijk).
+- **Tests**: `npm test` **333/333** (+8: tijdlijn v1/v2, +5 s voor 1–12
+  spelers, kamer zonder versie, server: v3-kamer houdt v1-tempo, START SPEL
+  pas na de verlengde opening, lus (stereo, luidheid, naadloos, ratel,
+  reproduceerbaar, stapsgewijs), opbouwstappen en geluidsreeks). PGlite 9/9,
+  `deno check` + rooktest. Browser (mock, scratchpad `f13/`): opening 31/31
+  (2 toestellen, BONUSSPEL 10,06 s, herladen tijdens BONUSSPEL/namen/bord,
+  zelfde stap op beide toestellen, server weigert START SPEL tijdens de
+  opening, namen tegelijk, namenfase 9,3 s bij 2 spelers, START SPEL
+  dubbelklik → versie +1, beide toestellen binnen 4 ms naar de machine);
+  geluidsmeting 5/5; schermafbeeldingen per stap en 12 namen op 320×568/430
+  (alles in beeld, geen horizontaal scrollen). DEMO 16/16 pixel-identiek, 0
+  Supabase-verzoeken. Live tests (5A/5D) passen zich aan (`room.intro`,
+  wachttijd 30 s); nog niet live gedraaid.
+
 ## 5. React-architectuur en spelengine
 
 **Multiplayer-schermen (F7)**, strikt gescheiden van de DEMO:
@@ -1293,6 +1344,7 @@ voorlopig overgeslagen.
 | F11 | Publieke sleutel als GitHub-variabele (begeleid), test op telefoons; daarna pas voorstel voor `main`/Pages (toestemming) | V2/Pages | |
 | F12 | Geschiedenis (afgeronde spellen, laatste 10, opnieuw delen) | L | **klaar en goedgekeurd** (01-11-2026; localStorage, geen V2-wijziging) |
 | F13 | Openingsbeleving: wachtkamergeluid, BONUSSPEL 6 s, Las Vegas wacht op START SPEL (`start_play`, `game` v3), Viva-fragment, geluidsknop | L → V2 | **live** (02-11-2026, §4b): `571db27` op Pages, `game` v3, 5A 15/15, 5D 24/24 |
+| F13b | BONUSSPEL ~10 s met opbouw, namen +5 s, casinogeluid wachtkamer; tijdlijnversie per kamer (`game` v4) | L → V2 | **lokaal klaar** (02-11-2026, §4c), wacht op akkoord |
 
 - **Risico's**: DEMO (statusversie, engine) → referentietest + pixelvergelijking;
   goedgekeurde machine (rollen, tegels) → alleen anders bij afwijkende pool/A,
