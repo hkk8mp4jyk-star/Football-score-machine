@@ -344,7 +344,8 @@ export function startGame(room, { userId, expectedVersion, now = Date.now() }) {
   const config = lobbyConfig(room)
   const errors = validateConfig(config)
   if (errors.length) throw new LobbyError('settings_invalid', errors.map((e) => e.code))
-  return bump(room, { phase: 'started', state: createInitialState(config), startedAt: now, announce: null })
+  // awaitPlay: na de opening wachten alle telefoons op "START SPEL" (game v3).
+  return bump(room, { phase: 'started', state: createInitialState(config), startedAt: now, announce: null, awaitPlay: true, playAt: null })
 }
 
 // ---------------------------------------------------------------------------
@@ -381,6 +382,8 @@ export function roomView(room, userId) {
     startedAt: started ? room.startedAt : null,
     announce: started ? (room.announce ?? null) : null,
     ack: started ? (room.ack ?? {}) : null, // faseovergangen, vastgelegd door de organisator
+    awaitPlay: started ? !!room.awaitPlay : false, // Las Vegas-scherm wacht op "START SPEL"
+    playAt: started ? (room.playAt ?? null) : null, // gezamenlijk vertrekmoment na "START SPEL"
   }
 }
 

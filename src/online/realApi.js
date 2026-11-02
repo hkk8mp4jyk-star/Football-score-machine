@@ -57,6 +57,7 @@ function unavailableApi(storage) {
     spin: unavailable,
     confirmAuction: unavailable,
     advancePhase: unavailable,
+    startPlay: unavailable,
   }
 }
 
@@ -233,5 +234,6 @@ export function createRealApi({
     spin: (roomId, { onBehalf = false } = {}) => room('spin')(roomId, { onBehalf }),
     confirmAuction: (roomId, participant, bidCents) => room('confirm_auction')(roomId, { participant, bidCents }),
     advancePhase: (roomId, step) => room('advance_phase')(roomId, { step }),
+    startPlay: (roomId) => room('start_play')(roomId),
   }
 }

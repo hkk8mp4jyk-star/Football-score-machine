@@ -348,8 +348,8 @@ describe('live test: fase 5B en 5C (gelijktijdigheid)', () => {
     const out = await env.run('5b')
     expect(out.exitCode).toBe(EXIT.ok)
     expect(env.track.spinBatchMax).toBe(2)
-    // kamer, start, tweede start (geweigerd), SPIN tijdens animatie (geweigerd), 2 gelijktijdige SPIN's
-    expect(env.track.calls.filter((c) => c === 'game').length).toBe(6) // kamer maken + 2 SPIN's
+    // kamer, start, tweede start (geweigerd), SPIN tijdens animatie (geweigerd), START SPEL (game v3), 2 gelijktijdige SPIN's
+    expect(env.track.calls.filter((c) => c === 'game').length).toBe(7)
     expect(env.store.draws).toHaveLength(1)
     const text = env.lines.join('\n')
     expect(text).toMatch(/client \(Edge Function\): (200:, 409:(spin_in_progress|turn_not_released)|409:(spin_in_progress|turn_not_released), 200:)/)

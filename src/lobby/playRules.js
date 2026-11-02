@@ -19,14 +19,19 @@ const bump = (room, changes) => ({ ...room, ...changes, version: room.version + 
 // Startanimatie: tijden in ms vanaf `room.startedAt` (servertijd). Elke
 // telefoon rekent dezelfde fase uit de tijd; wie later binnenkomt, valt
 // midden in de animatie in of ziet direct de scoremachine (geen herhaling).
-//   A  BONUS TRIGGER: drie rollen versnellen, stoppen één voor één op een munt
+//   A  BONUS TRIGGER: drie rollen versnellen, stoppen één voor één op een munt;
+//      daarna BONUSSPEL! met opbouw en fanfare (~6 s in totaal)
 //   B  NAMEN: alle namen draaien, vertragen en vallen één voor één op hun plek
-//   C  WELCOME TO FABULOUS LAS VEGAS: bord + spelsamenvatting (~3 s)
+//   C  WELCOME TO FABULOUS LAS VEGAS: bord + spelsamenvatting. In spellen met
+//      `awaitPlay` (vanaf game v3) blijft dit staan tot de organisator op
+//      "START SPEL" drukt (gedeelde wachtfase, `room.playAt`); oudere
+//      spellen: na `vegasLength` automatisch de scoremachine.
 // ---------------------------------------------------------------------------
 export const INTRO = {
   coinStops: [1500, 2100, 2700], // rol 1, 2, 3 op een munt
   bonusAt: 2700, // gouden flits + BONUSSPEL!
-  namesAt: 4900, // namenanimatie begint
+  fanfareAt: 5000, // korte feestelijke fanfare
+  namesAt: 6000, // namenanimatie begint (BONUS ~6 s)
   namesSpin: 1400, // eerst allemaal op topsnelheid
   nameGap: 380, // daarna valt elke 380 ms de volgende naam
   nameDecel: 750, // vertraging per naam
@@ -44,15 +49,40 @@ export function introTimeline(playerCount) {
 
 export const introEnd = (room) => room.startedAt + introTimeline(room.state.config.players.length).endAt
 
+// Na "START SPEL" gaan alle telefoons op hetzelfde (server)tijdstip verder,
+// ook als het Realtime-signaal niet overal even snel binnenkomt.
+export const PLAY_DELAY = 1500
+
+// Vanaf wanneer mag er gedraaid worden? null = nog niet bekend (wacht op
+// "START SPEL"). Oudere spellen (zonder `awaitPlay`): einde van de animatie.
+export function playOpensAt(room) {
+  if (room.awaitPlay) return room.playAt ?? null
+  return introEnd(room)
+}
+
 // Fase van de startanimatie op tijdstip `now` (null = voorbij: scoremachine).
-export function introPhase(startedAt, playerCount, now) {
+// `wait` = { awaitPlay, playAt } van de kamer: het Las Vegas-scherm blijft dan
+// staan tot `playAt`.
+export function introPhase(startedAt, playerCount, now, wait = {}) {
   const t = now - startedAt
   const tl = introTimeline(playerCount)
-  if (t >= tl.endAt) return null
+  if (wait.awaitPlay) {
+    if (wait.playAt != null && now >= wait.playAt && t >= tl.vegasAt) return null
+  } else if (t >= tl.endAt) return null
   if (t < 0) return { phase: 'bonus', t: 0, tl }
   if (t < tl.namesAt) return { phase: 'bonus', t, tl }
   if (t < tl.vegasAt) return { phase: 'names', t, tl }
-  return { phase: 'vegas', t, tl }
+  return { phase: 'vegas', t, tl, waiting: !!wait.awaitPlay }
+}
+
+// "START SPEL" (alleen organisator, eenmalig, pas op het Las Vegas-scherm):
+// legt het gezamenlijke vertrekmoment vast.
+export function startPlay(room, { userId, now }) {
+  if (!isOrganizer(room, userId)) throw new LobbyError('not_organizer')
+  if (room.phase !== 'started') throw new LobbyError('not_started')
+  if (!room.awaitPlay || room.playAt != null) throw new LobbyError('nothing_to_advance')
+  if (now < room.startedAt + introTimeline(room.state.config.players.length).vegasAt) throw new LobbyError('intro_running')
+  return bump(room, { playAt: now + PLAY_DELAY })
 }
 
 // Veilingaankondiging ("VOLGENDE VEILINGTREKKING") op alle telefoons.
@@ -84,7 +114,8 @@ export function turnInfo(rawState, now) {
 // ---------------------------------------------------------------------------
 export function spinTurn(room, { userId, onBehalf = false, now, randomInt = secureRandomInt, newId = secureId }) {
   if (room.phase !== 'started') throw new LobbyError('not_started')
-  if (now < introEnd(room)) throw new LobbyError('intro_running')
+  const opens = playOpensAt(room)
+  if (opens == null || now < opens) throw new LobbyError('intro_running')
   const info = turnInfo(room.state, now)
   if (info.error) throw new LobbyError(info.error)
   const player = room.players.find((p) => p.slot === info.participant)

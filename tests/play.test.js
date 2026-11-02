@@ -3,7 +3,7 @@
 // meerdere telefoons tot het einde van een spel.
 import { describe, expect, it } from 'vitest'
 import { LobbyError, addManualPlayer, createRoom, joinRoom, startGame } from '../src/lobby/lobbyRules.js'
-import { ANNOUNCE_MS, INTRO, advancePhase, announceVisible, confirmAuction, introEnd, introPhase, introTimeline, nextStep, spinTurn, turnInfo } from '../src/lobby/playRules.js'
+import { ANNOUNCE_MS, INTRO, PLAY_DELAY, advancePhase, announceVisible, confirmAuction, introEnd, introPhase, introTimeline, nextStep, playOpensAt, spinTurn, startPlay, turnInfo } from '../src/lobby/playRules.js'
 import { deriveView } from '../src/game/view.js'
 import { settle } from '../src/game/engine.js'
 import { releaseDelay } from '../src/game/timeline.js'
@@ -40,9 +40,11 @@ function startedRoom(now = 1000) {
   let room = createRoom({ id: 'r', code: 'ABCDEF', userId: ORG, name: 'Lars', ...CLUBS, draft: DRAFT })
   room = joinRoom(room, { userId: 'sanne', name: 'Sanne' }).room
   room = addManualPlayer(room, { userId: ORG, name: 'Opa' }).room
-  return startGame(room, { userId: ORG, now })
+  return withPlay(startGame(room, { userId: ORG, now }))
 }
-const afterIntro = (room) => introEnd(room) + 1
+// Organisator drukt "START SPEL" zodra het Las Vegas-scherm er staat.
+const withPlay = (room) => startPlay(room, { userId: ORG, now: room.startedAt + introTimeline(room.state.config.players.length).vegasAt })
+const afterIntro = (room) => playOpensAt(room)
 // Volgende moment waarop de beurt weer vrij is.
 const released = (room) => room.state.spin.startedAt + releaseDelay(room.state.spin) + 1
 
@@ -56,15 +58,48 @@ describe('startanimatie: tijdlijn', () => {
     expect(tl.namesAt).toBeGreaterThan(tl.bonusAt)
     expect(tl.orderAt).toBe(tl.nameStops[8])
     expect(tl.vegasAt).toBeGreaterThan(tl.orderAt)
-    expect(tl.endAt - tl.vegasAt).toBe(3200)
-    expect(introTimeline(12).endAt).toBeLessThan(17000)
+    expect(tl.endAt - tl.vegasAt).toBe(3200) // alleen nog voor oude spellen (zonder awaitPlay)
+    expect(introTimeline(12).vegasAt).toBeLessThan(15000) // ook met 12 namen staat het bord er binnen 15 s
+  })
+  it('BONUSSPEL duurt ~6 s: munten, BONUSSPEL!, fanfare, dan pas de namen', () => {
+    const tl = introTimeline(4)
+    expect(tl.namesAt).toBe(6000)
+    expect(tl.bonusAt).toBeLessThan(tl.fanfareAt)
+    expect(tl.fanfareAt).toBeLessThan(tl.namesAt)
+  })
+  it('Las Vegas-wachtfase: het bord blijft staan tot het gezamenlijke vertrekmoment', () => {
+    const tl = introTimeline(4)
+    const wait = { awaitPlay: true, playAt: null }
+    expect(introPhase(1000, 4, 1000 + tl.endAt + 3_600_000, wait)).toMatchObject({ phase: 'vegas', waiting: true })
+    const playAt = 1000 + tl.vegasAt + 20_000
+    expect(introPhase(1000, 4, playAt - 1, { awaitPlay: true, playAt }).phase).toBe('vegas') // iedereen nog op het bord
+    expect(introPhase(1000, 4, playAt, { awaitPlay: true, playAt })).toBeNull() // iedereen tegelijk door
+    // herladen of opnieuw verbinden: zelfde fase uit dezelfde gegevens
+    expect(introPhase(1000, 4, 1000 + tl.namesAt + 10, wait).phase).toBe('names')
+  })
+  it('START SPEL: alleen organisator, alleen op het bord, eenmalig; SPIN pas vanaf het vertrekmoment', () => {
+    let room = createRoom({ id: 'r', code: 'ABCDEF', userId: ORG, name: 'Lars', ...CLUBS, draft: DRAFT })
+    room = joinRoom(room, { userId: 'sanne', name: 'Sanne' }).room
+    room = addManualPlayer(room, { userId: ORG, name: 'Opa' }).room
+    room = startGame(room, { userId: ORG, now: 1000 })
+    const vegas = 1000 + introTimeline(3).vegasAt
+    expect(code(() => startPlay(room, { userId: ORG, now: vegas - 1 }))).toBe('intro_running')
+    expect(code(() => startPlay(room, { userId: 'sanne', now: vegas }))).toBe('not_organizer')
+    expect(code(() => spinTurn(room, { userId: ORG, now: vegas + 600_000 }))).toBe('intro_running')
+    const played = startPlay(room, { userId: ORG, now: vegas + 5000 })
+    expect(played.playAt).toBe(vegas + 5000 + PLAY_DELAY)
+    expect(played.version).toBe(room.version + 1)
+    expect(code(() => startPlay(played, { userId: ORG, now: vegas + 5001 }))).toBe('nothing_to_advance')
+    expect(code(() => spinTurn(played, { userId: ORG, now: played.playAt - 1 }))).toBe('intro_running')
+    expect(spinTurn(played, { userId: ORG, now: played.playAt }).spin).toBeTruthy()
+    expect(played.state.config.players.map((p) => p.name)).toEqual(room.state.config.players.map((p) => p.name)) // volgorde ongewijzigd
   })
   it('elke telefoon rekent dezelfde fase uit de starttijd; na afloop geen herhaling', () => {
     const tl = introTimeline(4)
     expect(introPhase(1000, 4, 1000).phase).toBe('bonus')
     expect(introPhase(1000, 4, 1000 + tl.namesAt).phase).toBe('names')
     expect(introPhase(1000, 4, 1000 + tl.vegasAt).phase).toBe('vegas')
-    expect(introPhase(1000, 4, 1000 + tl.endAt)).toBeNull() // later binnenkomen: direct scoremachine
+    expect(introPhase(1000, 4, 1000 + tl.endAt)).toBeNull() // oud spel: later binnenkomen → direct scoremachine
     expect(introPhase(1000, 4, 1000 + tl.namesAt + 500).t).toBe(tl.namesAt + 500)
   })
   it('rollen stoppen exact op de munt en op de definitieve naam', () => {
@@ -220,7 +255,7 @@ describe('faseovergangen: alleen de organisator, centraal en eenmalig', () => {
   })
   it('zonder veiling: na de laatste trekking direct "Bekijk de eindstand" (stap auction)', () => {
     let room = createRoom({ id: 'r2', code: 'ABCDEF', userId: ORG, name: 'Lars', ...CLUBS, draft: { maxPlayers: 1, rounds: 1, priceCents: 0, pool: ['OVERIG'], mega: [] } })
-    room = startGame(room, { userId: ORG, now: 1000 })
+    room = withPlay(startGame(room, { userId: ORG, now: 1000 }))
     room = spinTurn(room, { userId: ORG, now: afterIntro(room) }).room
     const t = released(room)
     expect(settle(room.state, t).phase).toBe('finished')
@@ -265,7 +300,10 @@ describe('mock: volledig online spel met meerdere telefoons', () => {
     expect(view.controlSlots).toEqual([0, 2])
 
     expect(await asyncCode(lars.spin(roomId))).toBe('intro_running')
-    clock.t += introTimeline(3).endAt + 1
+    clock.t += introTimeline(3).vegasAt + 1
+    expect(await asyncCode(sanne.startPlay(roomId))).toBe('not_organizer')
+    clock.t = (await lars.startPlay(roomId)).playAt
+    expect((await sanne.getRoom(roomId)).playAt).toBe(clock.t) // deelnemer krijgt hetzelfde vertrekmoment
     view = await lars.spin(roomId)
     // deelnemer en organisator drukken vrijwel tegelijk: precies één trekking
     clock.t = released(view) - 0

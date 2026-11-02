@@ -6,6 +6,8 @@ import { ConfirmSheet, NameInput, OnlineScreen, Status } from './common.jsx'
 import { PlayerList, moveSlot } from './PlayerList.jsx'
 import { SettingsSheet } from './SettingsSheet.jsx'
 import { MiniReels, warmingPositions } from '../intro/MiniReels.jsx'
+import { startReelLoop } from '../../audio/openingSound.js'
+import { SoundButton } from './SoundButton.jsx'
 
 export const inviteText = (matchName, organizerName, code) => `Doe mee met ${matchName}, het spel van ${organizerName} in Football Score Machine. Kamercode: ${code}`
 
@@ -114,6 +116,7 @@ export function LobbyOrganizer({ room, actions, onShare, onCopy, onHome, notify,
 
   return (
     <OnlineScreen compact onBack={onHome} className="ol-lobby">
+      <SoundButton />
       <h1 className="ol-title ol-match">{room.matchName}</h1>
       <section className="ol-card ol-code">
         <span className="ol-label">Kamercode</span>
@@ -212,6 +215,8 @@ export function LobbyOrganizer({ room, actions, onShare, onCopy, onHome, notify,
 // Drie kleine rollen die rustig blijven draaien tot de organisator start.
 export function WarmingUp({ fixedTime }) {
   const [, tick] = useReducer((n) => n + 1, 0)
+  // Zacht mechanisch rolgeluid zolang de rollen draaien (één lus, stopt bij verlaten).
+  useEffect(() => (fixedTime == null ? startReelLoop() : undefined), [fixedTime])
   useEffect(() => {
     if (fixedTime != null) return
     let id = requestAnimationFrame(function loop() {
@@ -238,6 +243,7 @@ export function LobbyParticipant({ room, onHome, fixedTime }) {
   const rows = two ? Math.ceil(n / 2) : Math.max(n, 1)
   return (
     <OnlineScreen compact onBack={onHome} className="ol-lobby ol-lobby-guest">
+      <SoundButton />
       <div className="ol-guest">
         <h1 className="ol-title ol-match">{room.matchName}</h1>
         <ul className={`ol-names${two ? ' is-two' : ''}`} style={{ '--rows': rows }}>

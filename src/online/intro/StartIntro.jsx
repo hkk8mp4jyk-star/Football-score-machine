@@ -4,6 +4,7 @@ import { introPhase } from '../../lobby/playRules.js'
 import { MiniReels, bonusPositions } from './MiniReels.jsx'
 import { reelPosition, visibleItems } from './slotMath.js'
 import { VegasSign } from './VegasSign.jsx'
+import { SoundButton } from '../screens/SoundButton.jsx'
 
 // Gezamenlijke startanimatie na "Start het spel". Alles volgt uit
 // `t = now − startedAt` (servertijd), dus elke telefoon toont hetzelfde
@@ -32,33 +33,35 @@ function Confetti({ count = 34 }) {
 }
 
 // Casinoverlichting rondom het scherm (lopende lampjes, gekleurd na de flits).
-function ChaseLights({ party }) {
-  const per = 14
-  return (
-    <div className={`chase-lights ${party ? 'is-party' : ''}`.trim()} aria-hidden="true">
+// `rings`: BONUSSPEL heeft een extra binnenste lichtrand.
+function ChaseLights({ party, rings = 1, per = 14, className = '' }) {
+  return Array.from({ length: rings }, (_, r) => (
+    <div key={r} className={`chase-lights ${party ? 'is-party' : ''} ${r ? 'chase-inner' : ''} ${className}`.replace(/\s+/g, ' ').trim()} aria-hidden="true">
       {['top', 'right', 'bottom', 'left'].map((side) => (
         <div key={side} className={`chase chase-${side}`}>
-          {Array.from({ length: per }, (_, i) => (
-            <span key={i} style={{ '--i': i }} />
+          {Array.from({ length: per - r * 3 }, (_, i) => (
+            <span key={i} style={{ '--i': i + r * 2 }} />
           ))}
         </div>
       ))}
     </div>
-  )
+  ))
 }
 
 export function BonusTrigger({ t, tl, matchName }) {
   const bonus = t >= tl.bonusAt
+  const fanfare = t >= tl.fanfareAt
   return (
-    <div className={`intro intro-bonus ${bonus ? 'is-bonus' : ''}`.trim()}>
-      <ChaseLights party={bonus} />
+    <div className={`intro intro-bonus ${bonus ? 'is-bonus' : ''} ${fanfare ? 'is-fanfare' : ''}`.replace(/\s+/g, ' ').trim()}>
+      <ChaseLights party={bonus} rings={2} per={18} className="chase-bonus" />
       <p className="intro-match">{matchName}</p>
       <div className="bonus-stage">
         {bonus && <div className="bonus-rays" aria-hidden="true" />}
         <MiniReels positions={bonusPositions(t, tl.coinStops)} landed={tl.coinStops.map((s) => t >= s)} size="large" lit={bonus} />
         {bonus ? (
-          <h1 className="bonus-title" data-text="BONUSSPEL!">
-            BONUSSPEL!
+          <h1 className="bonus-title" data-text="BONUSSPEL!" aria-label="BONUSSPEL!">
+            <span>BONUS</span>
+            <span>SPEL!</span>
           </h1>
         ) : (
           <p className="intro-caption">WARMING UP</p>
@@ -66,6 +69,8 @@ export function BonusTrigger({ t, tl, matchName }) {
       </div>
       {bonus && <div className="bonus-flash" aria-hidden="true" />}
       {bonus && <Confetti />}
+      {fanfare && <div key="fanfare" className="bonus-flash bonus-flash-2" aria-hidden="true" />}
+      {fanfare && <Confetti key="fanfare-confetti" count={46} />}
     </div>
   )
 }
@@ -115,11 +120,15 @@ export function NamesReveal({ t, tl, players }) {
   )
 }
 
-export function VegasWelcome({ room }) {
+// Las Vegas-scherm. In nieuwe spellen (awaitPlay) blijft het staan tot de
+// organisator op "START SPEL" drukt; dan gaat iedereen op hetzelfde moment
+// (room.playAt) naar de scoremachine.
+export function VegasWelcome({ room, onPlay, busy = false }) {
   const config = room.state.config
   const lots = auctionLots(config)
+  const canStart = room.awaitPlay && room.isOrganizer && room.playAt == null
   return (
-    <div className="intro intro-vegas">
+    <div className={`intro intro-vegas ${room.awaitPlay ? 'is-waiting' : ''}`.trim()}>
       <div className="vegas-sky" aria-hidden="true" />
       <VegasSign />
       <div className="vegas-summary">
@@ -142,16 +151,37 @@ export function VegasWelcome({ room }) {
             <dd>{lots}</dd>
           </div>
         </dl>
+        {room.awaitPlay && (
+          <ol className="vegas-order" aria-label="Speelvolgorde">
+            {config.players.map((p, i) => (
+              <li key={p.id}>
+                <b>{i + 1}</b> {p.name}
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
+      {canStart && (
+        <button type="button" className="gold-btn ol-btn-wide ol-play-btn" onClick={onPlay} disabled={busy}>
+          START SPEL
+        </button>
+      )}
     </div>
   )
 }
 
-export function StartIntro({ room, now }) {
+export function StartIntro({ room, now, onPlay, playBusy }) {
   const players = room.state.config.players
-  const ip = introPhase(room.startedAt, players.length, now)
+  const ip = introPhase(room.startedAt, players.length, now, room)
   if (!ip) return null
-  if (ip.phase === 'bonus') return <BonusTrigger t={ip.t} tl={ip.tl} matchName={room.matchName} />
-  if (ip.phase === 'names') return <NamesReveal t={ip.t} tl={ip.tl} players={players} />
-  return <VegasWelcome room={room} />
+  let screen
+  if (ip.phase === 'bonus') screen = <BonusTrigger t={ip.t} tl={ip.tl} matchName={room.matchName} />
+  else if (ip.phase === 'names') screen = <NamesReveal t={ip.t} tl={ip.tl} players={players} />
+  else screen = <VegasWelcome room={room} onPlay={onPlay} busy={playBusy} />
+  return (
+    <>
+      {screen}
+      <SoundButton />
+    </>
+  )
 }

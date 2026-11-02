@@ -132,7 +132,12 @@ describe('echte koppeling (realApi) met meerdere toestellen', () => {
     const started = await lars.api.startGame(roomId)
     expect(started.state.config.players.map((p) => p.name)).toEqual(['Sanne', 'Lars', 'Bas'])
     expect(await code(sanne.api.spin(roomId))).toBe('intro_running')
-    w.clock.t = started.startedAt + introTimeline(3).endAt + 1
+    w.clock.t = started.startedAt + introTimeline(3).vegasAt + 1
+    expect(started.awaitPlay).toBe(true)
+    expect(await code(sanne.api.startPlay(roomId))).toBe('not_organizer') // deelnemer kan niet verder
+    const go = await lars.api.startPlay(roomId) // "START SPEL"
+    expect((await bas.api.getRoom(roomId)).playAt).toBe(go.playAt) // iedereen hetzelfde moment
+    w.clock.t = go.playAt
     expect(await code(lars.api.spin(roomId))).toBe('not_your_turn')
     let room = await sanne.api.spin(roomId) // eigen beurt
     const release = () => {
@@ -204,7 +209,8 @@ describe('echte koppeling (realApi) met meerdere toestellen', () => {
     const lars = w.device()
     const { roomId } = await lars.api.createRoom(SETUP(1))
     await lars.api.startGame(roomId)
-    w.clock.t += introTimeline(1).endAt + 1
+    w.clock.t += introTimeline(1).vegasAt + 1
+    w.clock.t = (await lars.api.startPlay(roomId)).playAt
     w.setOffline(true)
     const before = w.requests.length
     expect(await code(lars.api.spin(roomId))).toBe('network')

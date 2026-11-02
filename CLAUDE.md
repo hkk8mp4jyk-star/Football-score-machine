@@ -20,8 +20,10 @@ akkoord): migratie 3 toegepast, `db:test` 72/72, `game` **v2 uitgerold**
 Openstaande punten). DEMO 16/16 pixel-identiek, 0 Supabase-verzoeken.
 Commit **b0916b1** (5D + publicatieworkflow). **F10 (eindscherm + deelbare
 PNG per tabblad) en F12 (geschiedenis, localStorage) goedgekeurd en
-gecommit (01-11-2026).** Nog te doen: GitHub-variabele, Pages-bron, merge
-naar `main` (§6b "Publiceren"), telefoontest.** Elke fase pas na expliciet akkoord van de
+gecommit (01-11-2026).** Gepubliceerd op `main` (41932a8, GitHub Pages:
+`https://hkk8mp4jyk-star.github.io/Football-score-machine/`). **F13
+(openingsbeleving + START SPEL + `game` v3) lokaal klaar, niet gecommit, niet
+uitgerold (02-11-2026), zie §4b.** Elke fase pas na expliciet akkoord van de
 gebruiker. **Commit/push alleen na expliciete toestemming per keer.**
 
 ---
@@ -436,6 +438,52 @@ hierboven):**
   laatste 10 per speler (datum, organisator, aantal spelers, eigen totaal),
   openen → eindoverzicht, opnieuw delen. Herkenning via de browseridentiteit
   (andere telefoon/gewiste gegevens = niet zichtbaar).
+
+## 4b. F13 Openingsbeleving (02-11-2026, lokaal klaar, wacht op akkoord)
+
+- **Wachtkamer**: zacht mechanisch rolgeluid (gegenereerde lus, 1 tegelijk,
+  refcount) zolang WARMING UP draait; stopt bij verlaten/start/verborgen tabblad.
+- **BONUSSPEL** (~6 s): 3 gouden munten blijven; dubbele ring lopende lampjes
+  (`ChaseLights rings/per`), titel op twee regels ("BONUS" / "SPEL!",
+  `aria-label="BONUSSPEL!"`), fanfare-moment (`is-fanfare`, extra flits +
+  confetti) op `INTRO.fanfareAt` 5000; namen vanaf `namesAt` 6000. Geluid:
+  muntdings, opbouwend casinogeluid, korte koperfanfare (synthetisch).
+- **Las Vegas**: bord en samenvatting ongewijzigd (alleen op lage schermen
+  ≤ 700 px kleiner + compacte samenvatting), plus de definitieve volgorde.
+  In nieuwe spellen blijft het bord **onbeperkt** staan; alleen de organisator
+  ziet **"START SPEL"**; daarna gaan alle telefoons tegelijk naar de machine.
+- **Server-autoritatief**: `start_game` zet `room.awaitPlay = true,
+  playAt = null`; nieuwe actie **`start_play`** (alleen organisator, pas vanaf
+  `vegasAt`, eenmalig) zet `playAt = serverNow + PLAY_DELAY` (1500 ms);
+  `playOpensAt(room)` = `playAt` (of `introEnd` voor oude spellen zonder
+  `awaitPlay`); `spinTurn` weigert daarvóór (`intro_running`). Fouten:
+  `not_organizer`, `intro_running` (te vroeg), `nothing_to_advance` (tweede
+  keer / dubbelklik), `not_started`. Geen databasewijziging (velden in
+  `rooms.state`). `roomView` stuurt `awaitPlay`/`playAt`.
+- **Viva Las Vegas**: eenmalig bij het verschijnen van het bord (niet > 1,5 s
+  te laat). Eigen ingesproken fragment als bestand
+  **`public/sounds/viva-las-vegas.mp3`** (of `.m4a`); alleen gebruikt als het
+  echt audio is (content-type `audio/*`); ontbreekt het → tijdelijk
+  synthetisch testgeluid. Geen Web Speech, geen muziek van een bestaand nummer.
+- **Geluid** (`src/audio/openingSound.js`, `SoundButton.jsx`): knop rechtsboven
+  in wachtkamer en opening, in het spel via het menu; voorkeur in localStorage
+  `fsm-sound`; geblokkeerd door de browser (iOS) → gouden knop "🔊 Geluid aan"
+  (één tik); geluid blokkeert nooit de voortgang. `sound.js` kreeg alleen
+  nieuwe exports (`audioOut`, `soundEnabled`, `audioRunning`); de DEMO zet bij
+  laden zelf haar geluid en is ongewijzigd.
+- **Uitrolvolgorde**: eerst frontend (werkt met `game` v2: geen `awaitPlay` →
+  oude tijdgestuurde opening), daarna `game` v3 (`npm run fn:deploy`). Andersom
+  zou een oude frontend op het bord blijven hangen zonder knop. Live tests 5A/5D
+  passen zich aan (`awaitPlay` → `start_play`, in 5D ook weigering deelnemer,
+  dubbel, Realtime). Terugval functie: v2-code uit commit 41932a8.
+- **Tests (02-11-2026)**: `npm test` **321/321**; PGlite-integratie 9/9;
+  `deno check` + rooktest; browser (mock, scratchpad `f13/`): opening 24/24
+  (2 toestellen, herladen in elke fase, gelijktijdige overgang 2–10 ms,
+  dubbelklik → versie +1, SPIN pas na START SPEL, geluid aan/uit/onthouden,
+  één lus), iPhone-blokkade nagebootst 3/3, Las Vegas 12 spelers op
+  320×568/390/430 3/3, BONUSSPEL-titel past op 320/390/430; DEMO 16/16
+  pixel-identiek, 0 Supabase-verzoeken; mock niet in `dist/`.
+  Niet getest: echte iPhone/Safari, echt ingesproken fragment.
 
 ## 5. React-architectuur en spelengine
 
@@ -1235,6 +1283,7 @@ voorlopig overgeslagen.
 | F10 | Eindscherm (pot, terug), deelafbeelding (canvas → PNG, deelmenu/opslaan) | L | **klaar en goedgekeurd** (01-11-2026; PNG per actief tabblad) |
 | F11 | Publieke sleutel als GitHub-variabele (begeleid), test op telefoons; daarna pas voorstel voor `main`/Pages (toestemming) | V2/Pages | |
 | F12 | Geschiedenis (afgeronde spellen, laatste 10, opnieuw delen) | L | **klaar en goedgekeurd** (01-11-2026; localStorage, geen V2-wijziging) |
+| F13 | Openingsbeleving: wachtkamergeluid, BONUSSPEL 6 s, Las Vegas wacht op START SPEL (`start_play`, `game` v3), Viva-fragment, geluidsknop | L → V2 | **lokaal klaar** (02-11-2026, §4b), wacht op akkoord commit/uitrol |
 
 - **Risico's**: DEMO (statusversie, engine) → referentietest + pixelvergelijking;
   goedgekeurde machine (rollen, tegels) → alleen anders bij afwijkende pool/A,

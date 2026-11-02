@@ -82,7 +82,10 @@ export function serverIntegrationTests(sql) {
   }
   async function start(r) {
     const { room } = await call(r.phones[0], { action: 'start_game', roomId: r.roomId })
-    clock.t = Math.max(clock.t, room.startedAt + introTimeline(room.players.length).endAt + 1)
+    // Opening tot het Las Vegas-scherm, dan "START SPEL" (organisator) en het vertrekmoment.
+    clock.t = Math.max(clock.t, room.startedAt + introTimeline(room.players.length).vegasAt + 1)
+    const { room: played } = await call(r.phones[0], { action: 'start_play', roomId: r.roomId })
+    clock.t = Math.max(clock.t, played.playAt)
     return room
   }
   const row = async (roomId) => (await sql(`select state, version from public.rooms where id = ${text(roomId)}`))[0]
@@ -195,8 +198,10 @@ export function serverIntegrationTests(sql) {
         await expectError(call(r.phones[2], { action: 'spin', roomId: r.roomId, onBehalf: true }), 'not_your_turn')
         await expectError(call(r.phones[2], { action: 'advance_phase', roomId: r.roomId, step: 'auction' }), 'not_organizer')
         await expectError(call(r.phones[2], { action: 'confirm_auction', roomId: r.roomId, participant: 2, bidCents: 100 }), 'not_organizer')
+        await expectError(call(r.phones[2], { action: 'start_play', roomId: r.roomId }), 'not_organizer')
+        await expectError(call(r.phones[0], { action: 'start_play', roomId: r.roomId }), 'nothing_to_advance') // al gedrukt
         const c = await dbCounts(r.roomId)
-        assert(c.draws === 0 && c.version === v0 + 1, JSON.stringify(c)) // alleen de start
+        assert(c.draws === 0 && c.version === v0 + 2, JSON.stringify(c)) // alleen de start en "START SPEL"
       },
     },
     {

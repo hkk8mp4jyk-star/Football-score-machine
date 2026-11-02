@@ -59,9 +59,12 @@ async function lobby(n, { opts, setupExtra, start = false } = {}) {
   if (start) await startAndSkipIntro(r)
   return r
 }
+// Starten, opening tot het Las Vegas-scherm, "START SPEL", tot het vertrekmoment.
 async function startAndSkipIntro(r) {
   const res = await r.call(ORG, { action: 'start_game', roomId: r.roomId })
-  r.clock.t = res.room.startedAt + introTimeline(res.room.players.length).endAt + 1
+  r.clock.t = res.room.startedAt + introTimeline(res.room.players.length).vegasAt + 1
+  const play = await r.call(ORG, { action: 'start_play', roomId: r.roomId })
+  r.clock.t = play.room.playAt
   return res
 }
 // Wacht tot de vorige draai is afgerond en de volgende beurt vrij is.
@@ -276,10 +279,44 @@ describe('server: starten (D8)', () => {
       expect(res[1].status).toBe('rejected')
     }
   })
-  it('gezamenlijke startanimatie: SPIN pas daarna', async () => {
+  it('gezamenlijke startanimatie + Las Vegas-wachtfase: SPIN pas na "START SPEL" en het vertrekmoment', async () => {
     const r = await lobby(2)
     const { room } = await r.call(ORG, { action: 'start_game', roomId: r.roomId })
+    expect(room).toMatchObject({ awaitPlay: true, playAt: null })
     await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'intro_running')
+    // Het bord blijft staan: ook lang na het oude einde van de animatie geen SPIN.
+    r.clock.t = room.startedAt + introTimeline(2).endAt + 60_000
+    await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'intro_running')
+    // Deelnemer kan niet verder; organisator wel, één keer.
+    await r.fails(r.call(P[1], { action: 'start_play', roomId: r.roomId }), 'not_organizer')
+    const { room: played } = await r.call(ORG, { action: 'start_play', roomId: r.roomId })
+    expect(played.playAt).toBe(r.clock.t + 1500)
+    await r.fails(r.call(ORG, { action: 'start_play', roomId: r.roomId }), 'nothing_to_advance')
+    expect((await r.view(P[1])).playAt).toBe(played.playAt) // iedereen hetzelfde moment
+    await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'intro_running') // nog vóór het vertrekmoment
+    r.clock.t = played.playAt
+    expect((await r.call(ORG, { action: 'spin', roomId: r.roomId })).room.state.spin).not.toBeNull()
+  })
+
+  it('"START SPEL" pas op het Las Vegas-scherm; gelijktijdig dubbelklikken → één overgang', async () => {
+    const r = await lobby(2)
+    const { room } = await r.call(ORG, { action: 'start_game', roomId: r.roomId })
+    r.clock.t = room.startedAt + introTimeline(2).vegasAt - 1
+    await r.fails(r.call(ORG, { action: 'start_play', roomId: r.roomId }), 'intro_running') // animatie loopt nog
+    r.clock.t += 2
+    const before = r.raw().version
+    const res = await Promise.allSettled(Array.from({ length: 5 }, () => r.call(ORG, { action: 'start_play', roomId: r.roomId })))
+    expect(res.filter((x) => x.status === 'fulfilled')).toHaveLength(1)
+    expect(r.raw().version).toBe(before + 1)
+  })
+
+  it('oude spellen (gestart vóór game v3, zonder awaitPlay): SPIN na de animatie, geen START SPEL', async () => {
+    const r = await lobby(2)
+    const { room } = await r.call(ORG, { action: 'start_game', roomId: r.roomId })
+    const raw = r.raw()
+    delete raw.state.awaitPlay
+    delete raw.state.playAt
+    await r.fails(r.call(ORG, { action: 'start_play', roomId: r.roomId }), 'nothing_to_advance')
     r.clock.t = room.startedAt + introTimeline(2).endAt + 1
     expect((await r.call(ORG, { action: 'spin', roomId: r.roomId })).room.state.spin).not.toBeNull()
   })
@@ -432,7 +469,8 @@ describe('server: cryptografische trekking', () => {
       const uid = `00000000-0000-4000-b000-${String(i).padStart(12, '0')}`
       const { room } = await server.handle(uid, { action: 'create_room', name: 'Lars', ...CLUBS, draft: { maxPlayers: 1, rounds: 1, priceCents: 0, pool, mega: [] } })
       await server.handle(uid, { action: 'start_game', roomId: room.id })
-      clock.t += introTimeline(1).endAt + 1
+      clock.t += introTimeline(1).vegasAt + 1
+      clock.t = (await server.handle(uid, { action: 'start_play', roomId: room.id })).room.playAt
       const res = await server.handle(uid, { action: 'spin', roomId: room.id })
       counts[res.room.state.spin.resultId]++
     }

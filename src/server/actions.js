@@ -33,7 +33,7 @@ import {
   startGame,
   updateSettings,
 } from '../lobby/lobbyRules.js'
-import { advancePhase, confirmAuction, spinTurn } from '../lobby/playRules.js'
+import { advancePhase, confirmAuction, spinTurn, startPlay } from '../lobby/playRules.js'
 import { secureId, secureRandomInt } from '../game/random.js'
 
 export const ACTIONS = [
@@ -52,6 +52,7 @@ export const ACTIONS = [
   'spin',
   'confirm_auction',
   'advance_phase',
+  'start_play',
 ]
 
 // Kamercode: 6 tekens zonder verwarrende I, O, 0 en 1 (zie migratie).
@@ -329,6 +330,11 @@ export function createGameServer({ store, randomInt = secureRandomInt, newId = s
     async advance_phase(userId, input) {
       if (input.step !== 'auction' && input.step !== 'final') throw invalid('step')
       return mutate(roomIdOf(input), userId, (room, t) => advancePhase(room, { userId, step: input.step, now: t }))
+    },
+
+    // "START SPEL" op het Las Vegas-scherm (alleen organisator, eenmalig).
+    async start_play(userId, input) {
+      return mutate(roomIdOf(input), userId, (room, t) => startPlay(room, { userId, now: t }))
     },
   }
 

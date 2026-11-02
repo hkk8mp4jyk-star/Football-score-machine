@@ -64,6 +64,7 @@ function RoomRoute({ api, roomId, code, onHome, onRejoin, notify }) {
       spin: call(api.spin),
       confirmAuction: call(api.confirmAuction),
       advancePhase: call(api.advancePhase),
+      startPlay: call(api.startPlay),
     }
     if (USE_MOCK && api.addFakePlayer) list.addFakePlayer = () => api.addFakePlayer(roomId) // alleen testmodus
     return list

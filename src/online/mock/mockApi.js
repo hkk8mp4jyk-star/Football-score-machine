@@ -26,7 +26,7 @@ import {
   startGame,
   updateSettings,
 } from '../../lobby/lobbyRules.js'
-import { advancePhase, confirmAuction, spinTurn } from '../../lobby/playRules.js'
+import { advancePhase, confirmAuction, spinTurn, startPlay } from '../../lobby/playRules.js'
 import { secureId, secureRandomInt } from '../../game/random.js'
 
 const SERVER_KEY = 'fsm-mock-server'
@@ -206,6 +206,7 @@ export function createMockApi({
     spin: (roomId, { onBehalf = false } = {}) => mutate(roomId, (room) => spinTurn(room, { userId, onBehalf, now: now(), randomInt, newId }).room),
     confirmAuction: (roomId, participant, bidCents) => mutate(roomId, (room) => confirmAuction(room, { userId, participant, bidCents, now: now() })),
     advancePhase: (roomId, step) => mutate(roomId, (room) => advancePhase(room, { userId, step, now: now() })),
+    startPlay: (roomId) => mutate(roomId, (room) => startPlay(room, { userId, now: now() })),
 
     // Alleen testmodus: een nagebootste deelnemer (met eigen "telefoon") meldt zich aan.
     addFakePlayer: (roomId) =>

@@ -10,7 +10,9 @@ import { configOf, playerName, turnOrder } from '../../game/gameConfig.js'
 import { deriveView } from '../../game/view.js'
 import { STOP_DELAY, spinIsMega } from '../../game/timeline.js'
 import { clock } from '../../game/clock.js'
-import { buzz, setSoundEnabled, sfx, unlockAudio } from '../../audio/sound.js'
+import { buzz, sfx, unlockAudio } from '../../audio/sound.js'
+import { playBonus, playViva, setSound } from '../../audio/openingSound.js'
+import { useSound } from './SoundButton.jsx'
 import { announceVisible, introPhase } from '../../lobby/playRules.js'
 import { errorText } from '../api.js'
 import { StartIntro } from '../intro/StartIntro.jsx'
@@ -28,12 +30,14 @@ export function OnlineGame({ room, actions, onHome, notify, onFinished, now: fix
   const [pending, setPending] = useState(false)
   const [showOther, setShowOther] = useState(false)
   const [megaWin, setMegaWin] = useState(null)
-  const [sound, setSound] = useState(true)
+  const [playBusy, setPlayBusy] = useState(false)
+  const { on: sound, ready: soundReady } = useSound() // voorkeur, op dit toestel onthouden
   const timers = useRef([])
 
   const now = fixedNow ?? clock.now()
   const config = configOf(room.state)
-  const intro = introPhase(room.startedAt, config.players.length, now)
+  // Opening; in nieuwe spellen blijft het Las Vegas-scherm staan tot "START SPEL".
+  const intro = introPhase(room.startedAt, config.players.length, now, room)
   const announcing = announceVisible(room.announce, now)
   // Faseovergangen (veiling, eindstand) legt de organisator centraal vast.
   const ack = room.ack ?? {}
@@ -41,8 +45,9 @@ export function OnlineGame({ room, actions, onHome, notify, onFinished, now: fix
   const { reveal, locked, tileStage, reelSpin } = view
   const game = view.state
 
-  // Animaties (startanimatie, aankondiging) per beeldje bijwerken.
-  const animating = !!intro || announcing
+  // Animaties (startanimatie, aankondiging) per beeldje bijwerken. Het
+  // wachtende Las Vegas-scherm animeert met CSS: geen beeldjes nodig.
+  const animating = (!!intro && !(intro.phase === 'vegas' && intro.waiting)) || announcing
   useEffect(() => {
     if (!animating || fixedNow != null) return
     let id = requestAnimationFrame(function loop() {
@@ -59,7 +64,25 @@ export function OnlineGame({ room, actions, onHome, notify, onFinished, now: fix
     return () => clearTimeout(id)
   }, [view.nextChangeAt, room.version, fixedNow])
 
-  useEffect(() => setSoundEnabled(sound), [sound])
+  // Na "START SPEL": op het gezamenlijke vertrekmoment naar de scoremachine.
+  useEffect(() => {
+    if (room.playAt == null || fixedNow != null) return
+    const id = setTimeout(refresh, Math.max(0, room.playAt - clock.now()) + 15)
+    return () => clearTimeout(id)
+  }, [room.playAt, fixedNow])
+
+  // Geluid van de opening, op de gezamenlijke tijdlijn (één keer per spel;
+  // te laat na herladen = overslaan). Pas als het toestel geluid mag spelen.
+  const introKey = `${room.id}:${room.startedAt}`
+  const introStage = intro?.phase ?? null
+  useEffect(() => {
+    if (fixedNow != null || !introStage || !soundReady) return
+    const ip = introPhase(room.startedAt, config.players.length, clock.now(), room)
+    if (ip?.phase === 'bonus') playBonus(introKey, room.startedAt, ip.tl, clock.now())
+    if (ip?.phase === 'vegas') playViva(introKey, room.startedAt + ip.tl.vegasAt, clock.now())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [introStage, introKey, soundReady, fixedNow])
+
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
   useEffect(() => {
     if (tileStage?.stage === 'green') sfx.highlight()
@@ -72,7 +95,20 @@ export function OnlineGame({ room, actions, onHome, notify, onFinished, now: fix
     if (done && fixedNow == null) onFinished?.(room)
   }, [done, room, onFinished, fixedNow])
 
-  if (intro) return <StartIntro room={room} now={now} />
+  // "START SPEL" (alleen organisator): één keer versturen; de server bepaalt.
+  const startPlay = async () => {
+    if (playBusy) return
+    unlockAudio()
+    setPlayBusy(true)
+    try {
+      await actions.startPlay()
+    } catch (e) {
+      notify(errorText(e), true)
+      setPlayBusy(false)
+    }
+  }
+
+  if (intro) return <StartIntro room={room} now={now} onPlay={startPlay} playBusy={playBusy || room.playAt != null} />
 
   const later = (ms, fn) => timers.current.push(setTimeout(fn, ms))
   const canSpinFor = (participant) => !pending && room.controlSlots.includes(participant)
@@ -220,7 +256,7 @@ export function OnlineGame({ room, actions, onHome, notify, onFinished, now: fix
                 ✕
               </button>
             </div>
-            <button type="button" className="ol-big-btn" onClick={() => setSound((s) => !s)}>
+            <button type="button" className="ol-big-btn" onClick={() => setSound(!sound)}>
               Geluid {sound ? 'uit' : 'aan'}
             </button>
             <button type="button" className="ol-big-btn" onClick={onHome}>

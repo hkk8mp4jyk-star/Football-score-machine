@@ -49,7 +49,8 @@ async function playGame(api, clock, { n = 4, rounds = 2, price = 250, auctions =
     }
   }
   view = await api.startGame(roomId)
-  clock.t += introTimeline(n).endAt + 1
+  clock.t += introTimeline(n).vegasAt + 1
+  clock.t = (await api.startPlay(roomId)).playAt
   let lot = 0
   for (let guard = 0; guard < 200; guard++) {
     view = await api.getRoom(roomId)
@@ -82,7 +83,8 @@ describe('F12: wanneer is een spel afgerond', () => {
     const { roomId } = await lars.createRoom({ name: 'Lars', ...CLUBS, draft: { maxPlayers: 1, rounds: 1, priceCents: 100, pool: ['0-0', OTHER_ID], mega: [] } })
     expect(isRoomFinished(await lars.getRoom(roomId), clock.t)).toBe(false) // wachtkamer
     await lars.startGame(roomId)
-    clock.t += introTimeline(1).endAt + 1
+    clock.t += introTimeline(1).vegasAt + 1
+    clock.t = (await lars.startPlay(roomId)).playAt
     const v = await lars.spin(roomId)
     clock.t = released(v)
     expect(isRoomFinished(await lars.getRoom(roomId), clock.t)).toBe(false) // nog geen overgang
@@ -163,7 +165,8 @@ describe('F12: opslag van de geschiedenis', () => {
     sanne.history.remember(roomId, code)
     sanne.history.remember('bestaat-niet', 'ZZZZZZ')
     await lars.startGame(roomId)
-    clock.t += introTimeline(2).endAt + 1
+    clock.t += introTimeline(2).vegasAt + 1
+    clock.t = (await lars.startPlay(roomId)).playAt
     let v = await lars.spin(roomId)
     clock.t = released(v)
     v = await sanne.spin(roomId)

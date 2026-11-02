@@ -3673,3 +3673,188 @@ input:focus-visible {
   color: var(--color-gold-400);
   white-space: nowrap;
 }
+
+/* ==========================================================================
+   Opening (F13): geluidsknop, groter BONUSSPEL, Las Vegas-wachtfase
+   Alleen online-klassen; DEMO ongewijzigd.
+   ========================================================================== */
+.ol-sound-btn {
+  position: fixed;
+  top: calc(10px + var(--sat));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  z-index: 40;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid rgb(229 191 99 / 0.45);
+  background: rgb(3 10 29 / 0.75);
+  color: var(--color-gold-300);
+  font-family: var(--font-cond);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
+.ol-sound-btn span {
+  font-size: 18px;
+  line-height: 1;
+}
+.ol-sound-btn.is-locked {
+  background: var(--gold-grad);
+  color: var(--color-ink);
+  border-color: transparent;
+  box-shadow: 0 0 0 0 rgb(255 214 110 / 0.6);
+  animation: sound-nudge 1.6s ease-in-out infinite;
+}
+@keyframes sound-nudge {
+  50% {
+    box-shadow: 0 0 0 8px rgb(255 214 110 / 0);
+  }
+}
+
+/* BONUSSPEL: groter, dubbele lichtrand, tweede flits bij de fanfare */
+.intro-bonus .bonus-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: min(27vw, 120px, 14dvh);
+  line-height: 0.9;
+  letter-spacing: 0.02em;
+  text-align: center;
+  filter: drop-shadow(0 5px 0 #6b4c15) drop-shadow(0 0 30px rgb(255 200 80 / 0.85));
+}
+.intro-bonus.is-fanfare .bonus-title {
+  animation: bonus-fanfare 0.5s cubic-bezier(0.2, 1.8, 0.4, 1) both, bonus-pulse 0.55s ease-in-out 0.5s infinite;
+}
+@keyframes bonus-fanfare {
+  from {
+    transform: scale(0.9);
+  }
+  60% {
+    transform: scale(1.1);
+  }
+}
+.intro-bonus .bonus-title span {
+  display: block;
+}
+.chase-lights.chase-bonus .chase span {
+  width: 11px;
+  height: 11px;
+}
+.chase-lights.chase-inner {
+  inset: 24px;
+  opacity: 0.85;
+}
+.chase-lights.chase-inner .chase span {
+  width: 8px;
+  height: 8px;
+  animation-direction: reverse;
+}
+.intro-bonus.is-fanfare .chase-lights .chase span {
+  animation-duration: 0.45s;
+}
+.intro-bonus.is-bonus .bonus-rays {
+  background: repeating-conic-gradient(from 0deg, rgb(255 214 110 / 0.34) 0deg 8deg, transparent 8deg 18deg);
+  animation-duration: 5s;
+}
+.bonus-flash-2 {
+  animation-duration: 0.9s;
+}
+
+/* Las Vegas-wachtfase: blijft staan, volgorde zichtbaar, START SPEL */
+.intro-vegas.is-waiting {
+  justify-content: safe center;
+  overflow-y: auto;
+  gap: 12px;
+}
+.intro-vegas.is-waiting .vegas-sign {
+  flex: none; /* goedgekeurd formaat; alleen op lage schermen kleiner (zie onder) */
+}
+.vegas-order {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+}
+.vegas-order li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 8px;
+  border: 1px solid rgb(229 191 99 / 0.3);
+  background: rgb(6 20 51 / 0.8);
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--color-ivory);
+}
+.vegas-order b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--color-gold-400);
+}
+.gold-btn.ol-btn-wide.ol-play-btn {
+  position: relative;
+  flex: none;
+  width: min(100%, 360px);
+  height: 56px;
+  font-size: 24px;
+  animation: fade-in 0.4s ease 0.8s both;
+}
+/* Knop altijd in beeld, ook als het scherm toch moet scrollen. */
+.intro-vegas.is-waiting .ol-play-btn {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+@media (max-height: 700px) {
+  .intro-vegas.is-waiting {
+    gap: 8px;
+    padding-top: calc(14px + var(--sat));
+    padding-bottom: calc(14px + var(--sab));
+  }
+  .intro-vegas.is-waiting .vegas-sign {
+    width: min(58vw, 200px, 27dvh);
+  }
+  .intro-vegas.is-waiting .vegas-summary {
+    padding: 8px 10px;
+  }
+  .intro-vegas.is-waiting .vegas-summary h2 {
+    margin-bottom: 6px;
+    font-size: 17px;
+  }
+  .intro-vegas.is-waiting .vegas-summary dl {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 14px;
+    row-gap: 2px;
+  }
+  .intro-vegas.is-waiting .vegas-summary dt {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+  .intro-vegas.is-waiting .vegas-summary dd {
+    font-size: 15px;
+  }
+  .intro-vegas.is-waiting .vegas-order {
+    margin-top: 7px;
+    gap: 4px;
+  }
+  .intro-vegas.is-waiting .vegas-order li {
+    padding: 1px 7px;
+    font-size: 13px;
+  }
+  .gold-btn.ol-btn-wide.ol-play-btn {
+    height: 48px;
+    font-size: 21px;
+  }
+}

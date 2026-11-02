@@ -521,12 +521,20 @@ async function startGame({ client, step, ctx, sleep, now, limits }) {
     const r = await client.game(ctx.phones[0].token, { action: 'start_game', roomId: ctx.roomId })
     assert(r.status === 200 && r.body.room.phase === 'started' && Number.isFinite(r.body.room.startedAt), show(r))
     ctx.startedAt = r.body.room.startedAt
-    ctx.introEnd = ctx.startedAt + introTimeline(r.body.room.state.config.players.length).endAt
+    const tl = introTimeline(r.body.room.state.config.players.length)
+    ctx.introEnd = ctx.startedAt + tl.endAt
     const offset = r.body.serverNow - now()
     const again = await client.game(ctx.phones[0].token, { action: 'start_game', roomId: ctx.roomId })
     assert(again.status === 409 && again.body?.error === 'registration_closed', `tweede start: ${show(again)}`)
     const early = await client.game(ctx.phones[0].token, { action: 'spin', roomId: ctx.roomId })
     assert(early.status === 409 && early.body?.error === 'intro_running', `SPIN tijdens de animatie: ${show(early)}`)
+    if (r.body.room.awaitPlay) {
+      // game v3: wachten tot het Las Vegas-scherm, dan "START SPEL" (organisator).
+      await sleep(Math.min(Math.max(ctx.startedAt + tl.vegasAt - (now() + offset) + 300, 0), limits.maxIntroWaitMs))
+      const play = await client.game(ctx.phones[0].token, { action: 'start_play', roomId: ctx.roomId })
+      assert(play.status === 200 && Number.isFinite(play.body.room.playAt), `START SPEL: ${show(play)}`)
+      ctx.introEnd = play.body.room.playAt
+    }
     await sleep(Math.min(Math.max(ctx.introEnd - (now() + offset) + 500, 0), limits.maxIntroWaitMs))
   })
 }
@@ -743,10 +751,20 @@ async function phase5d(env) {
   await step('spel starten: Realtime op alle toestellen, buitenstaander niets; tweede start en vroege SPIN geweigerd', async () => {
     const r = await realtime('start', [org, A, B], [outsider], () => ok(org, { action: 'start_game' }))
     ctx.startedAt = r.room.startedAt
-    ctx.introEnd = ctx.startedAt + introTimeline(3).endAt
+    const tl = introTimeline(3)
+    ctx.introEnd = ctx.startedAt + tl.endAt
     await refused(org, { action: 'start_game' }, 409, 'registration_closed')
     await refused(A, { action: 'spin' }, 409, 'intro_running')
-    await sleep(Math.min(Math.max(ctx.introEnd - r.serverNow + 500, 0), limits.maxIntroWaitMs))
+    if (r.room.awaitPlay) {
+      // game v3: Las Vegas-scherm blijft staan; alleen de organisator gaat verder.
+      await sleep(Math.min(Math.max(ctx.startedAt + tl.vegasAt - r.serverNow + 300, 0), limits.maxIntroWaitMs))
+      await refused(A, { action: 'start_play' }, 403, 'not_organizer')
+      await refused(A, { action: 'spin' }, 409, 'intro_running')
+      const play = await realtime('START SPEL', [org, A, B], [], () => ok(org, { action: 'start_play' }))
+      await refused(org, { action: 'start_play' }, 409, 'nothing_to_advance')
+      ctx.introEnd = play.room.playAt
+      await sleep(Math.min(Math.max(ctx.introEnd - play.serverNow + 300, 0), limits.maxIntroWaitMs))
+    } else await sleep(Math.min(Math.max(ctx.introEnd - r.serverNow + 500, 0), limits.maxIntroWaitMs))
   })
   await step('alle toestellen zien dezelfde definitieve (gelote) spelersvolgorde', async () => {
     const { proj } = await sameEverywhere('na de start')

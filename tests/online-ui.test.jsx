@@ -7,7 +7,7 @@ import { SettingsSheet } from '../src/online/screens/SettingsSheet.jsx'
 import { PlayerList, moveSlot } from '../src/online/screens/PlayerList.jsx'
 import { OnlineGame } from '../src/online/screens/OnlineGame.jsx'
 import { deriveView } from '../src/game/view.js'
-import { advancePhase, confirmAuction, introTimeline, spinTurn } from '../src/lobby/playRules.js'
+import { advancePhase, confirmAuction, introTimeline, spinTurn, startPlay } from '../src/lobby/playRules.js'
 import { isDemoUrl } from '../src/App.jsx'
 import { addManualPlayer, blankDraft, createRoom, joinRoom, removePlayer, roomView, setOrder, startGame, updateSettings } from '../src/lobby/lobbyRules.js'
 import { MEGA_WIN_IDS, RESULTS } from '../src/game/config.js'
@@ -284,8 +284,10 @@ const settleId = (r, t) => deriveView(r.state, t, {}).reveal?.id
 const game = (r, user, now, props = {}) => html(<OnlineGame room={roomView(r, user)} actions={{}} onHome={noop} notify={noop} now={now} {...props} />)
 
 describe('gestart spel', () => {
-  const started = (draft = { rounds: 1, priceCents: 500, pool: ['0-0', '1-1', '2-2', 'OVERIG'], mega: [], maxPlayers: 3 }) =>
+  const waiting = (draft = { rounds: 1, priceCents: 500, pool: ['0-0', '1-1', '2-2', 'OVERIG'], mega: [], maxPlayers: 3 }) =>
     startGame(room(3, draft), { userId: 'org', now: 1_000_000 })
+  // Organisator heeft op het Las Vegas-scherm "START SPEL" gedrukt.
+  const started = (draft) => startPlay(waiting(draft), { userId: 'org', now: 1_000_000 + introTimeline(3).vegasAt + 100 })
   it('startanimatie: BONUS TRIGGER → BONUSSPEL! → namen → Las Vegas-bord met samenvatting', () => {
     const r = started()
     const tl = introTimeline(3)
@@ -293,7 +295,7 @@ describe('gestart spel', () => {
     expect(a).toContain('intro-bonus')
     expect(text(a)).toContain('WARMING UP')
     const b = game(r, 'u1', 1_000_000 + tl.bonusAt + 10)
-    expect(text(b)).toContain('BONUSSPEL!')
+    expect(b).toContain('aria-label="BONUSSPEL!"')
     expect(count(b, /mini-reel is-landed/g)).toBe(3)
     const n = game(r, 'u1', 1_000_000 + tl.orderAt + 10)
     expect(text(n)).toMatch(/1 Lars 2 Sanne 3 Bas/)
@@ -303,9 +305,25 @@ describe('gestart spel', () => {
     expect(text(v)).toMatch(/Werder Bremen II – Bremer SV/)
     expect(text(v)).toMatch(/Deelnemers 3 Vaste trekkingen per deelnemer 1 Prijs per vaste trekking €5 Veilinguitslagen 1/)
   })
+  it('Las Vegas-scherm blijft staan; alleen de organisator ziet START SPEL; daarna tegelijk naar de machine', () => {
+    const w = waiting()
+    const late = 1_000_000 + introTimeline(3).endAt + 3_600_000 // ook een uur later
+    const org = game(w, 'org', late)
+    const sanne = game(w, 'u1', late)
+    expect(org).toContain('aria-label="Welcome to Fabulous Las Vegas Nevada"')
+    expect(sanne).toContain('aria-label="Welcome to Fabulous Las Vegas Nevada"')
+    expect(org).toMatch(/<button[^>]*class="gold-btn ol-btn-wide ol-play-btn"[^>]*>START SPEL</)
+    expect(sanne).not.toContain('START SPEL')
+    expect(text(sanne)).toMatch(/1 Lars 2 Sanne 3 Bas/) // definitieve volgorde blijft zichtbaar
+    const r = started()
+    expect(game(r, 'u1', r.playAt - 1)).toContain('aria-label="Welcome to Fabulous Las Vegas Nevada"')
+    expect(game(r, 'org', r.playAt - 1)).not.toContain('START SPEL') // al gedrukt: geen tweede keer
+    expect(game(r, 'u1', r.playAt)).toContain('spin-btn') // iedereen op hetzelfde moment door
+    expect(game(r, 'org', r.playAt)).toContain('spin-btn')
+  })
   it('scoremachine: SPIN alleen voor wie aan de beurt is; clubnamen op de rollen', () => {
     const r = started()
-    const after = 1_000_000 + introTimeline(3).endAt + 1
+    const after = r.playAt
     const lars = game(r, 'org', after) // Lars is aan de beurt
     expect(lars).toMatch(/class="gold-btn spin-btn "/)
     expect(text(lars)).toContain('Werder Bremen II')
@@ -316,7 +334,7 @@ describe('gestart spel', () => {
   })
   it('organisator: "Draai namens …" alleen bij een beurt van een ander', () => {
     let r = started()
-    const t0 = 1_000_000 + introTimeline(3).endAt + 1
+    const t0 = r.playAt
     r = spinTurn(r, { userId: 'org', now: t0 }).room
     const t1 = r.state.spin.startedAt + 9000
     const org = game(r, 'org', t1)
@@ -326,7 +344,7 @@ describe('gestart spel', () => {
   })
   it('veiling: aankondiging na Bevestig veiling, winnaar en bod boven de machine', () => {
     let r = started({ rounds: 1, priceCents: 500, pool: ['0-0', '1-1', '2-2', '3-3', 'OVERIG'], mega: [], maxPlayers: 3 })
-    let t = 1_000_000 + introTimeline(3).endAt + 1
+    let t = r.playAt
     for (const [u, ob] of [
       ['org', false],
       ['u1', false],
@@ -372,7 +390,8 @@ describe('eindstand: definitieve spelersvolgorde (regressie)', () => {
     for (const [u, n] of [['u1', 'Sanne'], ['u2', 'Bas'], ['u3', 'Marieke']]) r = joinRoom(r, { userId: u, name: n }).room
     r = setOrder(r, { userId: 'org', order: [3, 0, 2, 1] })
     r = startGame(r, { userId: 'org', now: 1_000_000 })
-    let t = 1_000_000 + introTimeline(4).endAt + 1
+    r = startPlay(r, { userId: 'org', now: 1_000_000 + introTimeline(4).vegasAt })
+    let t = r.playAt
     const rel = () => r.state.spin.startedAt + 9000
     for (const u of ['u3', 'org', 'u2', 'u1']) {
       r = spinTurn(r, { userId: u, now: t }).room

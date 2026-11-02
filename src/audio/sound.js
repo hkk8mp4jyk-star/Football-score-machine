@@ -198,3 +198,16 @@ export function buzz(ms) {
     /* niet ondersteund */
   }
 }
+
+// ---------------------------------------------------------------------------
+// Voor de online opening (wachtkamer, BONUSSPEL, Las Vegas): dezelfde
+// audiocontext en uitgang, zodat aan/uit en de iOS-ontgrendeling gelden.
+// De bestaande geluiden hierboven veranderen niet.
+// ---------------------------------------------------------------------------
+export function audioOut() {
+  const c = ac()
+  return c ? { ctx: c, out: master } : null
+}
+export const soundEnabled = () => enabled
+// Kan er nu echt geluid klinken? (iOS houdt de context 'suspended' tot een tik.)
+export const audioRunning = () => !!ctx && ctx.state === 'running'
