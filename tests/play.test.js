@@ -3,7 +3,7 @@
 // meerdere telefoons tot het einde van een spel.
 import { describe, expect, it } from 'vitest'
 import { LobbyError, addManualPlayer, createRoom, joinRoom, startGame } from '../src/lobby/lobbyRules.js'
-import { ANNOUNCE_MS, INTRO, PLAY_DELAY, advancePhase, announceVisible, confirmAuction, introEnd, introPhase, introTimeline, nextStep, playOpensAt, spinTurn, startPlay, turnInfo } from '../src/lobby/playRules.js'
+import { ANNOUNCE_MS, INTRO, INTRO_VERSION, PLAY_DELAY, roomTimeline, advancePhase, announceVisible, confirmAuction, introEnd, introPhase, introTimeline, nextStep, playOpensAt, spinTurn, startPlay, turnInfo } from '../src/lobby/playRules.js'
 import { deriveView } from '../src/game/view.js'
 import { settle } from '../src/game/engine.js'
 import { releaseDelay } from '../src/game/timeline.js'
@@ -49,31 +49,66 @@ const afterIntro = (room) => playOpensAt(room)
 const released = (room) => room.state.spin.startedAt + releaseDelay(room.state.spin) + 1
 
 describe('startanimatie: tijdlijn', () => {
-  it('fases in vaste volgorde; één naam per 380 ms; ~3 s bord', () => {
-    const tl = introTimeline(9)
+  it('versie 1 (spellen van vóór F13b): fases in vaste volgorde; één naam per 380 ms; ~3 s bord', () => {
+    const tl = introTimeline(9, 1)
     expect(tl.coinStops).toEqual([1500, 2100, 2700])
     expect(tl.bonusAt).toBe(tl.coinStops[2])
     expect(tl.nameStops).toHaveLength(9)
-    expect(tl.nameStops[1] - tl.nameStops[0]).toBe(INTRO.nameGap)
-    expect(tl.namesAt).toBeGreaterThan(tl.bonusAt)
+    expect(tl.nameStops[1] - tl.nameStops[0]).toBe(380)
+    expect(tl.namesAt).toBe(6000)
     expect(tl.orderAt).toBe(tl.nameStops[8])
     expect(tl.vegasAt).toBeGreaterThan(tl.orderAt)
     expect(tl.endAt - tl.vegasAt).toBe(3200) // alleen nog voor oude spellen (zonder awaitPlay)
-    expect(introTimeline(12).vegasAt).toBeLessThan(15000) // ook met 12 namen staat het bord er binnen 15 s
+    expect(introTimeline(12, 1).vegasAt).toBe(14030)
   })
-  it('BONUSSPEL duurt ~6 s: munten, BONUSSPEL!, fanfare, dan pas de namen', () => {
+  it('versie 2: BONUSSPEL ~10 s met opbouw (lampjes, munten, BONUSSPEL!, intenser, fanfare, finale)', () => {
     const tl = introTimeline(4)
-    expect(tl.namesAt).toBe(6000)
-    expect(tl.bonusAt).toBeLessThan(tl.fanfareAt)
-    expect(tl.fanfareAt).toBeLessThan(tl.namesAt)
+    expect(INTRO_VERSION).toBe(2)
+    expect(tl.v).toBe(2)
+    expect(tl.namesAt).toBe(10000)
+    expect(tl.reelsAt).toBeGreaterThan(0) // eerst alleen de lampjes
+    expect(tl.coinStops[0]).toBeGreaterThan(tl.reelsAt)
+    expect(tl.bonusAt).toBe(tl.coinStops[2])
+    for (const b of tl.buildSteps) expect(b > tl.bonusAt && b < tl.fanfareAt).toBe(true)
+    expect(tl.fanfareAt).toBeLessThan(tl.finaleAt)
+    expect(tl.finaleAt).toBeLessThan(tl.namesAt)
+  })
+  it('versie 2: namen rustiger (+5 s) en daarna de volledige volgorde minstens 10 s in beeld; volgorde ongewijzigd', () => {
+    for (let n = 1; n <= 12; n++) {
+      const a = introTimeline(n, 1)
+      const b = introTimeline(n, 2)
+      expect(b.vegasAt - b.orderAt).toBeGreaterThanOrEqual(10000) // ≥ 10 s na de laatste naam
+      expect(b.vegasAt - b.namesAt - (a.vegasAt - a.namesAt)).toBe(5000 + 10000 - 3450) // +5 s namen, +6,55 s kijktijd
+      expect(b.nameStops).toHaveLength(n)
+      for (let i = 1; i < n; i++) {
+        const gap = b.nameStops[i] - b.nameStops[i - 1]
+        expect(gap).toBeGreaterThanOrEqual(a.nameStops[i] - a.nameStops[i - 1]) // rustiger, nooit sneller
+        expect(gap).toBeLessThanOrEqual(1501) // maar niet slepend
+      }
+    }
+    expect(introTimeline(12).vegasAt).toBeLessThan(30000) // ook met 12 namen het bord binnen 30 s
+    expect(introTimeline(4).namesAt).toBe(10000) // BONUSSPEL blijft 10 s
+  })
+  it('volgordefase: tot vegasAt de namen (volledige volgorde), daarna het bord; herladen = zelfde fase', () => {
+    const tl = introTimeline(5)
+    const wait = { awaitPlay: true, playAt: null, intro: 2 }
+    expect(introPhase(0, 5, tl.orderAt, wait).phase).toBe('names')
+    expect(introPhase(0, 5, tl.orderAt + 9999, wait).phase).toBe('names') // nog steeds de volgorde
+    expect(introPhase(0, 5, tl.vegasAt, wait).phase).toBe('vegas')
+  })
+  it('tijdlijn per kamer: kamer zonder versie (gestart vóór de update) houdt versie 1', () => {
+    expect(roomTimeline({ state: { config: { players: [1, 2, 3] } } }).namesAt).toBe(6000)
+    expect(roomTimeline({ intro: 2, state: { config: { players: [1, 2, 3] } } }).namesAt).toBe(10000)
+    expect(introPhase(0, 3, 7000, {}).phase).toBe('names') // versie 1: namen vanaf 6 s
+    expect(introPhase(0, 3, 7000, { intro: 2 }).phase).toBe('bonus') // versie 2: nog BONUSSPEL
   })
   it('Las Vegas-wachtfase: het bord blijft staan tot het gezamenlijke vertrekmoment', () => {
     const tl = introTimeline(4)
-    const wait = { awaitPlay: true, playAt: null }
+    const wait = { awaitPlay: true, playAt: null, intro: 2 }
     expect(introPhase(1000, 4, 1000 + tl.endAt + 3_600_000, wait)).toMatchObject({ phase: 'vegas', waiting: true })
     const playAt = 1000 + tl.vegasAt + 20_000
-    expect(introPhase(1000, 4, playAt - 1, { awaitPlay: true, playAt }).phase).toBe('vegas') // iedereen nog op het bord
-    expect(introPhase(1000, 4, playAt, { awaitPlay: true, playAt })).toBeNull() // iedereen tegelijk door
+    expect(introPhase(1000, 4, playAt - 1, { ...wait, playAt }).phase).toBe('vegas') // iedereen nog op het bord
+    expect(introPhase(1000, 4, playAt, { ...wait, playAt })).toBeNull() // iedereen tegelijk door
     // herladen of opnieuw verbinden: zelfde fase uit dezelfde gegevens
     expect(introPhase(1000, 4, 1000 + tl.namesAt + 10, wait).phase).toBe('names')
   })
@@ -95,7 +130,7 @@ describe('startanimatie: tijdlijn', () => {
     expect(played.state.config.players.map((p) => p.name)).toEqual(room.state.config.players.map((p) => p.name)) // volgorde ongewijzigd
   })
   it('elke telefoon rekent dezelfde fase uit de starttijd; na afloop geen herhaling', () => {
-    const tl = introTimeline(4)
+    const tl = introTimeline(4, 1) // oud spel (zonder versie en zonder awaitPlay)
     expect(introPhase(1000, 4, 1000).phase).toBe('bonus')
     expect(introPhase(1000, 4, 1000 + tl.namesAt).phase).toBe('names')
     expect(introPhase(1000, 4, 1000 + tl.vegasAt).phase).toBe('vegas')
@@ -105,8 +140,11 @@ describe('startanimatie: tijdlijn', () => {
   it('rollen stoppen exact op de munt en op de definitieve naam', () => {
     const tl = introTimeline(3)
     for (const t of [tl.coinStops[2], tl.coinStops[2] + 5000]) {
-      for (const p of bonusPositions(t, tl.coinStops)) expect(((p % 6) + 6) % 6).toBe(COIN)
+      for (const p of bonusPositions(t, tl.coinStops, tl.reelsAt)) expect(((p % 6) + 6) % 6).toBe(COIN)
+      for (const p of bonusPositions(t, [1500, 2100, 2700])) expect(((p % 6) + 6) % 6).toBe(COIN) // versie 1
     }
+    // versie 2: vóór reelsAt staan de rollen nog stil (alleen de lampjes)
+    expect(bonusPositions(tl.reelsAt - 1, tl.coinStops, tl.reelsAt)).toEqual(bonusPositions(0, tl.coinStops, tl.reelsAt))
     // vóór de stop draait hij nog
     const before = bonusPositions(tl.coinStops[0] - 300, tl.coinStops)[0]
     expect(((before % 6) + 6) % 6).not.toBe(COIN)

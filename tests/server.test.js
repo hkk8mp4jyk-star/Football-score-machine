@@ -316,9 +316,42 @@ describe('server: starten (D8)', () => {
     const raw = r.raw()
     delete raw.state.awaitPlay
     delete raw.state.playAt
+    delete raw.state.intro
     await r.fails(r.call(ORG, { action: 'start_play', roomId: r.roomId }), 'nothing_to_advance')
-    r.clock.t = room.startedAt + introTimeline(2).endAt + 1
+    r.clock.t = room.startedAt + introTimeline(2, 1).endAt - 1
+    await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'intro_running')
+    r.clock.t = room.startedAt + introTimeline(2, 1).endAt + 1
     expect((await r.call(ORG, { action: 'spin', roomId: r.roomId })).room.state.spin).not.toBeNull()
+  })
+  it('spel gestart onder game v3 (wacht op START SPEL, nog zonder tijdlijnversie): houdt het oude tempo', async () => {
+    const r = await lobby(2)
+    const { room } = await r.call(ORG, { action: 'start_game', roomId: r.roomId })
+    expect(room.intro).toBe(2) // nieuwe spellen: versie 2
+    delete r.raw().state.intro // zoals een kamer die vóór de update startte
+    const v1 = introTimeline(2, 1)
+    r.clock.t = room.startedAt + v1.vegasAt - 1
+    await r.fails(r.call(ORG, { action: 'start_play', roomId: r.roomId }), 'intro_running')
+    r.clock.t = room.startedAt + v1.vegasAt // bord van versie 1 staat er: START SPEL mag
+    const { room: played } = await r.call(ORG, { action: 'start_play', roomId: r.roomId })
+    expect(played.intro).toBe(1)
+    expect(played.playAt).toBe(r.clock.t + 1500)
+  })
+  it('tijdlijn v2: START SPEL pas na de verlengde opening (BONUSSPEL ~10 s, namen, volgorde ≥ 10 s)', async () => {
+    const r = await lobby(3)
+    const { room } = await r.call(ORG, { action: 'start_game', roomId: r.roomId })
+    const v2 = introTimeline(3, 2)
+    expect(v2.vegasAt - v2.orderAt).toBeGreaterThanOrEqual(10000)
+    r.clock.t = room.startedAt + v2.orderAt + 9000 // volledige volgorde in beeld: nog te vroeg
+    await r.fails(r.call(ORG, { action: 'start_play', roomId: r.roomId }), 'intro_running')
+    r.clock.t = room.startedAt + introTimeline(3, 1).vegasAt + 10 // oude bordtijd: nog te vroeg
+    await r.fails(r.call(ORG, { action: 'start_play', roomId: r.roomId }), 'intro_running')
+    await r.fails(r.call(P[1], { action: 'spin', roomId: r.roomId }), 'intro_running')
+    r.clock.t = room.startedAt + v2.vegasAt - 1
+    await r.fails(r.call(ORG, { action: 'start_play', roomId: r.roomId }), 'intro_running')
+    r.clock.t = room.startedAt + v2.vegasAt
+    const { room: played } = await r.call(ORG, { action: 'start_play', roomId: r.roomId })
+    r.clock.t = played.playAt - 1
+    await r.fails(r.call(ORG, { action: 'spin', roomId: r.roomId }), 'intro_running')
   })
 })
 

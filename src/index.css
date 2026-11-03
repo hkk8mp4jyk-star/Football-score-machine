@@ -3858,3 +3858,103 @@ input:focus-visible {
     font-size: 21px;
   }
 }
+
+/* BONUSSPEL ~10 s (F13b, tijdlijn v2): lampjes gaan aan, versnellen bij elke
+   munt, daarna steeds intenser tot de finale. Alleen met .bonus-v2. */
+.intro-bonus.bonus-v2 .chase-lights .chase span {
+  animation-duration: var(--chase-dur, 1.1s);
+}
+.intro-bonus.bonus-stage-0 {
+  --chase-dur: 2s;
+}
+.intro-bonus.bonus-stage-1 {
+  --chase-dur: 1.5s;
+}
+.intro-bonus.bonus-stage-2 {
+  --chase-dur: 1.1s;
+}
+.intro-bonus.bonus-stage-4 {
+  --chase-dur: 0.9s;
+}
+.intro-bonus.bonus-stage-5 {
+  --chase-dur: 0.62s;
+}
+.intro-bonus.bonus-stage-6 {
+  --chase-dur: 0.44s;
+}
+.intro-bonus.bonus-stage-7,
+.intro-bonus.bonus-stage-8 {
+  --chase-dur: 0.3s;
+}
+/* De lampjes gaan één voor één aan */
+.intro-bonus.is-lights-on .chase-lights .chase span {
+  animation:
+    lights-on 0.5s ease-out both,
+    chase var(--chase-dur) steps(1) infinite;
+  animation-delay:
+    calc(var(--i) * 70ms),
+    calc(var(--i) * -0.16s);
+}
+.intro-bonus.is-lights-on .chase-lights.chase-inner .chase span {
+  animation-delay:
+    calc(var(--i) * 70ms + 500ms),
+    calc(var(--i) * -0.16s);
+}
+@keyframes lights-on {
+  from {
+    transform: scale(0.2);
+    filter: brightness(0.25);
+  }
+  to {
+    transform: none;
+    filter: none;
+  }
+}
+/* Steeds intenser: gloed, tweede stralenkrans, snellere puls */
+.intro-bonus.bonus-v2 {
+  transition: background 0.6s ease;
+}
+.intro-bonus.bonus-stage-5 {
+  background: radial-gradient(85% 65% at 50% 50%, rgb(150 50 190 / 0.5), transparent 72%);
+}
+.intro-bonus.bonus-stage-6 {
+  background: radial-gradient(95% 72% at 50% 50%, rgb(190 60 200 / 0.62), transparent 74%);
+  animation: bonus-strobe 0.44s ease-in-out infinite;
+}
+.intro-bonus.bonus-stage-7,
+.intro-bonus.bonus-stage-8 {
+  background: radial-gradient(110% 80% at 50% 50%, rgb(255 190 70 / 0.42), rgb(140 40 170 / 0.4) 45%, transparent 78%);
+}
+@keyframes bonus-strobe {
+  50% {
+    filter: brightness(1.18);
+  }
+}
+.bonus-rays.bonus-rays-2 {
+  background: repeating-conic-gradient(from 9deg, rgb(255 120 200 / 0.22) 0deg 5deg, transparent 5deg 15deg);
+  animation: rays-spin 6s linear infinite reverse;
+}
+.intro-bonus.bonus-stage-6 .bonus-rays,
+.intro-bonus.bonus-stage-7 .bonus-rays,
+.intro-bonus.bonus-stage-8 .bonus-rays {
+  animation-duration: 3s;
+}
+.intro-bonus.bonus-stage-5 .bonus-title {
+  animation: bonus-pop 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both, bonus-pulse 0.8s ease-in-out 0.7s infinite;
+}
+.intro-bonus.bonus-stage-6 .bonus-title {
+  animation: bonus-pop 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both, bonus-pulse 0.5s ease-in-out 0.7s infinite;
+}
+.intro-bonus.bonus-v2 .mini-reels.is-lit,
+.intro-bonus.bonus-stage-6 .mini-reels {
+  filter: drop-shadow(0 0 18px rgb(255 214 110 / 0.7));
+}
+.bonus-flash-3 {
+  animation-duration: 1.1s;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.9), rgb(255 214 110 / 0.5) 40%, transparent 75%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-bonus.bonus-stage-6 {
+    animation: none;
+  }
+}

@@ -22,8 +22,9 @@ Commit **b0916b1** (5D + publicatieworkflow). **F10 (eindscherm + deelbare
 PNG per tabblad) en F12 (geschiedenis, localStorage) goedgekeurd en
 gecommit (01-11-2026).** Gepubliceerd op `main` (41932a8, GitHub Pages:
 `https://hkk8mp4jyk-star.github.io/Football-score-machine/`). **F13
-(openingsbeleving + START SPEL + `game` v3) lokaal klaar, niet gecommit, niet
-uitgerold (02-11-2026), zie §4b.** Elke fase pas na expliciet akkoord van de
+(openingsbeleving + START SPEL + `game` v3) live (02-11-2026)**: commit
+`571db27` op `main` (Pages-run 41427900678), `game` **v3 ACTIVE** op V2, live
+5A 15/15 en 5D 24/24 geslaagd, zie §4b. Nog: telefoontest, eigen Viva-fragment. Elke fase pas na expliciet akkoord van de
 gebruiker. **Commit/push alleen na expliciete toestemming per keer.**
 
 ---
@@ -41,6 +42,9 @@ gebruiker. **Commit/push alleen na expliciete toestemming per keer.**
   `main`. Samenvoegen, publiceren en deployen alleen met expliciete
   toestemming. De verborgen DEMO moet ook na publicatie werken.
 
+- **Na elke update/publicatie altijd de link van de app meesturen**:
+  `https://hkk8mp4jyk-star.github.io/Football-score-machine/` (DEMO:
+  `…/?demo`), zodat de gebruiker niet hoeft te zoeken.
 - Werk in fases; na elke fase **stoppen en wachten op akkoord**.
 - Branch: `claude/multiplayer-fase-1` (bestaande multiplayer-branch). Een
   sessie kan daarnaast een eigen sessiebranch krijgen; fase 3 staat op beide
@@ -439,7 +443,7 @@ hierboven):**
   openen → eindoverzicht, opnieuw delen. Herkenning via de browseridentiteit
   (andere telefoon/gewiste gegevens = niet zichtbaar).
 
-## 4b. F13 Openingsbeleving (02-11-2026, lokaal klaar, wacht op akkoord)
+## 4b. F13 Openingsbeleving (02-11-2026, live: `571db27` + `game` v3)
 
 - **Wachtkamer**: zacht mechanisch rolgeluid (gegenereerde lus, 1 tegelijk,
   refcount) zolang WARMING UP draait; stopt bij verlaten/start/verborgen tabblad.
@@ -484,6 +488,90 @@ hierboven):**
   320×568/390/430 3/3, BONUSSPEL-titel past op 320/390/430; DEMO 16/16
   pixel-identiek, 0 Supabase-verzoeken; mock niet in `dist/`.
   Niet getest: echte iPhone/Safari, echt ingesproken fragment.
+- **Live (02-11-2026)**: frontend `571db27` eerst gepubliceerd (vooraf getoetst
+  tegen de v2-servercode: oude opening, geen START SPEL, volledig spel); daarna
+  `game` **v3** uitgerold (ACTIVE; v2-terugval = code `41932a8`). Live 5A
+  **15/15**, 5D **24/24** (5D uitgebreid: wachtfase `awaitPlay`/`playAt = null`
+  op alle 3 toestellen, deelnemer `start_play` → `not_organizer`, SPIN in de
+  wachtfase → `intro_running`, Realtime bij START SPEL op alle toestellen, tweede
+  START SPEL → `nothing_to_advance`, overal hetzelfde `playAt`; verder volledig
+  spel met veilingen en eindstand). Alles opgeruimd, database leeg.
+
+### 4c. F13b Langere opening + casinogeluid (02-11-2026, lokaal klaar, niet gecommit/uitgerold)
+
+- **Tijdlijnversie per kamer** (`room.intro`, door de server gezet bij
+  `start_game`; `INTRO_VERSION = 2` in `lobbyRules.js`; `roomView` stuurt
+  `intro`). `introTimeline(n, versie)`, `roomTimeline(room)`; zonder
+  `room.intro` = **versie 1** (F13, ongewijzigd). Een lopend spel houdt zo
+  altijd zijn eigen tempo, ook tijdens een update; `start_play` (alleen na
+  `vegasAt` van díe versie) en SPIN (pas na `playAt`) volgen dezelfde tijdlijn.
+- **Versie 2**: BONUSSPEL **~10 s** (`namesAt` 10000): 0–1,4 s lampjes gaan
+  één voor één aan (`reelsAt` 1400), munten op 3,4/4,5/5,6 s, BONUSSPEL! op
+  de derde munt, opbouw in stappen (6,4 en 7,2 s: snellere lampjes, tweede
+  stralenkrans, gloed/strobe), fanfare 8,2 s, finale 9,0 s (extra flits +
+  confetti). Klassen `bonus-v2 bonus-stage-0…8` (`bonusStage(t, tl)`), CSS-blok
+  "BONUSSPEL ~10 s (F13b)". Namen rustiger (spin 2,0 s, rem 1,0 s, per naam
+  380 ms + 2,4 s/(n−1), max. 1,5 s); daarna blijft de **volledige volgorde
+  minstens 10 s in beeld** na de laatste naam (`orderHold` 10000 + rest van
+  de 2,4 s; correctie 02-11-2026, vóór uitrol van v2, dus geen lopende
+  spellen geraakt). Volgorde zelf ongewijzigd. Las Vegas ongewijzigd. Bord bij
+  2 spelers op 25,8 s, bij 4 op 26,5 s, bij 12 op 29,6 s.
+- **Wachtkamergeluid = "Las Vegas Casino Floor" (keuze B, 02-11-2026)**:
+  `src/audio/casinoFloor.js` (puur, `casinoFloorSteps`/`casinoFloorChannels`,
+  `floorLoudness`), 18 s stereo, 32 kHz, opgewekt in een **Web Worker**
+  (`casinoFloorWorker.js`; terugval: in stapjes op de hoofdthread), dus geen
+  hapering (ook niet bij 4× trager nagebootste CPU; geluid na ~0,6 s).
+  Inhoud: één automaat vooraan met langzame rollen (~4,5 tikken/s, rollen
+  vallen één voor één stil), 14 andere automaten verspreid door de zaal,
+  34 korte zachte elektronische casinotonen, 3× een kleine winst met munten,
+  geroezemoes, galm alleen boven ~260 Hz. Geen motorbrom/zoem (aanhoudende
+  toon −50 dB t.o.v. totaal; vorige lus −31 dB bij 100 Hz). Naadloos (alles
+  rond opgebouwd), genormaliseerd op −18 LUFS, afgespeeld op 0,28 (~ −29
+  LUFS): gemiddeld niveau wachtkamer 0,0115 < opbouw 0,014 → 0,022 < fanfare
+  0,034. Twee toevalsreeksen (opbouw en ruis los), dus overal dezelfde lus.
+  De oude rollus (`slotLoopChannels`, zonder casinolaag) blijft alleen voor
+  de draaiende rollen in BONUSSPEL (`prepareSlot('reels')`).
+- **Geluid BONUSSPEL v2** (`bonusEventsV2`): opstart + lampjesklikjes,
+  draaiende rollen (zelfde rolgeluid zonder casinolaag, één rol minder per
+  munt; valt na herladen in op het juiste punt), munt = klonk + ding,
+  inslag bij BONUSSPEL!, opbouw (stijgende tonen, versnellende arpeggio,
+  tromgeroffel, muntenregen), fanfare + finale. Reeks op niveau 1,8.
+  Gemeten uitvoer: wachtkamer ~0,02 → opbouw 0,02 → 0,034 → fanfare ~0,05.
+- **Geluid uit = direct stil**: al het openingsgeluid loopt via een eigen bus;
+  uitzetten sluit die (ook al ingeplande tonen; gemeten 0,00000).
+- **Edge Function**: wijziging nodig (`start_game` zet `intro: 2`;
+  `start_play`/SPIN rekenen met de tijdlijn van de kamer) → **game v4**,
+  lokaal klaar. **Uitrolvolgorde**: eerst frontend (getoetst tegen de
+  v3-servercode: kamers zonder `intro` → v1-opening, START SPEL en SPIN
+  werken), daarna `game` v4. Andersom zou een oude frontend START SPEL ~9 s te
+  vroeg tonen (server weigert met `intro_running`). Terugval v4 → v3: code
+  `571db27`/`228d779` (functiebestanden gelijk).
+- **Tests**: `npm test` **333/333** (+8: tijdlijn v1/v2, +5 s voor 1–12
+  spelers, kamer zonder versie, server: v3-kamer houdt v1-tempo, START SPEL
+  pas na de verlengde opening, lus (stereo, luidheid, naadloos, ratel,
+  reproduceerbaar, stapsgewijs), opbouwstappen en geluidsreeks). PGlite 9/9,
+  `deno check` + rooktest. Browser (mock, scratchpad `f13/`): opening 31/31
+  (2 toestellen, BONUSSPEL 10,06 s, herladen tijdens BONUSSPEL/namen/bord,
+  zelfde stap op beide toestellen, server weigert START SPEL tijdens de
+  opening, namen tegelijk, namenfase 9,3 s bij 2 spelers, START SPEL
+  dubbelklik → versie +1, beide toestellen binnen 4 ms naar de machine);
+  geluidsmeting 5/5; schermafbeeldingen per stap en 12 namen op 320×568/430
+  (alles in beeld, geen horizontaal scrollen). DEMO 16/16 pixel-identiek, 0
+  Supabase-verzoeken. Live tests (5A/5D) passen zich aan (`room.intro`,
+  wachttijd 40 s); nog niet live gedraaid.
+- **Volgorde ≥ 10 s (02-11-2026, lokaal)**: `npm test` **334/334**; browser
+  34/34 (volgorde 11,5 s in beeld bij 2 spelers, herladen tijdens de
+  volgorde → zelfde scherm, na 9,7 s nog op beide toestellen, START SPEL
+  tijdens de opening geweigerd); PGlite 9/9, `deno check` + rooktest; DEMO
+  16/16 pixel-identiek, 0 Supabase-verzoeken.
+- **Wachtkamergeluid B ingebouwd (02-11-2026, lokaal)**: drie voorbeelden
+  gemaakt (A Classic Casino, B Las Vegas Casino Floor, C Vintage; generator
+  scratchpad `f13/casino-samples.mjs`), gebruiker koos **B**. Tests: `npm test`
+  **335/335** (nieuw: lus 18 s stereo −18 LUFS, naadloos, geen bromtoon vs.
+  oude lus, reproduceerbaar/stapsgewijs; rolgeluid BONUSSPEL apart); browser
+  opening **34/34**, geluidsniveaus 5/5, iPhone-blokkade 3/3; DEMO 16/16
+  pixel-identiek, 0 Supabase-verzoeken. Geen Edge Function-wijziging nodig
+  voor het geluid.
 
 ## 5. React-architectuur en spelengine
 
@@ -1283,7 +1371,8 @@ voorlopig overgeslagen.
 | F10 | Eindscherm (pot, terug), deelafbeelding (canvas → PNG, deelmenu/opslaan) | L | **klaar en goedgekeurd** (01-11-2026; PNG per actief tabblad) |
 | F11 | Publieke sleutel als GitHub-variabele (begeleid), test op telefoons; daarna pas voorstel voor `main`/Pages (toestemming) | V2/Pages | |
 | F12 | Geschiedenis (afgeronde spellen, laatste 10, opnieuw delen) | L | **klaar en goedgekeurd** (01-11-2026; localStorage, geen V2-wijziging) |
-| F13 | Openingsbeleving: wachtkamergeluid, BONUSSPEL 6 s, Las Vegas wacht op START SPEL (`start_play`, `game` v3), Viva-fragment, geluidsknop | L → V2 | **lokaal klaar** (02-11-2026, §4b), wacht op akkoord commit/uitrol |
+| F13 | Openingsbeleving: wachtkamergeluid, BONUSSPEL 6 s, Las Vegas wacht op START SPEL (`start_play`, `game` v3), Viva-fragment, geluidsknop | L → V2 | **live** (02-11-2026, §4b): `571db27` op Pages, `game` v3, 5A 15/15, 5D 24/24 |
+| F13b | BONUSSPEL ~10 s met opbouw, namen +5 s, casinogeluid wachtkamer; tijdlijnversie per kamer (`game` v4) | L → V2 | **lokaal klaar** (02-11-2026, §4c), wacht op akkoord |
 
 - **Risico's**: DEMO (statusversie, engine) → referentietest + pixelvergelijking;
   goedgekeurde machine (rollen, tegels) → alleen anders bij afwijkende pool/A,

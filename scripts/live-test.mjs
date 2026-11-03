@@ -56,7 +56,7 @@ export const LIMITS = {
   logPollIntervalMs: 5_000,
   loopCheckDelayMs: 10_000, // daarna mag het aantal conflicten niet meer stijgen
   maxReleaseWaitMs: 15_000,
-  maxIntroWaitMs: 20_000, // gezamenlijke startanimatie (max. ~16 s bij 12 deelnemers)
+  maxIntroWaitMs: 40_000, // gezamenlijke startanimatie (tijdlijn v2: ~25–30 s tot het Las Vegas-scherm)
   maxExtraRollbacks: 50,
   realtimeWaitMs: 15_000, // lid wacht hoogstens zo lang op het Realtime-signaal
   outsiderWaitMs: 6_000, // buitenstaander luistert zo lang (mag niets ontvangen)
@@ -521,7 +521,7 @@ async function startGame({ client, step, ctx, sleep, now, limits }) {
     const r = await client.game(ctx.phones[0].token, { action: 'start_game', roomId: ctx.roomId })
     assert(r.status === 200 && r.body.room.phase === 'started' && Number.isFinite(r.body.room.startedAt), show(r))
     ctx.startedAt = r.body.room.startedAt
-    const tl = introTimeline(r.body.room.state.config.players.length)
+    const tl = introTimeline(r.body.room.state.config.players.length, r.body.room.intro ?? 1) // tijdlijnversie van de kamer
     ctx.introEnd = ctx.startedAt + tl.endAt
     const offset = r.body.serverNow - now()
     const again = await client.game(ctx.phones[0].token, { action: 'start_game', roomId: ctx.roomId })
@@ -699,6 +699,8 @@ async function phase5d(env) {
       startedAt: room.startedAt,
       announce: room.announce,
       ack: room.ack,
+      awaitPlay: room.awaitPlay ?? null,
+      playAt: room.playAt ?? null,
     }))
     for (let i = 1; i < proj.length; i++) {
       assert(JSON.stringify(proj[i]) === JSON.stringify(proj[0]), `${what}: ${views[i].name} ziet iets anders dan ${views[0].name}\n${JSON.stringify(proj[i])}\n${JSON.stringify(proj[0])}`)
@@ -751,17 +753,23 @@ async function phase5d(env) {
   await step('spel starten: Realtime op alle toestellen, buitenstaander niets; tweede start en vroege SPIN geweigerd', async () => {
     const r = await realtime('start', [org, A, B], [outsider], () => ok(org, { action: 'start_game' }))
     ctx.startedAt = r.room.startedAt
-    const tl = introTimeline(3)
+    const tl = introTimeline(3, r.room.intro ?? 1) // tijdlijnversie van de kamer
     ctx.introEnd = ctx.startedAt + tl.endAt
     await refused(org, { action: 'start_game' }, 409, 'registration_closed')
     await refused(A, { action: 'spin' }, 409, 'intro_running')
     if (r.room.awaitPlay) {
       // game v3: Las Vegas-scherm blijft staan; alleen de organisator gaat verder.
       await sleep(Math.min(Math.max(ctx.startedAt + tl.vegasAt - r.serverNow + 300, 0), limits.maxIntroWaitMs))
+      // Las Vegas-wachtfase (ook na herladen): overal wachten, nog geen vertrekmoment.
+      const wait = (await sameEverywhere('Las Vegas-wachtfase')).proj
+      assert(wait.awaitPlay === true && wait.playAt === null, `wachtfase: ${JSON.stringify(wait)}`)
       await refused(A, { action: 'start_play' }, 403, 'not_organizer')
       await refused(A, { action: 'spin' }, 409, 'intro_running')
       const play = await realtime('START SPEL', [org, A, B], [], () => ok(org, { action: 'start_play' }))
       await refused(org, { action: 'start_play' }, 409, 'nothing_to_advance')
+      // Alle toestellen: hetzelfde vertrekmoment (synchrone overgang).
+      const go = (await sameEverywhere('na START SPEL')).proj
+      assert(go.playAt === play.room.playAt, `vertrekmoment ${go.playAt} ≠ ${play.room.playAt}`)
       ctx.introEnd = play.room.playAt
       await sleep(Math.min(Math.max(ctx.introEnd - play.serverNow + 300, 0), limits.maxIntroWaitMs))
     } else await sleep(Math.min(Math.max(ctx.introEnd - r.serverNow + 500, 0), limits.maxIntroWaitMs))

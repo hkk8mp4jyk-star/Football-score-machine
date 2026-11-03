@@ -25,6 +25,10 @@ import { createInitialState } from '../game/engine.js'
 import { nameKey, normalizePlayerName, sortResults, validateConfig } from '../game/gameConfig.js'
 import { secureRandomInt } from '../game/random.js'
 
+// Tijdlijnversie van de gezamenlijke opening voor nieuwe spellen (zie
+// playRules.js → introTimeline); per kamer vastgelegd bij de start.
+export const INTRO_VERSION = 2
+
 export class LobbyError extends Error {
   constructor(code, detail) {
     super(code)
@@ -345,7 +349,7 @@ export function startGame(room, { userId, expectedVersion, now = Date.now() }) {
   const errors = validateConfig(config)
   if (errors.length) throw new LobbyError('settings_invalid', errors.map((e) => e.code))
   // awaitPlay: na de opening wachten alle telefoons op "START SPEL" (game v3).
-  return bump(room, { phase: 'started', state: createInitialState(config), startedAt: now, announce: null, awaitPlay: true, playAt: null })
+  return bump(room, { phase: 'started', state: createInitialState(config), startedAt: now, announce: null, awaitPlay: true, playAt: null, intro: INTRO_VERSION })
 }
 
 // ---------------------------------------------------------------------------
@@ -383,6 +387,7 @@ export function roomView(room, userId) {
     announce: started ? (room.announce ?? null) : null,
     ack: started ? (room.ack ?? {}) : null, // faseovergangen, vastgelegd door de organisator
     awaitPlay: started ? !!room.awaitPlay : false, // Las Vegas-scherm wacht op "START SPEL"
+    intro: started ? (room.intro ?? 1) : null, // tijdlijnversie van de opening
     playAt: started ? (room.playAt ?? null) : null, // gezamenlijk vertrekmoment na "START SPEL"
   }
 }

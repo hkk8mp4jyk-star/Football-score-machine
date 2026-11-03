@@ -56,5 +56,9 @@ export function MiniReels({ positions, landed = [], size = 'small', lit = false 
 export const warmingPositions = (t) => [0, 1, 2].map((r) => reelPosition(t, { vmax: 0.0016 + r * 0.0003, accel: 1, phase: r * 2.3 }))
 
 // BONUS TRIGGER: versnellen en één voor één stoppen op de munt.
-export const bonusPositions = (t, coinStops) =>
-  coinStops.map((stopAt, r) => reelPosition(t, { accel: 700, vmax: 0.022, stopAt, decel: 650, target: COIN, count: MINI_SYMBOLS.length, phase: r * 2 }))
+// `startAt` (tijdlijn v2): de rollen beginnen pas te draaien na de lampjes;
+// de remweg wordt dan iets langer (spannender).
+export const bonusPositions = (t, coinStops, startAt = 0) =>
+  coinStops.map((stopAt, r) =>
+    reelPosition(t, { startAt, accel: startAt ? 900 : 700, vmax: 0.022, stopAt, decel: startAt ? 900 : 650, target: COIN, count: MINI_SYMBOLS.length, phase: r * 2 }),
+  )

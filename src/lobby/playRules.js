@@ -11,7 +11,7 @@ import { createReducer, isTurnReleased, settle } from '../game/engine.js'
 import { configOf, turnOrder } from '../game/gameConfig.js'
 import { deriveView } from '../game/view.js'
 import { secureId, secureRandomInt } from '../game/random.js'
-import { LobbyError, isOrganizer } from './lobbyRules.js'
+import { INTRO_VERSION, LobbyError, isOrganizer } from './lobbyRules.js'
 
 const bump = (room, changes) => ({ ...room, ...changes, version: room.version + 1 })
 
@@ -19,15 +19,20 @@ const bump = (room, changes) => ({ ...room, ...changes, version: room.version + 
 // Startanimatie: tijden in ms vanaf `room.startedAt` (servertijd). Elke
 // telefoon rekent dezelfde fase uit de tijd; wie later binnenkomt, valt
 // midden in de animatie in of ziet direct de scoremachine (geen herhaling).
-//   A  BONUS TRIGGER: drie rollen versnellen, stoppen één voor één op een munt;
-//      daarna BONUSSPEL! met opbouw en fanfare (~6 s in totaal)
+//   A  BONUS TRIGGER: lampjes gaan aan, drie rollen versnellen en stoppen één
+//      voor één op een munt; daarna BONUSSPEL! met opbouw en fanfare
 //   B  NAMEN: alle namen draaien, vertragen en vallen één voor één op hun plek
 //   C  WELCOME TO FABULOUS LAS VEGAS: bord + spelsamenvatting. In spellen met
 //      `awaitPlay` (vanaf game v3) blijft dit staan tot de organisator op
 //      "START SPEL" drukt (gedeelde wachtfase, `room.playAt`); oudere
 //      spellen: na `vegasLength` automatisch de scoremachine.
+//
+// Tijdlijnversie per kamer (`room.intro`, vastgelegd door de server bij de
+// start): een lopend spel houdt altijd zijn eigen tempo, ook als de app of
+// de server intussen wordt bijgewerkt. Zonder `room.intro` = versie 1.
 // ---------------------------------------------------------------------------
-export const INTRO = {
+const INTRO_V1 = {
+  v: 1,
   coinStops: [1500, 2100, 2700], // rol 1, 2, 3 op een munt
   bonusAt: 2700, // gouden flits + BONUSSPEL!
   fanfareAt: 5000, // korte feestelijke fanfare
@@ -38,16 +43,49 @@ export const INTRO = {
   orderHold: 1700, // volledige volgorde nog even in beeld
   vegasLength: 3200, // bord + samenvatting
 }
+// Versie 2 (F13b): BONUSSPEL ~10 s met opbouw, namen rustiger (+5 s) en
+// daarna de volledige volgorde minstens 10 s in beeld.
+const INTRO_V2 = {
+  v: 2,
+  reelsAt: 1400, // eerst alleen de lampjes; daarna gaan de rollen draaien
+  coinStops: [3400, 4500, 5600],
+  bonusAt: 5600, // derde munt: flits + BONUSSPEL!, daarna steeds intenser
+  buildSteps: [6400, 7200], // opbouw in stappen (lampjes, stralen, geluid)
+  fanfareAt: 8200, // finale: fanfare, flitsen, confetti
+  finaleAt: 9000, // tweede confettiregen
+  namesAt: 10000, // namenanimatie begint (BONUS ~10 s)
+  namesSpin: 2000,
+  nameGap: 380, // basisafstand tussen twee namen …
+  nameExtra: 2400, // … plus deze extra tijd, verdeeld over de namen
+  nameGapMax: 1500, // nooit langer dan 1,5 s per naam (rest: langer volgorde tonen)
+  nameDecel: 1000,
+  orderHold: 10000, // volledige volgorde minstens 10 s in beeld na de laatste naam
+  vegasLength: 3200,
+}
+export { INTRO_VERSION } // nieuwe spellen (lobbyRules.js)
+export const INTRO = INTRO_V2
+const INTROS = { 1: INTRO_V1, 2: INTRO_V2 }
 
-export function introTimeline(playerCount) {
-  const firstStop = INTRO.namesAt + INTRO.namesSpin + INTRO.nameDecel
-  const nameStops = Array.from({ length: playerCount }, (_, i) => firstStop + i * INTRO.nameGap)
+export function introTimeline(playerCount, version = INTRO_VERSION) {
+  const I = INTROS[version] ?? INTRO_V1
+  const n = Math.max(1, playerCount)
+  const firstStop = I.namesAt + I.namesSpin + I.nameDecel
+  // Versie 2: de extra tijd gaat naar rustiger vallende namen (max. 1,5 s
+  // per naam); wat overblijft, krijgt de volledige volgorde bovenop de
+  // minimale 10 s kijktijd.
+  const extra = I.nameExtra ?? 0
+  const gap = n > 1 ? Math.min(Math.max(I.nameGapMax ?? 0, I.nameGap), I.nameGap + extra / (n - 1)) : I.nameGap
+  const used = (n - 1) * (gap - I.nameGap)
+  const nameStops = Array.from({ length: playerCount }, (_, i) => Math.round(firstStop + i * gap))
   const orderAt = nameStops.at(-1) ?? firstStop
-  const vegasAt = orderAt + INTRO.orderHold
-  return { ...INTRO, nameStops, orderAt, vegasAt, endAt: vegasAt + INTRO.vegasLength }
+  const vegasAt = Math.round(orderAt + I.orderHold + (extra - used))
+  return { ...I, nameGap: gap, nameStops, orderAt, vegasAt, endAt: vegasAt + I.vegasLength }
 }
 
-export const introEnd = (room) => room.startedAt + introTimeline(room.state.config.players.length).endAt
+// Tijdlijn van een kamer (versie uit `room.intro`).
+export const roomTimeline = (room) => introTimeline(room.state.config.players.length, room.intro ?? 1)
+
+export const introEnd = (room) => room.startedAt + roomTimeline(room).endAt
 
 // Na "START SPEL" gaan alle telefoons op hetzelfde (server)tijdstip verder,
 // ook als het Realtime-signaal niet overal even snel binnenkomt.
@@ -61,11 +99,11 @@ export function playOpensAt(room) {
 }
 
 // Fase van de startanimatie op tijdstip `now` (null = voorbij: scoremachine).
-// `wait` = { awaitPlay, playAt } van de kamer: het Las Vegas-scherm blijft dan
+// `wait` = { awaitPlay, playAt, intro } van de kamer: het Las Vegas-scherm blijft dan
 // staan tot `playAt`.
 export function introPhase(startedAt, playerCount, now, wait = {}) {
   const t = now - startedAt
-  const tl = introTimeline(playerCount)
+  const tl = introTimeline(playerCount, wait.intro ?? 1)
   if (wait.awaitPlay) {
     if (wait.playAt != null && now >= wait.playAt && t >= tl.vegasAt) return null
   } else if (t >= tl.endAt) return null
@@ -81,7 +119,7 @@ export function startPlay(room, { userId, now }) {
   if (!isOrganizer(room, userId)) throw new LobbyError('not_organizer')
   if (room.phase !== 'started') throw new LobbyError('not_started')
   if (!room.awaitPlay || room.playAt != null) throw new LobbyError('nothing_to_advance')
-  if (now < room.startedAt + introTimeline(room.state.config.players.length).vegasAt) throw new LobbyError('intro_running')
+  if (now < room.startedAt + roomTimeline(room).vegasAt) throw new LobbyError('intro_running')
   return bump(room, { playAt: now + PLAY_DELAY })
 }
 
