@@ -42,6 +42,9 @@ gebruiker. **Commit/push alleen na expliciete toestemming per keer.**
   `main`. Samenvoegen, publiceren en deployen alleen met expliciete
   toestemming. De verborgen DEMO moet ook na publicatie werken.
 
+- **Na elke update/publicatie altijd de link van de app meesturen**:
+  `https://hkk8mp4jyk-star.github.io/Football-score-machine/` (DEMO:
+  `…/?demo`), zodat de gebruiker niet hoeft te zoeken.
 - Werk in fases; na elke fase **stoppen en wachten op akkoord**.
 - Branch: `claude/multiplayer-fase-1` (bestaande multiplayer-branch). Een
   sessie kan daarnaast een eigen sessiebranch krijgen; fase 3 staat op beide
@@ -507,15 +510,27 @@ hierboven):**
   de derde munt, opbouw in stappen (6,4 en 7,2 s: snellere lampjes, tweede
   stralenkrans, gloed/strobe), fanfare 8,2 s, finale 9,0 s (extra flits +
   confetti). Klassen `bonus-v2 bonus-stage-0…8` (`bonusStage(t, tl)`), CSS-blok
-  "BONUSSPEL ~10 s (F13b)". Namenfase **precies 5 s langer** voor elk aantal
-  (spin 2,0 s, rem 1,0 s, per naam 380 ms + 2,4 s/(n−1), max. 1,5 s; rest
-  naar de volledige volgorde, ≥ 3,45 s). Volgorde zelf ongewijzigd. Las Vegas
-  ongewijzigd. Bord bij 2 spelers op 19,2 s, bij 12 op 23,0 s.
-- **Wachtkamergeluid** (`slotLoopChannels`, 4,8 s stereo, 24 kHz, in stapjes
-  opgewekt via `prepareSlot`, langste blokkade ~22 ms): drie rollen (zoem +
-  ratelende nokken met naklik van de pal, 8,75/10/11,25 per s), motorbrom,
-  casinolaag (geroezemoes + verre klokjes met galm); alles periodiek/rond
-  gefilterd → naadloos. Luidheid ~2× de oude lus, geen oversturing.
+  "BONUSSPEL ~10 s (F13b)". Namen rustiger (spin 2,0 s, rem 1,0 s, per naam
+  380 ms + 2,4 s/(n−1), max. 1,5 s); daarna blijft de **volledige volgorde
+  minstens 10 s in beeld** na de laatste naam (`orderHold` 10000 + rest van
+  de 2,4 s; correctie 02-11-2026, vóór uitrol van v2, dus geen lopende
+  spellen geraakt). Volgorde zelf ongewijzigd. Las Vegas ongewijzigd. Bord bij
+  2 spelers op 25,8 s, bij 4 op 26,5 s, bij 12 op 29,6 s.
+- **Wachtkamergeluid = "Las Vegas Casino Floor" (keuze B, 02-11-2026)**:
+  `src/audio/casinoFloor.js` (puur, `casinoFloorSteps`/`casinoFloorChannels`,
+  `floorLoudness`), 18 s stereo, 32 kHz, opgewekt in een **Web Worker**
+  (`casinoFloorWorker.js`; terugval: in stapjes op de hoofdthread), dus geen
+  hapering (ook niet bij 4× trager nagebootste CPU; geluid na ~0,6 s).
+  Inhoud: één automaat vooraan met langzame rollen (~4,5 tikken/s, rollen
+  vallen één voor één stil), 14 andere automaten verspreid door de zaal,
+  34 korte zachte elektronische casinotonen, 3× een kleine winst met munten,
+  geroezemoes, galm alleen boven ~260 Hz. Geen motorbrom/zoem (aanhoudende
+  toon −50 dB t.o.v. totaal; vorige lus −31 dB bij 100 Hz). Naadloos (alles
+  rond opgebouwd), genormaliseerd op −18 LUFS, afgespeeld op 0,28 (~ −29
+  LUFS): gemiddeld niveau wachtkamer 0,0115 < opbouw 0,014 → 0,022 < fanfare
+  0,034. Twee toevalsreeksen (opbouw en ruis los), dus overal dezelfde lus.
+  De oude rollus (`slotLoopChannels`, zonder casinolaag) blijft alleen voor
+  de draaiende rollen in BONUSSPEL (`prepareSlot('reels')`).
 - **Geluid BONUSSPEL v2** (`bonusEventsV2`): opstart + lampjesklikjes,
   draaiende rollen (zelfde rolgeluid zonder casinolaag, één rol minder per
   munt; valt na herladen in op het juiste punt), munt = klonk + ding,
@@ -543,7 +558,20 @@ hierboven):**
   geluidsmeting 5/5; schermafbeeldingen per stap en 12 namen op 320×568/430
   (alles in beeld, geen horizontaal scrollen). DEMO 16/16 pixel-identiek, 0
   Supabase-verzoeken. Live tests (5A/5D) passen zich aan (`room.intro`,
-  wachttijd 30 s); nog niet live gedraaid.
+  wachttijd 40 s); nog niet live gedraaid.
+- **Volgorde ≥ 10 s (02-11-2026, lokaal)**: `npm test` **334/334**; browser
+  34/34 (volgorde 11,5 s in beeld bij 2 spelers, herladen tijdens de
+  volgorde → zelfde scherm, na 9,7 s nog op beide toestellen, START SPEL
+  tijdens de opening geweigerd); PGlite 9/9, `deno check` + rooktest; DEMO
+  16/16 pixel-identiek, 0 Supabase-verzoeken.
+- **Wachtkamergeluid B ingebouwd (02-11-2026, lokaal)**: drie voorbeelden
+  gemaakt (A Classic Casino, B Las Vegas Casino Floor, C Vintage; generator
+  scratchpad `f13/casino-samples.mjs`), gebruiker koos **B**. Tests: `npm test`
+  **335/335** (nieuw: lus 18 s stereo −18 LUFS, naadloos, geen bromtoon vs.
+  oude lus, reproduceerbaar/stapsgewijs; rolgeluid BONUSSPEL apart); browser
+  opening **34/34**, geluidsniveaus 5/5, iPhone-blokkade 3/3; DEMO 16/16
+  pixel-identiek, 0 Supabase-verzoeken. Geen Edge Function-wijziging nodig
+  voor het geluid.
 
 ## 5. React-architectuur en spelengine
 

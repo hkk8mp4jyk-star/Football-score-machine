@@ -7,6 +7,7 @@
 // Geluid blokkeert nooit het spel: elke fout wordt genegeerd.
 
 import { audioOut, audioRunning, setSoundEnabled, soundEnabled, unlockAudio } from './sound.js'
+import { FLOOR_RATE, casinoFloorSteps } from './casinoFloor.js'
 
 // ---------------------------------------------------------------------------
 // Voorkeur (op dit toestel onthouden)
@@ -166,12 +167,12 @@ function noise(o, { at = 0, dur = 0.1, gain = 0.08, freq = 3000, q = 1, type = '
 }
 
 // ---------------------------------------------------------------------------
-// Wachtkamer: casino-fruitautomaat (één lus, nooit dubbel)
+// Rolgeluid voor BONUSSPEL (draaiende rollen tot de munten vallen)
 // ---------------------------------------------------------------------------
-// Alles wordt hier opgewekt: drie snel draaiende rollen (zoemende strip +
-// ratelende nokken), een zachte motorbrom en een subtiele casinolaag (geroezemoes
-// en verre klokjes van andere automaten). Alle periodieke delen passen precies
-// in de lus en filters lopen "rond", zodat de lus naadloos doorloopt.
+// Drie snel draaiende rollen (zoemende strip + ratelende nokken) met een
+// zachte motorbrom. Alle periodieke delen passen precies in de lus en filters
+// lopen "rond". De wachtkamer gebruikt sinds 02-11-2026 "Las Vegas Casino
+// Floor" (casinoFloor.js, keuze B).
 export const LOOP_SECONDS = 4.8
 const REELS = [
   { rate: 8.75, pan: -0.55, whir: 640, click: 2650 },
@@ -217,13 +218,6 @@ function bandpassCircular(x, sr, freq, q) {
   }
   return y
 }
-function lowpassCircular(x, sr, freq) {
-  const k = 1 - Math.exp((-2 * Math.PI * freq) / sr)
-  const y = new Float32Array(x.length)
-  let v = 0
-  for (let pass = 0; pass < 2; pass++) for (let i = 0; i < x.length; i++) (v += (x[i] - v) * k), pass && (y[i] = v)
-  return y
-}
 
 // Sinus optellen via een draaiende vector (veel sneller dan Math.sin per monster).
 function addSine(arr, sr, freq, amp, phase) {
@@ -234,22 +228,6 @@ function addSine(arr, sr, freq, amp, phase) {
   let y = Math.sin(phase)
   for (let i = 0; i < arr.length; i++) {
     arr[i] += amp * y
-    const nx = x * c - y * sn
-    y = x * sn + y * c
-    x = nx
-  }
-}
-
-// Uitstervende sinus (klokje), ook via een draaiende vector.
-function addDampedSine(arr, sr, freq, amp, tau) {
-  const w = (2 * Math.PI * freq) / sr
-  const d = Math.exp(-1 / (sr * tau))
-  const c = Math.cos(w) * d
-  const sn = Math.sin(w) * d
-  let x = amp
-  let y = 0
-  for (let i = 0; i < arr.length; i++) {
-    arr[i] += y
     const nx = x * c - y * sn
     y = x * sn + y * c
     x = nx
@@ -269,7 +247,7 @@ export function slotLoopChannels(sr, opts = {}) {
     if (r.done) return r.value
   }
 }
-function* slotLoopSteps(sr, { seconds = LOOP_SECONDS, ambience = true, seed = 7 } = {}) {
+function* slotLoopSteps(sr, { seconds = LOOP_SECONDS, seed = 7 } = {}) {
   const len = Math.round(sr * seconds)
   const L = new Float32Array(len)
   const R = new Float32Array(len)
@@ -330,54 +308,6 @@ function* slotLoopSteps(sr, { seconds = LOOP_SECONDS, ambience = true, seed = 7 
     for (let i = 0; i < len; i++) (L[i] += hum[i]), (R[i] += hum[i])
   }
 
-  if (ambience) {
-    // Geroezemoes van de casinovloer: lage, langzaam golvende ruis (links en
-    // rechts los van elkaar, voor ruimte).
-    for (const ch of [L, R]) {
-      const m1 = lowpassCircular(white(), sr, 420)
-      yield
-      const m = lowpassCircular(m1, sr, 600)
-      const sway = new Float32Array(len)
-      addSine(sway, sr, 1 / seconds, 0.2, ch === L ? 0 : 2)
-      for (let i = 0; i < len; i++) ch[i] += 0.22 * m[i] * (0.8 + sway[i])
-      yield
-    }
-    // Verre klokjes van andere automaten, met een korte galm; lopen rond de
-    // lus door (naadloos).
-    const notes = [1047, 1175, 1319, 1568, 1760, 2093]
-    for (let c = 0; c < 6; c++) {
-      const start = Math.round(((c + 0.3 + rand() * 0.4) * len) / 6)
-      const f = notes[Math.floor(rand() * notes.length)]
-      const pan = rand() * 1.4 - 0.7
-      const amp = 0.045 + rand() * 0.02
-      // Klank één keer opwekken, daarna als galm een paar keer zachter optellen.
-      const m = Math.round(sr * 0.9)
-      const bell = new Float32Array(m)
-      addDampedSine(bell, sr, f, 1, 0.35)
-      addDampedSine(bell, sr, f * 2.76, 0.4, 0.12)
-      addDampedSine(bell, sr, f * 5.4, 0.2, 0.05)
-      for (let k = 0, a = Math.round(sr * 0.002); k < a; k++) bell[k] *= k / a // zachte aanslag
-      for (const [echo, g] of [
-        [0, 1],
-        [0.11, 0.38],
-        [0.23, 0.22],
-        [0.37, 0.12],
-      ]) {
-        const p = echo ? -pan * 0.6 : pan
-        const gl = amp * g * (1 - Math.max(0, p))
-        const gr = amp * g * (1 + Math.min(0, p))
-        let i = (start + Math.round(echo * sr)) % len
-        for (let k = 0; k < m; k++) {
-          L[i] += gl * bell[k]
-          R[i] += gr * bell[k]
-          if (++i === len) i = 0 // rond de lus
-        }
-      }
-      yield
-    }
-    yield
-  }
-
   yield
   // Niet te hard: vaste luidheid, zachte begrenzing van pieken.
   let sum = 0
@@ -394,31 +324,65 @@ function* slotLoopSteps(sr, { seconds = LOOP_SECONDS, ambience = true, seed = 7 
 
 // Lusgegevens worden in stapjes opgewekt (geen hapering van de animaties) en
 // daarna bewaard; de AudioBuffer wordt per audiocontext gemaakt.
-const slotData = new Map() // ambience → { data: [L, R] | null, ready: Promise }
-export function prepareSlot(ambience = true) {
-  const key = String(ambience)
-  if (!slotData.has(key)) {
-    const entry = { data: null, buffers: new WeakMap() }
-    entry.ready = (async () => {
-      const it = slotLoopSteps(LOOP_RATE, { ambience })
-      for (;;) {
-        const r = it.next()
-        if (r.done) return (entry.data = r.value)
-        await new Promise((ok) => setTimeout(ok, 0))
-      }
-    })()
-    slotData.set(key, entry)
-  }
-  return slotData.get(key).ready
+//   'floor' = wachtkamer (Las Vegas Casino Floor), 'reels' = rollen BONUSSPEL
+const SOURCES = {
+  floor: { rate: FLOOR_RATE, steps: () => casinoFloorSteps(FLOOR_RATE), worker: true },
+  reels: { rate: LOOP_RATE, steps: () => slotLoopSteps(LOOP_RATE) },
 }
-function slotBuffer(ctx, ambience = true) {
-  prepareSlot(ambience)
-  const entry = slotData.get(String(ambience))
+const slotData = new Map() // soort → { data: [L, R] | null, ready: Promise }
+
+// In stapjes op de hoofdthread (terugval, en in tests).
+async function inSteps(kind) {
+  const it = SOURCES[kind].steps()
+  for (;;) {
+    const r = it.next()
+    if (r.done) return r.value
+    await new Promise((ok) => setTimeout(ok, 0))
+  }
+}
+// Liefst in een achtergrondthread: het scherm hapert dan nooit.
+function inWorker() {
+  return new Promise((ok, fail) => {
+    let w
+    try {
+      w = new Worker(new URL('./casinoFloorWorker.js', import.meta.url), { type: 'module' })
+    } catch (e) {
+      return fail(e)
+    }
+    const done = (fn, v) => {
+      try {
+        w.terminate()
+      } catch {
+        /* al weg */
+      }
+      fn(v)
+    }
+    w.onmessage = (e) => (e.data?.L ? done(ok, [e.data.L, e.data.R]) : done(fail, new Error(e.data?.error)))
+    w.onerror = (e) => {
+      e.preventDefault?.()
+      done(fail, new Error('worker'))
+    }
+    w.postMessage('go')
+  })
+}
+
+export function prepareSlot(kind = 'floor') {
+  if (!slotData.has(kind)) {
+    const entry = { data: null, buffers: new WeakMap() }
+    const viaWorker = SOURCES[kind].worker && typeof Worker !== 'undefined' && typeof window !== 'undefined'
+    entry.ready = (viaWorker ? inWorker().catch(() => inSteps(kind)) : inSteps(kind)).then((d) => (entry.data = d))
+    slotData.set(kind, entry)
+  }
+  return slotData.get(kind).ready
+}
+function slotBuffer(ctx, kind = 'floor') {
+  prepareSlot(kind)
+  const entry = slotData.get(kind)
   if (!entry.data) return null
   let buf = entry.buffers.get(ctx)
   if (!buf) {
     const [l, r] = entry.data
-    buf = ctx.createBuffer(2, l.length, LOOP_RATE)
+    buf = ctx.createBuffer(2, l.length, SOURCES[kind].rate)
     buf.getChannelData(0).set(l)
     buf.getChannelData(1).set(r)
     entry.buffers.set(ctx, buf)
@@ -445,7 +409,7 @@ function ensureLoop() {
     const g = o.ctx.createGain()
     const t = o.ctx.currentTime
     g.gain.setValueAtTime(0.0001, t)
-    g.gain.exponentialRampToValueAtTime(0.2, t + 0.8) // ~2× de oude luidheid, niet hard
+    g.gain.exponentialRampToValueAtTime(0.28, t + 1.2) // ~ -29 LUFS: achtergrond, BONUSSPEL steekt erbovenuit
     src.connect(g).connect(o.out)
     src.start(t)
     loop = { src, g, ctx: o.ctx }
@@ -598,7 +562,7 @@ function bonusEventsV2(tl) {
       // dan valt de laag later in op het juiste punt.
       const start = o.ctx.currentTime + d - skip
       const run = () => {
-        const buf = slotBuffer(o.ctx, false)
+        const buf = slotBuffer(o.ctx, 'reels')
         if (!buf || !bus || bus.ctx !== o.ctx) return
         const now = o.ctx.currentTime
         const lateBy = Math.max(0, now - start)
@@ -618,11 +582,11 @@ function bonusEventsV2(tl) {
         src.start(t0)
         src.stop(end + 0.3)
       }
-      if (slotBuffer(o.ctx, false)) run()
-      else prepareSlot(false).then(run)
+      if (slotBuffer(o.ctx, 'reels')) run()
+      else prepareSlot('reels').then(run)
     },
   })
-  prepareSlot(false)
+  prepareSlot('reels')
   // 3. Munten: mechanische klonk + ding, de derde het grootst.
   tl.coinStops.forEach((stop, i) =>
     ev.push({

@@ -336,11 +336,13 @@ describe('server: starten (D8)', () => {
     expect(played.intro).toBe(1)
     expect(played.playAt).toBe(r.clock.t + 1500)
   })
-  it('tijdlijn v2: START SPEL pas na de verlengde opening (BONUSSPEL ~10 s + namen 5 s langer)', async () => {
+  it('tijdlijn v2: START SPEL pas na de verlengde opening (BONUSSPEL ~10 s, namen, volgorde ≥ 10 s)', async () => {
     const r = await lobby(3)
     const { room } = await r.call(ORG, { action: 'start_game', roomId: r.roomId })
     const v2 = introTimeline(3, 2)
-    expect(v2.vegasAt).toBe(introTimeline(3, 1).vegasAt + 9000)
+    expect(v2.vegasAt - v2.orderAt).toBeGreaterThanOrEqual(10000)
+    r.clock.t = room.startedAt + v2.orderAt + 9000 // volledige volgorde in beeld: nog te vroeg
+    await r.fails(r.call(ORG, { action: 'start_play', roomId: r.roomId }), 'intro_running')
     r.clock.t = room.startedAt + introTimeline(3, 1).vegasAt + 10 // oude bordtijd: nog te vroeg
     await r.fails(r.call(ORG, { action: 'start_play', roomId: r.roomId }), 'intro_running')
     await r.fails(r.call(P[1], { action: 'spin', roomId: r.roomId }), 'intro_running')

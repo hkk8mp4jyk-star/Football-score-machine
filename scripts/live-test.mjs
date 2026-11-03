@@ -56,7 +56,7 @@ export const LIMITS = {
   logPollIntervalMs: 5_000,
   loopCheckDelayMs: 10_000, // daarna mag het aantal conflicten niet meer stijgen
   maxReleaseWaitMs: 15_000,
-  maxIntroWaitMs: 30_000, // gezamenlijke startanimatie (tijdlijn v2: ~19–23 s tot het Las Vegas-scherm)
+  maxIntroWaitMs: 40_000, // gezamenlijke startanimatie (tijdlijn v2: ~25–30 s tot het Las Vegas-scherm)
   maxExtraRollbacks: 50,
   realtimeWaitMs: 15_000, // lid wacht hoogstens zo lang op het Realtime-signaal
   outsiderWaitMs: 6_000, // buitenstaander luistert zo lang (mag niets ontvangen)

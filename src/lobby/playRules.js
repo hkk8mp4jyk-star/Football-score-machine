@@ -43,7 +43,8 @@ const INTRO_V1 = {
   orderHold: 1700, // volledige volgorde nog even in beeld
   vegasLength: 3200, // bord + samenvatting
 }
-// Versie 2 (F13b): BONUSSPEL ~10 s met opbouw, namen 5 s langer.
+// Versie 2 (F13b): BONUSSPEL ~10 s met opbouw, namen rustiger (+5 s) en
+// daarna de volledige volgorde minstens 10 s in beeld.
 const INTRO_V2 = {
   v: 2,
   reelsAt: 1400, // eerst alleen de lampjes; daarna gaan de rollen draaien
@@ -58,7 +59,7 @@ const INTRO_V2 = {
   nameExtra: 2400, // … plus deze extra tijd, verdeeld over de namen
   nameGapMax: 1500, // nooit langer dan 1,5 s per naam (rest: langer volgorde tonen)
   nameDecel: 1000,
-  orderHold: 3450,
+  orderHold: 10000, // volledige volgorde minstens 10 s in beeld na de laatste naam
   vegasLength: 3200,
 }
 export { INTRO_VERSION } // nieuwe spellen (lobbyRules.js)
@@ -70,8 +71,8 @@ export function introTimeline(playerCount, version = INTRO_VERSION) {
   const n = Math.max(1, playerCount)
   const firstStop = I.namesAt + I.namesSpin + I.nameDecel
   // Versie 2: de extra tijd gaat naar rustiger vallende namen (max. 1,5 s
-  // per naam); wat overblijft, krijgt de volledige volgorde. Zo duurt de
-  // namenfase voor elk aantal deelnemers precies 5 s langer dan versie 1.
+  // per naam); wat overblijft, krijgt de volledige volgorde bovenop de
+  // minimale 10 s kijktijd.
   const extra = I.nameExtra ?? 0
   const gap = n > 1 ? Math.min(Math.max(I.nameGapMax ?? 0, I.nameGap), I.nameGap + extra / (n - 1)) : I.nameGap
   const used = (n - 1) * (gap - I.nameGap)

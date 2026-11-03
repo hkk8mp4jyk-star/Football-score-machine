@@ -73,20 +73,28 @@ describe('startanimatie: tijdlijn', () => {
     expect(tl.fanfareAt).toBeLessThan(tl.finaleAt)
     expect(tl.finaleAt).toBeLessThan(tl.namesAt)
   })
-  it('versie 2: namenfase precies 5 s langer dan versie 1, voor elk aantal deelnemers; volgorde ongewijzigd', () => {
+  it('versie 2: namen rustiger (+5 s) en daarna de volledige volgorde minstens 10 s in beeld; volgorde ongewijzigd', () => {
     for (let n = 1; n <= 12; n++) {
       const a = introTimeline(n, 1)
       const b = introTimeline(n, 2)
-      expect(b.vegasAt - b.namesAt - (a.vegasAt - a.namesAt)).toBe(5000)
+      expect(b.vegasAt - b.orderAt).toBeGreaterThanOrEqual(10000) // ≥ 10 s na de laatste naam
+      expect(b.vegasAt - b.namesAt - (a.vegasAt - a.namesAt)).toBe(5000 + 10000 - 3450) // +5 s namen, +6,55 s kijktijd
       expect(b.nameStops).toHaveLength(n)
       for (let i = 1; i < n; i++) {
         const gap = b.nameStops[i] - b.nameStops[i - 1]
         expect(gap).toBeGreaterThanOrEqual(a.nameStops[i] - a.nameStops[i - 1]) // rustiger, nooit sneller
         expect(gap).toBeLessThanOrEqual(1501) // maar niet slepend
       }
-      expect(b.vegasAt - b.orderAt).toBeGreaterThanOrEqual(3450) // volledige volgorde ruim in beeld
     }
-    expect(introTimeline(12).vegasAt).toBeLessThan(24000) // ook met 12 namen het bord binnen 24 s
+    expect(introTimeline(12).vegasAt).toBeLessThan(30000) // ook met 12 namen het bord binnen 30 s
+    expect(introTimeline(4).namesAt).toBe(10000) // BONUSSPEL blijft 10 s
+  })
+  it('volgordefase: tot vegasAt de namen (volledige volgorde), daarna het bord; herladen = zelfde fase', () => {
+    const tl = introTimeline(5)
+    const wait = { awaitPlay: true, playAt: null, intro: 2 }
+    expect(introPhase(0, 5, tl.orderAt, wait).phase).toBe('names')
+    expect(introPhase(0, 5, tl.orderAt + 9999, wait).phase).toBe('names') // nog steeds de volgorde
+    expect(introPhase(0, 5, tl.vegasAt, wait).phase).toBe('vegas')
   })
   it('tijdlijn per kamer: kamer zonder versie (gestart vóór de update) houdt versie 1', () => {
     expect(roomTimeline({ state: { config: { players: [1, 2, 3] } } }).namesAt).toBe(6000)
