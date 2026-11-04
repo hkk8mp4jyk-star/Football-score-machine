@@ -5,12 +5,30 @@ import { errorText, isValidCode, normalizeCode } from '../api.js'
 import { MAX_CLUB_LENGTH, blankDraft, setupStatus } from '../../lobby/lobbyRules.js'
 import { missingText } from '../lobbyText.js'
 
-// Beginscherm: "Nieuw spel", "Meedoen"; bij een lopend spel bovenaan een
-// gouden knop met de wedstrijdnaam (verder met dat spel). Geschiedenis blijft
-// voorlopig weg (B7). Geen verdere toelichtingen.
-export function Home({ resume, onNew, onJoin, onResume, hasHistory = false, onHistory }) {
+// Icoon "history" van Lucide (https://lucide.dev, ISC-licentie): klokje met
+// terugdraaiende pijl. Inline, dus geen extra pakket nodig.
+function HistoryIcon() {
   return (
-    <OnlineScreen className="ol-home">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M12 7v5l4 2" />
+    </svg>
+  )
+}
+
+// Beginscherm: "Nieuw spel", "Meedoen"; bij een lopend spel bovenaan een
+// gouden knop met de wedstrijdnaam (verder met dat spel). Rechtsboven altijd
+// een klein rond icoon voor de Geschiedenis (ook als die nog leeg is).
+// Geen verdere toelichtingen.
+export function Home({ resume, onNew, onJoin, onResume, onHistory }) {
+  const history = onHistory ? (
+    <button type="button" className="ol-icon-btn ol-history-btn" onClick={onHistory} aria-label="Geschiedenis" title="Geschiedenis">
+      <HistoryIcon />
+    </button>
+  ) : null
+  return (
+    <OnlineScreen className="ol-home" action={history}>
       <div className="ol-home-body">
         {resume && (
           <button type="button" className="gold-btn ol-btn-wide ol-resume-btn" onClick={onResume} aria-label={`Verder met ${resume.matchName}`}>
@@ -23,11 +41,6 @@ export function Home({ resume, onNew, onJoin, onResume, hasHistory = false, onHi
         <button type="button" className="ol-big-btn" onClick={onJoin}>
           Meedoen
         </button>
-        {hasHistory && (
-          <button type="button" className="ol-big-btn" onClick={onHistory}>
-            Geschiedenis
-          </button>
-        )}
       </div>
     </OnlineScreen>
   )

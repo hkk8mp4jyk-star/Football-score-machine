@@ -44,9 +44,12 @@ describe('router', () => {
 })
 
 describe('beginscherm', () => {
-  it('alleen Nieuw spel en Meedoen; geen Geschiedenis, DEMO of kleine teksten', () => {
-    const s = html(<Home onNew={noop} onJoin={noop} onResume={noop} />)
+  it('Nieuw spel en Meedoen, rechtsboven een klein rond icoon Geschiedenis; geen DEMO of kleine teksten', () => {
+    const s = html(<Home onNew={noop} onJoin={noop} onResume={noop} onHistory={noop} />)
     expect(text(s).trim()).toBe('Football Score Machine Nieuw spel Meedoen')
+    // icoon in de kop (niet als grote knop tussen de knoppen), met toegankelijke naam
+    expect(s).toMatch(/<header[^>]*>[\s\S]*<div class="ol-top-action"><button type="button" class="ol-icon-btn ol-history-btn"[^>]*aria-label="Geschiedenis"[^>]*><svg[\s\S]*<\/svg><\/button><\/div><\/header>/)
+    expect(count(s, /ol-big-btn[^"]*"[^>]*>Geschiedenis/g)).toBe(0)
   })
   it('lopend spel: wedstrijdnaam direct op de gouden knop, geen aparte titel', () => {
     const s = html(<Home resume={{ matchName: 'Werder Bremen II – Bremer SV', phase: 'lobby' }} onNew={noop} onJoin={noop} onResume={noop} />)

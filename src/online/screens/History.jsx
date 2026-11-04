@@ -10,7 +10,7 @@ export function HistoryList({ entries, onOpen, onBack }) {
     <OnlineScreen onBack={onBack}>
       <h1 className="ol-title">Geschiedenis</h1>
       {entries.length === 0 ? (
-        <p className="ol-note">Nog geen afgeronde wedstrijden.</p>
+        <p className="ol-note">Nog geen afgeronde wedstrijden. Afgeronde wedstrijden worden op dit toestel bewaard.</p>
       ) : (
         <ul className="ol-history">
           {entries.map((e) => (

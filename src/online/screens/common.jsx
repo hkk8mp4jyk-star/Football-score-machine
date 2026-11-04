@@ -4,7 +4,9 @@ import { MAX_NAME_LENGTH } from '../../game/config.js'
 
 // Opbouw van een online scherm: logo bovenaan, optioneel "‹ Terug",
 // daaronder de inhoud (scrollt als die langer is dan het scherm).
-export function OnlineScreen({ children, onBack, backLabel = 'Terug', compact = false, className = '' }) {
+// `action`: optionele knop rechtsboven in de kop (bijv. Geschiedenis op het
+// beginscherm), gespiegeld aan de terugknop links.
+export function OnlineScreen({ children, onBack, backLabel = 'Terug', compact = false, className = '', action = null }) {
   return (
     <div className={`screen ol-screen ${className}`.trim()}>
       <header className={`ol-top ${compact ? 'is-compact' : ''}`.trim()}>
@@ -14,6 +16,7 @@ export function OnlineScreen({ children, onBack, backLabel = 'Terug', compact = 
           </button>
         )}
         <Logo compact={compact} />
+        {action && <div className="ol-top-action">{action}</div>}
       </header>
       <div className="ol-scroll">{children}</div>
     </div>
