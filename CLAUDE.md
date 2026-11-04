@@ -24,7 +24,12 @@ gecommit (01-11-2026).** Gepubliceerd op `main` (41932a8, GitHub Pages:
 `https://hkk8mp4jyk-star.github.io/Football-score-machine/`). **F13
 (openingsbeleving + START SPEL + `game` v3) live (02-11-2026)**: commit
 `571db27` op `main` (Pages-run 41427900678), `game` **v3 ACTIVE** op V2, live
-5A 15/15 en 5D 24/24 geslaagd, zie §4b. Nog: telefoontest, eigen Viva-fragment. Elke fase pas na expliciet akkoord van de
+5A 15/15 en 5D 24/24 geslaagd, zie §4b. **F13b live (03-11-2026)**: PR #1
+gemerged (`main` 1b2995b = inhoud `f2cc0f3`, Pages-run 41703836511), daarna
+`game` **v4 ACTIVE** (v3-terugval = code `571db27`, bundel-kopie in
+scratchpad); zie §4c. Nog: live tests 5A/5D op v4, telefoontest, eigen
+Viva-fragment. Push naar `main` vanuit de sessie wordt door de omgeving
+geblokkeerd: publiceren via PR die de gebruiker zelf samenvoegt. Elke fase pas na expliciet akkoord van de
 gebruiker. **Commit/push alleen na expliciete toestemming per keer.**
 
 ---
@@ -497,7 +502,7 @@ hierboven):**
   START SPEL → `nothing_to_advance`, overal hetzelfde `playAt`; verder volledig
   spel met veilingen en eindstand). Alles opgeruimd, database leeg.
 
-### 4c. F13b Langere opening + casinogeluid (02-11-2026, lokaal klaar, niet gecommit/uitgerold)
+### 4c. F13b Langere opening + casinogeluid (live 03-11-2026: PR #1 → `main` 1b2995b, `game` v4)
 
 - **Tijdlijnversie per kamer** (`room.intro`, door de server gezet bij
   `start_game`; `INTRO_VERSION = 2` in `lobbyRules.js`; `roomView` stuurt
@@ -1372,7 +1377,7 @@ voorlopig overgeslagen.
 | F11 | Publieke sleutel als GitHub-variabele (begeleid), test op telefoons; daarna pas voorstel voor `main`/Pages (toestemming) | V2/Pages | |
 | F12 | Geschiedenis (afgeronde spellen, laatste 10, opnieuw delen) | L | **klaar en goedgekeurd** (01-11-2026; localStorage, geen V2-wijziging) |
 | F13 | Openingsbeleving: wachtkamergeluid, BONUSSPEL 6 s, Las Vegas wacht op START SPEL (`start_play`, `game` v3), Viva-fragment, geluidsknop | L → V2 | **live** (02-11-2026, §4b): `571db27` op Pages, `game` v3, 5A 15/15, 5D 24/24 |
-| F13b | BONUSSPEL ~10 s met opbouw, namen +5 s, casinogeluid wachtkamer; tijdlijnversie per kamer (`game` v4) | L → V2 | **lokaal klaar** (02-11-2026, §4c), wacht op akkoord |
+| F13b | BONUSSPEL ~10 s met opbouw, namen rustiger + volgorde ≥ 10 s, casinogeluid wachtkamer (B); tijdlijnversie per kamer (`game` v4) | L → V2 | **live** (03-11-2026, §4c): PR #1 → `main` 1b2995b, `game` v4; live tests 5A/5D nog te doen |
 
 - **Risico's**: DEMO (statusversie, engine) → referentietest + pixelvergelijking;
   goedgekeurde machine (rollen, tegels) → alleen anders bij afwijkende pool/A,
