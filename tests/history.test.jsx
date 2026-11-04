@@ -303,9 +303,15 @@ describe('F10/F12: schermen', () => {
     expect(names).toEqual(st.config.players.map((p) => p.name))
   })
 
-  it('beginscherm: "Geschiedenis" alleen als er afgeronde wedstrijden zijn', () => {
-    expect(renderToStaticMarkup(<Home onNew={() => {}} onJoin={() => {}} />)).not.toContain('Geschiedenis')
-    expect(renderToStaticMarkup(<Home hasHistory onNew={() => {}} onJoin={() => {}} onHistory={() => {}} />)).toContain('Geschiedenis')
+  it('beginscherm: icoon Geschiedenis altijd zichtbaar (ook zonder afgeronde wedstrijden)', () => {
+    const s = renderToStaticMarkup(<Home onNew={() => {}} onJoin={() => {}} onHistory={() => {}} />)
+    expect(s).toContain('aria-label="Geschiedenis"')
+    expect(s).toContain('ol-history-btn')
+  })
+  it('lege geschiedenis: uitleg dat wedstrijden op dit toestel worden bewaard; terugknop', () => {
+    const s = renderToStaticMarkup(<HistoryList entries={[]} onOpen={() => {}} onBack={() => {}} />)
+    expect(s).toContain('Nog geen afgeronde wedstrijden. Afgeronde wedstrijden worden op dit toestel bewaard.')
+    expect(s).toContain('Terug naar beginscherm')
   })
 
   it('geschiedenis: naam, speeldatum en pot, nieuwste eerst; terugkijken = eindscherm zonder SPIN of beheer', async () => {

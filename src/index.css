@@ -3958,3 +3958,50 @@ input:focus-visible {
     animation: none;
   }
 }
+
+/* Beginscherm: klein rond icoon rechtsboven (Geschiedenis), gespiegeld aan
+   de terugknop links; subtiel, niet goud. */
+.ol-top-action {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.ol-icon-btn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgb(240 234 214 / 0.18);
+  background: rgb(3 10 29 / 0.55);
+  color: rgb(240 234 214 / 0.72);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+/* groter aanraakvlak (48×48) dan het zichtbare rondje */
+.ol-icon-btn::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+}
+.ol-icon-btn:hover,
+.ol-icon-btn:focus-visible {
+  border-color: rgb(229 191 99 / 0.45);
+  color: var(--color-gold-300);
+}
+.ol-icon-btn:focus-visible {
+  outline: 2px solid rgb(229 191 99 / 0.6);
+  outline-offset: 2px;
+}
+.ol-icon-btn:active {
+  background: rgb(240 234 214 / 0.08);
+}

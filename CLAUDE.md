@@ -381,11 +381,17 @@ oudere afspraken hieronder):**
   MEGA- en veilinguitslagen als gewone uitslagen (in de app-overzichten was
   dat al zo; `Overview` ongewijzigd, DEMO ongewijzigd).
 - **F12 geschiedenis (goedgekeurd 01-11-2026; vervangt B7; definitief
-  alleen lokaal in localStorage, geen centrale opslag/overzetcodes/accounts)**: knop
-  "Geschiedenis" op het beginscherm zodra er minstens één afgeronde wedstrijd
-  is; lijst (max. 10, nieuwste eerst op speeldatum) met wedstrijd, datum en
+  alleen lokaal in localStorage, geen centrale opslag/overzetcodes/accounts)**:
+  **klein rond icoon rechtsboven op het beginscherm** (Lucide `history`, 40×40,
+  subtiele lichte rand, niet goud; altijd zichtbaar, ook zonder wedstrijden;
+  wijziging 04-11-2026, vervangt de grote knop die alleen bij ≥ 1 wedstrijd
+  verscheen); lijst (max. 10, nieuwste eerst op speeldatum) met wedstrijd, datum en
   pot; openen = eindscherm (alleen lezen, "Terug naar geschiedenis", PNG
-  opnieuw). "Verder met huidig spel" alleen voor een niet-afgerond spel.
+  opnieuw). Leeg: "Nog geen afgeronde wedstrijden. Afgeronde wedstrijden
+  worden op dit toestel bewaard." Terugknop naar het beginscherm. "Verder met
+  huidig spel" alleen voor een niet-afgerond spel. Let op: elke browser heeft
+  eigen opslag (WhatsApp-ingebouwde browser, Safari en een beginscherm-icoon
+  op iPhone zijn los van elkaar).
 
 **Besluiten wachtkamer B1–B10 (31-10-2026; B1, B4, B6, B9 aangepast, zie
 hierboven):**
@@ -409,7 +415,7 @@ hierboven):**
 - **B6** Verwijderen met korte bevestiging; organisator kan zichzelf niet
   verwijderen; verwijderde deelnemer kan zich opnieuw aanmelden zolang de
   wachtkamer open is ("Je bent verwijderd" + "Opnieuw aanmelden").
-- **B7** "Geschiedenis" voorlopig helemaal verborgen.
+- **B7** *(vervangen door F12)* "Geschiedenis" voorlopig helemaal verborgen.
 - **B8** Precies twee knoppen: "Deel uitnodiging" (deelmenu van de telefoon;
   zonder deelmenu wordt de uitnodiging gekopieerd) en "Kopieer link".
   Uitnodiging = naam organisator + link + kamercode. Geen WhatsApp-knop.
@@ -420,7 +426,7 @@ hierboven):**
   beoordeling en apart akkoord.
 
 **Nieuwe schermen (multiplayer, in de bestaande stijl; machine ongewijzigd):**
-- **Beginscherm**: "Nieuw spel", "Meedoen" (Geschiedenis verborgen, B7); bij
+- **Beginscherm**: "Nieuw spel", "Meedoen", rechtsboven icoon Geschiedenis (F12); bij
   een actief spel bovenaan wedstrijdnaam + "Verder met huidig spel". Geen DEMO-knop (DEMO via `?demo`).
 - **Nieuw spel**: naam + clubs + spelregels (één formulier) → "Spel
   aanmaken" → wachtkamer → uitnodigen → wachten → volgorde → start. **Meedoen**: kamercode + naam; via een uitnodigingslink
@@ -443,10 +449,8 @@ hierboven):**
   uitslagentabel (spelers, uitslagen, totalen); dan per speler alle
   uitslagen, veilingtrekkingen en bedragen. Leesbaar tot 12 spelers.
   Delen via het deelmenu; anders opslaan als terugval.
-- **Geschiedenis** (lage prioriteit, uitstelbaar): alleen afgeronde spellen,
-  laatste 10 per speler (datum, organisator, aantal spelers, eigen totaal),
-  openen → eindoverzicht, opnieuw delen. Herkenning via de browseridentiteit
-  (andere telefoon/gewiste gegevens = niet zichtbaar).
+- **Geschiedenis**: zie F12 hierboven (definitief; dit oudere voorstel met
+  organisator/aantal spelers/eigen totaal is vervangen).
 
 ## 4b. F13 Openingsbeleving (02-11-2026, live: `571db27` + `game` v3)
 
@@ -577,6 +581,22 @@ hierboven):**
   opening **34/34**, geluidsniveaus 5/5, iPhone-blokkade 3/3; DEMO 16/16
   pixel-identiek, 0 Supabase-verzoeken. Geen Edge Function-wijziging nodig
   voor het geluid.
+
+### 4d. Geschiedenis-icoon (04-11-2026, lokaal, niet gecommit)
+
+- Onderzoek: de geschiedenis werkte, maar de grote knop verscheen alleen als
+  déze browser ≥ 1 afgeronde wedstrijd had. In V2 waren van 11 spellen er 2
+  echt afgerond ("Bekijk de eindstand"); een andere browser (bijv. link uit
+  WhatsApp) heeft eigen, lege opslag → geen knop.
+- Nu: `Home` toont rechtsboven altijd een rond icoon (`.ol-icon-btn
+  .ol-history-btn`, inline SVG Lucide `history`, ISC; aanraakvlak 48 px via
+  `::before`), via nieuwe optionele prop `OnlineScreen action` (gespiegeld aan
+  de terugknop). `hasHistory` vervalt; `collectFinished` loopt nog op de
+  achtergrond bij het beginscherm. Lege lijst met uitleg "op dit toestel".
+- Tests: `npm test` **336/336**; browser 320/390/430 px 12/12 (40×40,
+  rechtsboven, niet over het logo, tikbaar, geen horizontaal scrollen, lege
+  lijst met uitleg, terugknop); volledig spel → geschiedenis 7/7; DEMO 16/16
+  pixel-identiek, 0 Supabase-verzoeken. Geen server- of databasewijziging.
 
 ## 5. React-architectuur en spelengine
 

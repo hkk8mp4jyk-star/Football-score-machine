@@ -147,13 +147,10 @@ export default function OnlineApp() {
         if (e.code !== 'network') a.session.clear()
       }
     }
-    setView({ name: 'home', resume, hasHistory: a.history.list().length > 0 })
-    // Andere spellen van dit toestel die intussen zijn afgerond (op de achtergrond).
-    if (a.history.myRooms().some((r) => r.roomId !== session?.roomId)) {
-      await collectFinished(a)
-      const hasHistory = a.history.list().length > 0
-      setView((v) => (v.name === 'home' && v.hasHistory !== hasHistory ? { ...v, hasHistory } : v))
-    }
+    setView({ name: 'home', resume })
+    // Andere spellen van dit toestel die intussen zijn afgerond (op de
+    // achtergrond in de geschiedenis zetten).
+    if (a.history.myRooms().some((r) => r.roomId !== session?.roomId)) await collectFinished(a)
   }, [api])
 
   // Kamer openen via code of link. `inline`: fouten terug naar het formulier.
@@ -205,7 +202,6 @@ export default function OnlineApp() {
           onNew={() => setView({ name: 'new' })}
           onJoin={() => setView({ name: 'code' })}
           onResume={() => enterRoom(view.resume.roomId, view.resume.code)}
-          hasHistory={view.hasHistory}
           onHistory={() => setView({ name: 'history' })}
         />
       )
